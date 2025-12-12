@@ -1,0 +1,63 @@
+name: Build Android APK and AAB
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+      
+      - name: Install npm dependencies
+        run: npm install --force
+      
+      - name: Generate Android native code
+        run: |
+          npx expo prebuild --platform android --clean
+          echo "=== Checking android directory ==="
+          ls -la android/
+          echo "=== Checking gradle wrapper ==="
+          ls -la android/gradle/wrapper/ || echo "Wrapper directory missing"
+          echo "=== Checking for gradlew ==="
+          ls -la android/gradlew || echo "gradlew missing"
+    
+      - name: Build Android Release APK
+        run: |
+          cd android
+          chmod +x ./gradlew
+          ./gradlew assembleRelease
+      
+      - name: Build Android AAB
+        run: |
+          cd android
+          ./gradlew bundleRelease
+      
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-apk
+          path: android/app/build/outputs/apk/release/
+          retention-days: 3
+      
+      - name: Upload AAB Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-aab
+          path: android/app/build/outputs/bundle/release/
+          retention-days: 3
