@@ -52,6 +52,19 @@ export default function AboutPage() {
         </View>
 
         <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Mentor</Text>
+          <View style={styles.founderCard}>
+            <View style={styles.founderInitials}>
+              <Text style={styles.founderInitialsText}>SB</Text>
+            </View>
+            <View style={styles.founderInfo}>
+              <Text style={styles.founderName}>Soniya Babu</Text>
+              <Text style={styles.founderRole}>Mentor</Text>
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.section}>
           <Text style={styles.sectionTitle}>Features</Text>
           <Text style={styles.sectionText}>
             • AI-generated notes, summaries, and worksheets{'\n'}
