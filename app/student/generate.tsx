@@ -291,7 +291,10 @@ IMPORTANT REQUIREMENTS:
       .replace(/\*\*(.+?)\*\*/g, '$1')
       .replace(/###? (.+)/g, '$1')
       .replace(/^- /gm, '• ')
-      .replace(/^\| /gm, '');
+      .replace(/^\|(.*)$/gm, '$1')
+      .split('\n')
+      .filter(line => line.trim().length > 0 || line.includes(' '))
+      .join('\n');
   };
 
   return (
