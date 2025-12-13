@@ -61,7 +61,7 @@ export default function VoiceAssistant({ visible, onClose }: VoiceAssistantProps
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: true,
         playsInSilentModeIOS: true,
-        staysActiveInBackground: true,
+        staysActiveInBackground: false,
         shouldDuckAndroid: true,
         playThroughEarpieceAndroid: false,
       });
@@ -88,14 +88,9 @@ export default function VoiceAssistant({ visible, onClose }: VoiceAssistantProps
 
       setIsRecording(false);
       await recording.stopAndUnloadAsync();
-      
-      if (Platform.OS !== 'web') {
-        await Audio.setAudioModeAsync({
-          allowsRecordingIOS: false,
-          staysActiveInBackground: false,
-          shouldDuckAndroid: false,
-        });
-      }
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+      });
 
       const uri = recording.getURI();
       setRecording(null);
