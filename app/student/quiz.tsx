@@ -49,7 +49,29 @@ export default function QuizGenerator() {
       
       const subjectName = subjects.find((s) => s.id === selectedSubject)?.name || '';
       
-      const prompt = `Generate a challenging quiz with 10 questions for ${selectedBoard} Grade ${selectedGrade} ${subjectName}.
+      const numQuestions = selectedBoard === 'ICSE' ? 20 : 10;
+      const prompt = selectedBoard === 'ICSE'
+        ? `Generate a challenging quiz with ${numQuestions} questions for ${selectedBoard} Grade ${selectedGrade} ${subjectName}.
+Topic: ${chapterInfo}
+
+Create questions in ${selectedLanguage} language following ${selectedBoard} board syllabus.
+
+Question Distribution:
+- 10 Standard MCQs (challenging, conceptual)
+- 10 Competency-Based questions (application, analysis, problem-solving, real-world scenarios)
+
+Each question should have 4 options.
+correctAnswer should be the index (0-3) of the correct option.
+
+Make questions:
+1. Board-exam level difficulty
+2. Test deep understanding, not just memorization
+3. Include numerical problems where applicable
+4. Use real-world scenarios for competency questions
+5. Cover different aspects of the chapter
+
+Provide detailed explanations showing the reasoning process.`
+        : `Generate a challenging quiz with ${numQuestions} questions for ${selectedBoard} Grade ${selectedGrade} ${subjectName}.
 Topic: ${chapterInfo}
 
 Create questions in ${selectedLanguage} language following ${selectedBoard} board syllabus.
@@ -145,7 +167,7 @@ Provide detailed explanations showing the reasoning process.`;
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <ChevronLeft size={24} color="#1e293b" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>AI Quiz Generator</Text>
+        <Text style={styles.headerTitle}>MCQ Generator</Text>
         <View style={styles.backButton} />
       </View>
 

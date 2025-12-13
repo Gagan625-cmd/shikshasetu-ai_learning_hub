@@ -18,12 +18,34 @@ export const [AppProvider, useApp] = createContextHook(() => {
     currentStreak: 0,
   });
 
-  useEffect(() => {
-    loadSettings();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const saveProgress = useCallback(async (progress: UserProgress) => {
+    try {
+      await AsyncStorage.setItem('userProgress', JSON.stringify(progress));
+    } catch (error) {
+      console.log('Error saving progress:', error);
+    }
   }, []);
 
-  const loadSettings = async () => {
+  const updateStreak = useCallback((lastActive: string) => {
+    const today = new Date().toISOString().split('T')[0];
+    const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+    
+    setUserProgress(prev => {
+      if (lastActive === today) {
+        return prev;
+      } else if (lastActive === yesterday) {
+        const updated = { ...prev, currentStreak: prev.currentStreak + 1, lastActiveDate: today };
+        saveProgress(updated);
+        return updated;
+      } else {
+        const updated = { ...prev, currentStreak: 1, lastActiveDate: today };
+        saveProgress(updated);
+        return updated;
+      }
+    });
+  }, [saveProgress]);
+
+  const loadSettings = useCallback(async () => {
     try {
       const role = await AsyncStorage.getItem('userRole');
       const language = await AsyncStorage.getItem('language');
@@ -51,34 +73,11 @@ export const [AppProvider, useApp] = createContextHook(() => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [updateStreak]);
 
-  const updateStreak = (lastActive: string) => {
-    const today = new Date().toISOString().split('T')[0];
-    const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
-    
-    setUserProgress(prev => {
-      if (lastActive === today) {
-        return prev;
-      } else if (lastActive === yesterday) {
-        const updated = { ...prev, currentStreak: prev.currentStreak + 1, lastActiveDate: today };
-        saveProgress(updated);
-        return updated;
-      } else {
-        const updated = { ...prev, currentStreak: 1, lastActiveDate: today };
-        saveProgress(updated);
-        return updated;
-      }
-    });
-  };
-
-  const saveProgress = async (progress: UserProgress) => {
-    try {
-      await AsyncStorage.setItem('userProgress', JSON.stringify(progress));
-    } catch (error) {
-      console.log('Error saving progress:', error);
-    }
-  };
+  useEffect(() => {
+    loadSettings();
+  }, [loadSettings]);
 
   const selectRole = useCallback(async (role: UserRole) => {
     setUserRole(role);
@@ -95,7 +94,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
     await AsyncStorage.removeItem('userRole');
   }, []);
 
-  const addQuizResult = useCallback(async (result: QuizResult) => {
+  const addQuizResult = useCallback((result: QuizResult) => {
     setUserProgress(prev => {
       const updated = {
         ...prev,
@@ -105,10 +104,9 @@ export const [AppProvider, useApp] = createContextHook(() => {
       updateStreak(prev.lastActiveDate);
       return updated;
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [saveProgress, updateStreak]);
 
-  const addContentActivity = useCallback(async (activity: ContentActivity) => {
+  const addContentActivity = useCallback((activity: ContentActivity) => {
     setUserProgress(prev => {
       const updated = {
         ...prev,
@@ -118,10 +116,9 @@ export const [AppProvider, useApp] = createContextHook(() => {
       updateStreak(prev.lastActiveDate);
       return updated;
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [saveProgress, updateStreak]);
 
-  const addStudyTime = useCallback(async (minutes: number) => {
+  const addStudyTime = useCallback((minutes: number) => {
     setUserProgress(prev => {
       const updated = {
         ...prev,
@@ -130,9 +127,9 @@ export const [AppProvider, useApp] = createContextHook(() => {
       saveProgress(updated);
       return updated;
     });
-  }, []);
+  }, [saveProgress]);
 
-  const addTeacherActivity = useCallback(async (activity: TeacherActivity) => {
+  const addTeacherActivity = useCallback((activity: TeacherActivity) => {
     setUserProgress(prev => {
       const updated = {
         ...prev,
@@ -142,10 +139,9 @@ export const [AppProvider, useApp] = createContextHook(() => {
       updateStreak(prev.lastActiveDate);
       return updated;
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [saveProgress, updateStreak]);
 
-  const addExamActivity = useCallback(async (activity: ExamActivity) => {
+  const addExamActivity = useCallback((activity: ExamActivity) => {
     setUserProgress(prev => {
       const updated = {
         ...prev,
@@ -155,10 +151,9 @@ export const [AppProvider, useApp] = createContextHook(() => {
       updateStreak(prev.lastActiveDate);
       return updated;
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [saveProgress, updateStreak]);
 
-  const addTeacherUpload = useCallback(async (upload: TeacherUpload) => {
+  const addTeacherUpload = useCallback((upload: TeacherUpload) => {
     setUserProgress(prev => {
       const updated = {
         ...prev,
@@ -167,7 +162,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
       saveProgress(updated);
       return updated;
     });
-  }, []);
+  }, [saveProgress]);
 
   return useMemo(() => ({
     userRole,

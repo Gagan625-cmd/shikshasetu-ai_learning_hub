@@ -47,7 +47,29 @@ export default function TeacherQuizGenerator() {
       
       const subjectName = subjects.find((s) => s.id === selectedSubject)?.name || '';
       
-      const prompt = `Generate a quiz with 5 multiple choice questions for ${syllabus} Grade ${selectedGrade} ${subjectName}.
+      const numQuestions = syllabus === 'ICSE' ? 20 : 5;
+      const prompt = syllabus === 'ICSE' 
+        ? `Generate a challenging quiz with ${numQuestions} questions for ${syllabus} Grade ${selectedGrade} ${subjectName}.
+Topic: ${chapterInfo}
+
+Create questions in ${selectedLanguage} language following ${syllabus} board syllabus.
+
+Question Distribution:
+- 10 Standard MCQs (challenging, conceptual)
+- 10 Competency-Based questions (application, analysis, problem-solving, real-world scenarios)
+
+Each question should have 4 options.
+correctAnswer should be the index (0-3) of the correct option.
+
+Make questions:
+1. Board-exam level difficulty
+2. Test deep understanding, not just memorization
+3. Include numerical problems where applicable
+4. Use real-world scenarios for competency questions
+5. Cover different aspects of the chapter
+
+Provide detailed explanations showing the reasoning process.`
+        : `Generate a quiz with ${numQuestions} multiple choice questions for ${syllabus} Grade ${selectedGrade} ${subjectName}.
 Topic: ${chapterInfo}
 
 Create questions in ${selectedLanguage} language suitable for ${syllabus} board assessment.
@@ -89,7 +111,7 @@ Make questions aligned with ${syllabus} exam pattern and difficulty level.`;
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <ChevronLeft size={24} color="#1e293b" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Quiz Generator</Text>
+        <Text style={styles.headerTitle}>MCQ Generator</Text>
         <View style={styles.backButton} />
       </View>
 
