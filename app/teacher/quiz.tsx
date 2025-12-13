@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { ChevronLeft, Sparkles, CheckCircle, Loader2 } from 'lucide-react-native';
+import { ChevronLeft, Sparkles, CheckCircle, Loader2, BookOpen, GraduationCap } from 'lucide-react-native';
 import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState } from 'react';
@@ -8,6 +8,7 @@ import { useMutation } from '@tanstack/react-query';
 import { generateObject } from '@rork-ai/toolkit-sdk';
 import { z } from 'zod';
 import { NCERT_SUBJECTS } from '@/constants/ncert-data';
+import { ICSE_SUBJECTS } from '@/constants/icse-data';
 
 const QuizSchema = z.object({
   questions: z.array(
@@ -25,15 +26,18 @@ export default function TeacherQuizGenerator() {
   const insets = useSafeAreaInsets();
   const { selectedLanguage } = useApp();
   
+  const [syllabus, setSyllabus] = useState<'NCERT' | 'ICSE'>('NCERT');
   const [selectedGrade, setSelectedGrade] = useState<number>(6);
   const [selectedSubject, setSelectedSubject] = useState<string>('');
   const [selectedChapter, setSelectedChapter] = useState<string>('');
   const [quiz, setQuiz] = useState<z.infer<typeof QuizSchema> | null>(null);
   const [currentQuestion, setCurrentQuestion] = useState(0);
 
-  const subjects = NCERT_SUBJECTS.filter((s) => s.grade === selectedGrade);
+  const allSubjects = syllabus === 'NCERT' ? NCERT_SUBJECTS : ICSE_SUBJECTS;
+  const subjects = allSubjects.filter((s) => s.grade === selectedGrade);
   const chapters = subjects.find((s) => s.id === selectedSubject)?.chapters || [];
   const selectedChapterData = chapters.find((c) => c.id === selectedChapter);
+  const availableGrades = syllabus === 'NCERT' ? [6, 7, 8, 9, 10] : [9, 10];
 
   const generateMutation = useMutation({
     mutationFn: async () => {
@@ -43,13 +47,14 @@ export default function TeacherQuizGenerator() {
       
       const subjectName = subjects.find((s) => s.id === selectedSubject)?.name || '';
       
-      const prompt = `Generate a quiz with 5 multiple choice questions for Grade ${selectedGrade} ${subjectName}.
+      const prompt = `Generate a quiz with 5 multiple choice questions for ${syllabus} Grade ${selectedGrade} ${subjectName}.
 Topic: ${chapterInfo}
 
-Create questions in ${selectedLanguage} language suitable for student assessment.
+Create questions in ${selectedLanguage} language suitable for ${syllabus} board assessment.
 Each question should have 4 options.
 correctAnswer should be the index (0-3) of the correct option.
-Include a detailed explanation for each answer to help teachers understand the concept.`;
+Include a detailed explanation for each answer to help teachers understand the concept.
+Make questions aligned with ${syllabus} exam pattern and difficulty level.`;
 
       const result = await generateObject({
         messages: [{ role: 'user', content: prompt }],
@@ -95,10 +100,41 @@ Include a detailed explanation for each answer to help teachers understand the c
       >
         {!quiz && (
           <>
+            <View style={styles.syllabusSelector}>
+              <TouchableOpacity
+                style={[styles.syllabusButton, syllabus === 'NCERT' && styles.syllabusButtonActive]}
+                onPress={() => {
+                  setSyllabus('NCERT');
+                  setSelectedGrade(6);
+                  setSelectedSubject('');
+                  setSelectedChapter('');
+                }}
+              >
+                <BookOpen size={20} color={syllabus === 'NCERT' ? '#ffffff' : '#64748b'} />
+                <Text style={[styles.syllabusButtonText, syllabus === 'NCERT' && styles.syllabusButtonTextActive]}>
+                  NCERT
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.syllabusButton, syllabus === 'ICSE' && styles.syllabusButtonActive]}
+                onPress={() => {
+                  setSyllabus('ICSE');
+                  setSelectedGrade(9);
+                  setSelectedSubject('');
+                  setSelectedChapter('');
+                }}
+              >
+                <GraduationCap size={20} color={syllabus === 'ICSE' ? '#ffffff' : '#64748b'} />
+                <Text style={[styles.syllabusButtonText, syllabus === 'ICSE' && styles.syllabusButtonTextActive]}>
+                  ICSE
+                </Text>
+              </TouchableOpacity>
+            </View>
+
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Select Grade</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.optionScroll}>
-                {[6, 7, 8, 9, 10].map((grade) => (
+                {availableGrades.map((grade) => (
                   <TouchableOpacity
                     key={grade}
                     style={[styles.optionButton, selectedGrade === grade && styles.optionButtonActive]}
@@ -291,6 +327,35 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     padding: 20,
+  },
+  syllabusSelector: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 24,
+  },
+  syllabusButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 16,
+    borderRadius: 12,
+    backgroundColor: '#ffffff',
+    borderWidth: 2,
+    borderColor: '#e2e8f0',
+  },
+  syllabusButtonActive: {
+    backgroundColor: '#10b981',
+    borderColor: '#10b981',
+  },
+  syllabusButtonText: {
+    fontSize: 16,
+    fontWeight: '700' as const,
+    color: '#64748b',
+  },
+  syllabusButtonTextActive: {
+    color: '#ffffff',
   },
   section: {
     marginBottom: 24,
