@@ -2,7 +2,7 @@ import { useRouter } from 'expo-router';
 import { ChevronLeft, BookOpen, GraduationCap } from 'lucide-react-native';
 import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { NCERT_SUBJECTS } from '@/constants/ncert-data';
 
 export default function TeacherContentBrowser() {
@@ -10,8 +10,11 @@ export default function TeacherContentBrowser() {
   const insets = useSafeAreaInsets();
   const [selectedGrade, setSelectedGrade] = useState<number>(6);
 
-  const subjects = NCERT_SUBJECTS.filter((s) => s.grade === selectedGrade);
-  const grades = [6, 7, 8, 9, 10];
+  const subjects = useMemo(
+    () => NCERT_SUBJECTS.filter((s) => s.grade === selectedGrade),
+    [selectedGrade]
+  );
+  const grades = useMemo(() => [6, 7, 8, 9, 10], []);
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>

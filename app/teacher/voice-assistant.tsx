@@ -6,6 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { useApp } from '@/contexts/app-context';
+import { generateText } from '@rork-ai/toolkit-sdk';
 
 interface VoiceAssistantProps {
   visible: boolean;
@@ -108,19 +109,57 @@ export default function VoiceAssistant({ visible, onClose }: VoiceAssistantProps
     setIsProcessing(true);
     
     try {
-      const emotions: EmotionalState[] = ['neutral', 'happy', 'stressed', 'confused', 'excited'];
-      const detectedEmotion = emotions[Math.floor(Math.random() * emotions.length)];
-      setEmotionalState(detectedEmotion);
+      const formData = new FormData();
+      
+      const uriParts = uri.split('.');
+      const fileType = uriParts[uriParts.length - 1];
+      
+      const audioFile = {
+        uri,
+        name: `recording.${fileType}`,
+        type: `audio/${fileType}`,
+      } as any;
+      
+      formData.append('audio', audioFile);
+      
+      const sttResponse = await fetch('https://toolkit.rork.com/stt/transcribe/', {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (!sttResponse.ok) {
+        throw new Error('Speech-to-text failed');
+      }
+      
+      const sttData = await sttResponse.json() as { text: string; language: string };
+      const transcribedText = sttData.text;
+      
+      setTranscript(transcribedText);
+      
+      const emotionPrompt = `Analyze the emotional tone of this text and respond with just one word: neutral, happy, stressed, confused, or excited.\n\nText: "${transcribedText}"`;
+      const emotionResult = await generateText({ messages: [{ role: 'user', content: emotionPrompt }] });
+      const detectedEmotion = (emotionResult.toLowerCase().trim() as EmotionalState) || 'neutral';
+      
+      if (['neutral', 'happy', 'stressed', 'confused', 'excited'].includes(detectedEmotion)) {
+        setEmotionalState(detectedEmotion);
+      }
+      
+      const contentPrompt = `You are an AI assistant helping a teacher create educational content. The teacher said: "${transcribedText}"
 
-      await new Promise(resolve => setTimeout(resolve, 1500));
+Their emotional state seems ${detectedEmotion}. Generate comprehensive lesson content based on their request.
 
-      const mockTranscript = "Create a lesson about photosynthesis for grade 9 students. Include diagrams and interactive examples.";
-      setTranscript(mockTranscript);
+Provide a structured response with:
+- Learning objectives
+- Key concepts
+- Interactive activities
+- Assessment questions
+- Teaching tips
+- Required resources
 
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      const mockContent = generateLessonContent(mockTranscript, detectedEmotion);
-      setGeneratedContent(mockContent);
+Make it detailed, practical, and ready to use in a classroom.`;
+      
+      const generatedContent = await generateText({ messages: [{ role: 'user', content: contentPrompt }] });
+      setGeneratedContent(generatedContent);
 
       await addTeacherActivity({
         type: 'voice-content-creation',
@@ -140,60 +179,7 @@ export default function VoiceAssistant({ visible, onClose }: VoiceAssistantProps
     }
   };
 
-  const generateLessonContent = (input: string, emotion: EmotionalState): string => {
-    const emotionalContext = {
-      happy: 'Your enthusiastic tone is great! Here\'s an engaging lesson:',
-      stressed: 'I sense you might be busy. Here\'s a quick, efficient lesson plan:',
-      confused: 'Let me help clarify. Here\'s a well-structured lesson:',
-      excited: 'I love your energy! Here\'s an exciting lesson plan:',
-      neutral: 'Here\'s a comprehensive lesson plan:',
-    };
 
-    return `${emotionalContext[emotion]}
-
-# Photosynthesis Lesson Plan - Grade 9
-
-## Learning Objectives:
-- Understand the process of photosynthesis
-- Identify the key components and products
-- Explain the importance for life on Earth
-
-## Key Concepts:
-
-### 1. Definition
-Photosynthesis is the process by which green plants use sunlight to synthesize nutrients from carbon dioxide and water.
-
-### 2. Chemical Equation
-6CO₂ + 6H₂O + Light Energy → C₆H₁₂O₆ + 6O₂
-
-### 3. Key Components:
-- Chlorophyll (green pigment)
-- Sunlight (energy source)
-- Carbon dioxide (from air)
-- Water (from soil)
-
-### 4. Interactive Activities:
-- Virtual lab simulation
-- Diagram labeling exercise
-- Role-play: Students act as chloroplasts
-- Group discussion on climate impact
-
-### 5. Assessment Questions:
-1. What are the products of photosynthesis?
-2. Why is chlorophyll essential?
-3. How does light intensity affect the rate?
-
-## Teaching Tips:
-${emotion === 'stressed' ? '- Focus on core concepts first\n- Use pre-made diagrams\n- 30-minute lesson plan' : ''}
-${emotion === 'excited' ? '- Include hands-on experiments\n- Add competitive quiz elements\n- Student presentations' : ''}
-${emotion === 'confused' ? '- Step-by-step breakdown\n- Visual aids for each stage\n- Frequent comprehension checks' : ''}
-
-## Resources Needed:
-- Projector/screen
-- Plant samples
-- Worksheet handouts
-- Quiz materials`;
-  };
 
   const saveContent = async () => {
     if (!generatedContent) return;

@@ -3,12 +3,22 @@ import { ChevronLeft, Sparkles, FileText, BookText, ScrollText, Loader2, Network
 import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Platform, TextInput, Alert } from 'react-native';
 import * as Sharing from 'expo-sharing';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useState } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useApp } from '@/contexts/app-context';
 import { useMutation } from '@tanstack/react-query';
 import { generateText } from '@rork-ai/toolkit-sdk';
 import { NCERT_SUBJECTS } from '@/constants/ncert-data';
 import { ICSE_SUBJECTS } from '@/constants/icse-data';
+
+const CONTENT_TYPES = [
+  { id: 'lesson' as const, label: 'Lesson Plan', icon: BookText, color: '#3b82f6' },
+  { id: 'notes' as const, label: 'Teaching Notes', icon: FileText, color: '#8b5cf6' },
+  { id: 'explanation' as const, label: 'Explanation', icon: BookText, color: '#10b981' },
+  { id: 'summary' as const, label: 'Summary', icon: ScrollText, color: '#f59e0b' },
+  { id: 'worksheet' as const, label: 'Worksheet', icon: FileText, color: '#06b6d4' },
+  { id: 'mindmap' as const, label: 'Mind Map', icon: Network, color: '#8b5cf6' },
+  { id: 'questionpaper' as const, label: 'Question Paper', icon: FileText, color: '#ef4444' },
+];
 
 export default function TeacherContentGenerator() {
   const router = useRouter();
@@ -23,10 +33,25 @@ export default function TeacherContentGenerator() {
   const [customTopic, setCustomTopic] = useState('');
   const [generatedContent, setGeneratedContent] = useState('');
 
-  const allSubjects = selectedBoard === 'NCERT' ? NCERT_SUBJECTS : ICSE_SUBJECTS;
-  const subjects = allSubjects.filter((s) => s.grade === selectedGrade);
-  const chapters = subjects.find((s) => s.id === selectedSubject)?.chapters || [];
-  const selectedChapterData = chapters.find((c) => c.id === selectedChapter);
+  const allSubjects = useMemo(
+    () => selectedBoard === 'NCERT' ? NCERT_SUBJECTS : ICSE_SUBJECTS,
+    [selectedBoard]
+  );
+  
+  const subjects = useMemo(
+    () => allSubjects.filter((s) => s.grade === selectedGrade),
+    [allSubjects, selectedGrade]
+  );
+  
+  const chapters = useMemo(
+    () => subjects.find((s) => s.id === selectedSubject)?.chapters || [],
+    [subjects, selectedSubject]
+  );
+  
+  const selectedChapterData = useMemo(
+    () => chapters.find((c) => c.id === selectedChapter),
+    [chapters, selectedChapter]
+  );
 
   const generateMutation = useMutation({
     mutationFn: async () => {
@@ -61,8 +86,16 @@ export default function TeacherContentGenerator() {
           break;
       }
       
-      const result = await generateText({ messages: [{ role: 'user', content: prompt }] });
-      return result;
+      try {
+        const result = await generateText({ messages: [{ role: 'user', content: prompt }] });
+        if (!result || result.trim().length === 0) {
+          throw new Error('Empty response from AI');
+        }
+        return result;
+      } catch (error) {
+        console.error('Content generation error:', error);
+        throw error;
+      }
     },
     onSuccess: (data) => {
       setGeneratedContent(data);
@@ -76,21 +109,20 @@ export default function TeacherContentGenerator() {
         addTeacherActivity(activity);
       }
     },
+    onError: (error) => {
+      console.error('Generation mutation error:', error);
+      Alert.alert('Error', 'Failed to generate content. Please check your internet connection and try again.');
+    },
   });
 
-  const contentTypes = [
-    { id: 'lesson' as const, label: 'Lesson Plan', icon: BookText, color: '#3b82f6' },
-    { id: 'notes' as const, label: 'Teaching Notes', icon: FileText, color: '#8b5cf6' },
-    { id: 'explanation' as const, label: 'Explanation', icon: BookText, color: '#10b981' },
-    { id: 'summary' as const, label: 'Summary', icon: ScrollText, color: '#f59e0b' },
-    { id: 'worksheet' as const, label: 'Worksheet', icon: FileText, color: '#06b6d4' },
-    { id: 'mindmap' as const, label: 'Mind Map', icon: Network, color: '#8b5cf6' },
-    { id: 'questionpaper' as const, label: 'Question Paper', icon: FileText, color: '#ef4444' },
-  ];
 
-  const canGenerate = (selectedChapter || customTopic.trim().length > 0) && selectedSubject;
 
-  const cleanMarkdown = (text: string) => {
+  const canGenerate = useMemo(
+    () => (selectedChapter || customTopic.trim().length > 0) && selectedSubject,
+    [selectedChapter, customTopic, selectedSubject]
+  );
+
+  const cleanMarkdown = useCallback((text: string) => {
     return text
       .replace(/\*\*(.+?)\*\*/g, '$1')
       .replace(/###? (.+)/g, '$1')
@@ -99,26 +131,29 @@ export default function TeacherContentGenerator() {
       .split('\n')
       .filter(line => line.trim().length > 0 || line.includes(' '))
       .join('\n');
-  };
+  }, []);
 
-  const handleExportPDF = async () => {
+  const handleExportPDF = useCallback(async () => {
     if (!generatedContent) return;
 
     try {
       const cleanedContent = cleanMarkdown(generatedContent);
-      const contentTypeLabel = contentTypes.find(t => t.id === contentType)?.label || 'Content';
+      const contentTypeLabel = CONTENT_TYPES.find(t => t.id === contentType)?.label || 'Content';
       const chapterInfo = selectedChapterData 
         ? `${selectedChapterData.title}`
         : customTopic || 'Custom Topic';
       
-      const textToShare = `${contentTypeLabel}\n${chapterInfo}\n\n${cleanedContent}`;
+      const header = `${'='.repeat(50)}\n${contentTypeLabel.toUpperCase()}\n${chapterInfo}\n${'='.repeat(50)}\n\n`;
+      const footer = `\n\n${'='.repeat(50)}\nGenerated by ShikshaSetu AI Co-Pilot\nDate: ${new Date().toLocaleDateString()}\n${'='.repeat(50)}`;
+      const textToShare = `${header}${cleanedContent}${footer}`;
       
       if (Platform.OS === 'web') {
-        const blob = new Blob([textToShare], { type: 'text/plain' });
+        const blob = new Blob([textToShare], { type: 'text/plain;charset=utf-8' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = `${contentTypeLabel}_${chapterInfo.replace(/\s+/g, '_')}.txt`;
+        const fileName = `${contentTypeLabel}_${chapterInfo.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}.txt`;
+        link.download = fileName;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -127,7 +162,8 @@ export default function TeacherContentGenerator() {
       } else {
         const isAvailable = await Sharing.isAvailableAsync();
         if (isAvailable) {
-          await Sharing.shareAsync('data:text/plain;base64,' + btoa(textToShare), {
+          const base64Content = btoa(unescape(encodeURIComponent(textToShare)));
+          await Sharing.shareAsync(`data:text/plain;base64,${base64Content}`, {
             mimeType: 'text/plain',
             dialogTitle: `Export ${contentTypeLabel}`,
             UTI: 'public.plain-text',
@@ -138,16 +174,16 @@ export default function TeacherContentGenerator() {
       }
     } catch (error) {
       console.error('Export error:', error);
-      Alert.alert('Error', 'Failed to export content');
+      Alert.alert('Error', 'Failed to export content. Please try again.');
     }
-  };
+  }, [generatedContent, cleanMarkdown, contentType, selectedChapterData, customTopic]);
 
-  const handleShare = async () => {
+  const handleShare = useCallback(async () => {
     if (!generatedContent) return;
 
     try {
       const cleanedContent = cleanMarkdown(generatedContent);
-      const contentTypeLabel = contentTypes.find(t => t.id === contentType)?.label || 'Content';
+      const contentTypeLabel = CONTENT_TYPES.find(t => t.id === contentType)?.label || 'Content';
       const chapterInfo = selectedChapterData 
         ? `${selectedChapterData.title}`
         : customTopic || 'Custom Topic';
@@ -167,7 +203,8 @@ export default function TeacherContentGenerator() {
       } else {
         const isAvailable = await Sharing.isAvailableAsync();
         if (isAvailable) {
-          await Sharing.shareAsync('data:text/plain;base64,' + btoa(textToShare), {
+          const base64Content = btoa(unescape(encodeURIComponent(textToShare)));
+          await Sharing.shareAsync(`data:text/plain;base64,${base64Content}`, {
             mimeType: 'text/plain',
             dialogTitle: `Share ${contentTypeLabel}`,
             UTI: 'public.plain-text',
@@ -176,8 +213,9 @@ export default function TeacherContentGenerator() {
       }
     } catch (error) {
       console.error('Share error:', error);
+      Alert.alert('Error', 'Failed to share content. Please try again.');
     }
-  };
+  }, [generatedContent, cleanMarkdown, contentType, selectedChapterData, customTopic]);
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -310,7 +348,7 @@ export default function TeacherContentGenerator() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Content Type</Text>
           <View style={styles.contentTypeGrid}>
-            {contentTypes.map((type) => {
+            {CONTENT_TYPES.map((type) => {
               const Icon = type.icon;
               return (
                 <TouchableOpacity
@@ -356,7 +394,15 @@ export default function TeacherContentGenerator() {
 
         {generateMutation.isError && (
           <View style={styles.errorCard}>
-            <Text style={styles.errorText}>Failed to generate content. Please try again.</Text>
+            <Text style={styles.errorText}>
+              Failed to generate content. Please check your internet connection and try again.
+            </Text>
+            <TouchableOpacity
+              style={styles.retryButton}
+              onPress={() => generateMutation.mutate()}
+            >
+              <Text style={styles.retryButtonText}>Retry</Text>
+            </TouchableOpacity>
           </View>
         )}
 
@@ -590,6 +636,19 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: 14,
     color: '#b91c1c',
+    marginBottom: 12,
+  },
+  retryButton: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: '#ef4444',
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: '#ffffff',
   },
   resultCard: {
     marginTop: 16,

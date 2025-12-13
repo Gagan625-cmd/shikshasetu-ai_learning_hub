@@ -264,13 +264,8 @@ Start by greeting the interviewee in ${languageName} and explaining the intervie
     await stopRecording();
     
     if (evaluation.strengths.length === 0) {
-      sendMessage('The interview has ended. Please provide comprehensive evaluation now using the provideEvaluation tool with detailed strengths, weaknesses, recommendations, and overall score based on all answers given.');
+      await sendMessage('The interview has ended. Please provide comprehensive evaluation now using the provideEvaluation tool with detailed strengths, weaknesses, recommendations, and overall score based on all answers given. This is mandatory - provide the evaluation immediately.');
     }
-    
-    setTimeout(() => {
-      setHasStarted(false);
-      setAnalysisResults({});
-    }, 5000);
   };
 
   const canStart = (interviewTopic === 'subject' ? (selectedChapter && selectedSubject) : true) && 
