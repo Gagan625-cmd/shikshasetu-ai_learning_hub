@@ -28,7 +28,22 @@ export default function TeacherContentBrowser() {
       .replace(/\*\*(.+?)\*\*/g, '$1')
       .replace(/###? (.+)/g, '$1')
       .replace(/^- /gm, '• ')
-      .replace(/^\| /gm, '');
+      .replace(/^\| /gm, '')
+      .replace(/\\\[/g, '')
+      .replace(/\\\]/g, '')
+      .replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, '($1)/($2)')
+      .replace(/\\times/g, '×')
+      .replace(/\\div/g, '÷')
+      .replace(/\\cdot/g, '·')
+      .replace(/\\pm/g, '±')
+      .replace(/\\sqrt\{([^}]+)\}/g, '√($1)')
+      .replace(/\\pi/g, 'π')
+      .replace(/\\theta/g, 'θ')
+      .replace(/\\alpha/g, 'α')
+      .replace(/\\beta/g, 'β')
+      .replace(/\\Delta/g, 'Δ')
+      .replace(/\^2/g, '²')
+      .replace(/\^3/g, '³');
   };
 
   const generateContentMutation = useMutation({
@@ -51,6 +66,9 @@ IMPORTANT FORMATTING RULES:
    | Data 1   | Data 2   | Data 3   |
 6. Add blank lines between sections for better readability
 7. Use *italics* for emphasis where needed
+8. CRITICAL - For all mathematical formulas:
+   - Use plain text with Unicode (×, ÷, ², ³, √, π, Δ, etc.) - NO LaTeX
+   - Example: SI = (P × R × T)/100, Area = πr², Force = m × a
 
 Content structure for teachers:
 ## Teaching Objectives

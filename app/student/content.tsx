@@ -25,7 +25,22 @@ export default function ContentBrowser() {
       .replace(/\*\*(.+?)\*\*/g, '$1')
       .replace(/###? (.+)/g, '$1')
       .replace(/^- /gm, '• ')
-      .replace(/^\| /gm, '');
+      .replace(/^\| /gm, '')
+      .replace(/\\\[/g, '')
+      .replace(/\\\]/g, '')
+      .replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, '($1)/($2)')
+      .replace(/\\times/g, '×')
+      .replace(/\\div/g, '÷')
+      .replace(/\\cdot/g, '·')
+      .replace(/\\pm/g, '±')
+      .replace(/\\sqrt\{([^}]+)\}/g, '√($1)')
+      .replace(/\\pi/g, 'π')
+      .replace(/\\theta/g, 'θ')
+      .replace(/\\alpha/g, 'α')
+      .replace(/\\beta/g, 'β')
+      .replace(/\\Delta/g, 'Δ')
+      .replace(/\^2/g, '²')
+      .replace(/\^3/g, '³');
   };
 
   const generateContentMutation = useMutation({
@@ -44,6 +59,9 @@ IMPORTANT FORMATTING RULES:
 4. Use bullet points with - or • for lists
 5. For tables, use proper markdown table format with | separators
 6. Add blank lines between sections
+7. CRITICAL - For mathematical formulas:
+   - Use plain text with Unicode (×, ÷, ², ³, √, π, Δ) - NO LaTeX
+   - Example: SI = (P × R × T)/100, Area = πr²
 
 Content should include:
 ## Key Concepts and Definitions

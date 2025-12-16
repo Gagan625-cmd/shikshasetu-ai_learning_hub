@@ -51,10 +51,19 @@ IMPORTANT FORMATTING RULES:
    | Data 1   | Data 2   | Data 3   |
 4. Use bullet points with - for lists
 5. Add blank lines between sections
+6. CRITICAL - For mathematical formulas and equations:
+   - DO NOT use LaTeX syntax like \\[ \\] or $ $
+   - Use plain text with proper spacing
+   - Use Unicode symbols: × (multiplication), ÷ (division), ² ³ (superscripts), ½ ¼ ¾ (fractions)
+   - For fractions, write as: numerator/denominator or use ÷
+   - Example: SI = (P × R × T) ÷ 100 or SI = (P × R × T)/100
+   - Example: Area = πr² where r is radius
+   - Example: Quadratic formula: x = (-b ± √(b² - 4ac)) ÷ 2a
+   - For chemical formulas: H₂O, CO₂, etc.
 
 Provide detailed notes in ${selectedLanguage} language with:
 - Key Concepts and Definitions (with **bold** for important terms)
-- Important Formulas and Principles (in tables if multiple)
+- Important Formulas and Principles (write clearly without LaTeX)
 - Examples and Applications
 - Study Tips
 - Common Mistakes to Avoid`;
@@ -67,6 +76,8 @@ IMPORTANT FORMATTING:
 - Use bullet points for main ideas
 - Create comparison tables where applicable
 - Organize in clear sections
+- For formulas: Use plain text with Unicode symbols (×, ÷, ², ³, √, etc.) - NO LaTeX syntax
+- Example: Force = mass × acceleration (F = m × a)
 
 Provide in ${selectedLanguage} language with all essential information in concise bullet format.`;
       } else if (contentType === 'worksheet') {
@@ -81,6 +92,8 @@ IMPORTANT FORMATTING:
   b) Option 2
   c) Option 3
   d) Option 4
+- For mathematical expressions: Use plain text with Unicode (×, ÷, ², ³, √) - NO LaTeX
+- Example: Calculate area using A = πr² where r = 5 cm
 
 Create 15 questions in ${selectedLanguage} language:
 - 5 MCQs
@@ -93,6 +106,11 @@ Topic: ${chapterInfo}
 
 IMPORTANT QUESTION PAPER FORMAT:
 Create in ${selectedLanguage} language following ICSE board exam pattern.
+
+CRITICAL - For all mathematical formulas:
+- Use plain text with Unicode symbols (×, ÷, ², ³, √, π, Δ, etc.)
+- NO LaTeX syntax like \\[ \\] or $ $
+- Example: Area = πr², Volume = (4/3)πr³, Force = m × a
 
 STRUCTURE:
 **${selectedBoard} Board - Grade ${selectedGrade}**
@@ -126,6 +144,9 @@ Topic: ${chapterInfo}
 
 IMPORTANT MIND MAP FORMAT:
 Create a hierarchical, structured mind map in ${selectedLanguage} language.
+
+CRITICAL - For formulas:
+- Use plain text with Unicode symbols (×, ÷, ², ³, √) - NO LaTeX
 
 Use this format:
 🎯 **CENTRAL TOPIC: ${chapterInfo}**
@@ -186,6 +207,22 @@ IMPORTANT REQUIREMENTS:
       const subjectName = subjects.find((s) => s.id === selectedSubject)?.name || '';
       
       const formattedContent = generatedContent
+        .replace(/\\\[(.+?)\\\]/gs, '<div class="math">$1</div>')
+        .replace(/\$\$(.+?)\$\$/gs, '<div class="math">$1</div>')
+        .replace(/\$(.+?)\$/g, '<span class="math-inline">$1</span>')
+        .replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, '($1)/($2)')
+        .replace(/\\times/g, '×')
+        .replace(/\\div/g, '÷')
+        .replace(/\\cdot/g, '·')
+        .replace(/\\pm/g, '±')
+        .replace(/\\sqrt\{([^}]+)\}/g, '√($1)')
+        .replace(/\\pi/g, 'π')
+        .replace(/\\theta/g, 'θ')
+        .replace(/\\alpha/g, 'α')
+        .replace(/\\beta/g, 'β')
+        .replace(/\\Delta/g, 'Δ')
+        .replace(/\^2/g, '²')
+        .replace(/\^3/g, '³')
         .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
         .replace(/### (.*?)\n/g, '<h3>$1</h3>')
         .replace(/## (.*?)\n/g, '<h2>$1</h2>')
@@ -215,6 +252,8 @@ IMPORTANT REQUIREMENTS:
               p { margin: 10px 0; }
               .header { background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); padding: 20px; border-radius: 10px; margin-bottom: 30px; }
               .meta { color: #64748b; margin-top: 10px; font-size: 14px; }
+              .math { background: #f1f5f9; padding: 12px 16px; margin: 12px 0; border-radius: 6px; font-family: 'Courier New', monospace; font-size: 15px; overflow-x: auto; border-left: 3px solid #3b82f6; display: block; }
+              .math-inline { background: #f1f5f9; padding: 2px 6px; border-radius: 3px; font-family: 'Courier New', monospace; font-size: 14px; }
             </style>
           </head>
           <body>
@@ -292,6 +331,21 @@ IMPORTANT REQUIREMENTS:
       .replace(/###? (.+)/g, '$1')
       .replace(/^- /gm, '• ')
       .replace(/^\|(.*)$/gm, '$1')
+      .replace(/\\\[/g, '')
+      .replace(/\\\]/g, '')
+      .replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, '($1)/($2)')
+      .replace(/\\times/g, '×')
+      .replace(/\\div/g, '÷')
+      .replace(/\\cdot/g, '·')
+      .replace(/\\pm/g, '±')
+      .replace(/\\sqrt\{([^}]+)\}/g, '√($1)')
+      .replace(/\\pi/g, 'π')
+      .replace(/\\theta/g, 'θ')
+      .replace(/\\alpha/g, 'α')
+      .replace(/\\beta/g, 'β')
+      .replace(/\\Delta/g, 'Δ')
+      .replace(/\^2/g, '²')
+      .replace(/\^3/g, '³')
       .split('\n')
       .filter(line => line.trim().length > 0 || line.includes(' '))
       .join('\n');

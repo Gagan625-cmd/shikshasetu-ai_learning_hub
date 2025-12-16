@@ -65,25 +65,25 @@ export default function TeacherContentGenerator() {
       let prompt = '';
       switch (contentType) {
         case 'lesson':
-          prompt = `Generate a comprehensive lesson plan for Grade ${selectedGrade} ${subjectName}.\nTopic: ${chapterInfo}\n\nCreate a structured lesson plan in ${selectedLanguage} language with: learning objectives, teaching methodology, key concepts, examples, activities, and assessment methods.`;
+          prompt = `Generate a comprehensive lesson plan for Grade ${selectedGrade} ${subjectName}.\nTopic: ${chapterInfo}\n\nIMPORTANT - For all mathematical formulas:\n- Use plain text with Unicode symbols (×, ÷, ², ³, √, π, Δ, etc.)\n- NO LaTeX syntax like \\[ \\] or $ $\n- Example: Area = πr², Force = m × a\n\nCreate a structured lesson plan in ${selectedLanguage} language with: learning objectives, teaching methodology, key concepts, examples, activities, and assessment methods.`;
           break;
         case 'notes':
-          prompt = `Generate comprehensive teaching notes for Grade ${selectedGrade} ${subjectName}.\nTopic: ${chapterInfo}\n\nProvide detailed notes in ${selectedLanguage} language with key concepts, definitions, formulas, examples, and teaching tips.`;
+          prompt = `Generate comprehensive teaching notes for Grade ${selectedGrade} ${subjectName}.\nTopic: ${chapterInfo}\n\nIMPORTANT - For formulas:\n- Use plain text with Unicode (×, ÷, ², ³, √, π) - NO LaTeX\n- Example: SI = (P × R × T)/100\n\nProvide detailed notes in ${selectedLanguage} language with key concepts, definitions, formulas, examples, and teaching tips.`;
           break;
         case 'explanation':
-          prompt = `Create a detailed teaching explanation for Grade ${selectedGrade} ${subjectName}.\nTopic: ${chapterInfo}\n\nExplain in ${selectedLanguage} language with simple examples, analogies, and step-by-step breakdown suitable for teaching.`;
+          prompt = `Create a detailed teaching explanation for Grade ${selectedGrade} ${subjectName}.\nTopic: ${chapterInfo}\n\nIMPORTANT - For formulas:\n- Use plain text with Unicode (×, ÷, ², ³, √) - NO LaTeX\n\nExplain in ${selectedLanguage} language with simple examples, analogies, and step-by-step breakdown suitable for teaching.`;
           break;
         case 'summary':
-          prompt = `Create a concise teaching summary for Grade ${selectedGrade} ${subjectName}.\nTopic: ${chapterInfo}\n\nSummarize in ${selectedLanguage} language covering all important points in bullet format with teaching notes.`;
+          prompt = `Create a concise teaching summary for Grade ${selectedGrade} ${subjectName}.\nTopic: ${chapterInfo}\n\nIMPORTANT - For formulas:\n- Use plain text with Unicode (×, ÷, ², ³, √) - NO LaTeX\n\nSummarize in ${selectedLanguage} language covering all important points in bullet format with teaching notes.`;
           break;
         case 'worksheet':
-          prompt = `Generate practice worksheet for students studying ${selectedBoard} Grade ${selectedGrade} ${subjectName}.\nTopic: ${chapterInfo}\n\nCreate 10 practice questions in ${selectedLanguage} language with varying difficulty levels. Include MCQs, short answers, and word problems with answer key.`;
+          prompt = `Generate practice worksheet for students studying ${selectedBoard} Grade ${selectedGrade} ${subjectName}.\nTopic: ${chapterInfo}\n\nIMPORTANT - For formulas:\n- Use plain text with Unicode (×, ÷, ², ³, √) - NO LaTeX\n- Example: Calculate using A = πr²\n\nCreate 10 practice questions in ${selectedLanguage} language with varying difficulty levels. Include MCQs, short answers, and word problems with answer key.`;
           break;
         case 'mindmap':
-          prompt = `Generate a colorful and comprehensive mind map for teaching ${selectedBoard} Grade ${selectedGrade} ${subjectName}.\nTopic: ${chapterInfo}\n\nIMPORTANT MIND MAP FORMAT:\nCreate a hierarchical, structured mind map in ${selectedLanguage} language.\n\nUse this format:\n🎯 **CENTRAL TOPIC: ${chapterInfo}**\n\n📌 **Branch 1: [Main Concept Name]**\n  ├─ Key Point 1\n  ├─ Key Point 2\n  └─ Key Point 3\n\n📌 **Branch 2: [Main Concept Name]**\n  ├─ Key Point 1\n  ├─ Key Point 2\n  └─ Key Point 3\n\nIMPORTANT REQUIREMENTS:\n- Use colorful emojis (🔴🔵🟢🟡🟣🔶💡⭐✨📚🎓💎) to make it vibrant\n- Create 5-7 main branches\n- Each branch should have 3-5 sub-points\n- Keep points concise and clear\n- Use **bold** for main concepts\n- Make it visually organized and easy to follow\n- Include teaching tips, key formulas, and examples where relevant`;
+          prompt = `Generate a colorful and comprehensive mind map for teaching ${selectedBoard} Grade ${selectedGrade} ${subjectName}.\nTopic: ${chapterInfo}\n\nIMPORTANT MIND MAP FORMAT:\nCreate a hierarchical, structured mind map in ${selectedLanguage} language.\n\nCRITICAL - For formulas:\n- Use plain text with Unicode (×, ÷, ², ³, √) - NO LaTeX\n\nUse this format:\n🎯 **CENTRAL TOPIC: ${chapterInfo}**\n\n📌 **Branch 1: [Main Concept Name]**\n  ├─ Key Point 1\n  ├─ Key Point 2\n  └─ Key Point 3\n\n📌 **Branch 2: [Main Concept Name]**\n  ├─ Key Point 1\n  ├─ Key Point 2\n  └─ Key Point 3\n\nIMPORTANT REQUIREMENTS:\n- Use colorful emojis (🔴🔵🟢🟡🟣🔶💡⭐✨📚🎓💎) to make it vibrant\n- Create 5-7 main branches\n- Each branch should have 3-5 sub-points\n- Keep points concise and clear\n- Use **bold** for main concepts\n- Make it visually organized and easy to follow\n- Include teaching tips, key formulas, and examples where relevant`;
           break;
         case 'questionpaper':
-          prompt = `Generate a comprehensive ${selectedBoard} board format question paper for Grade ${selectedGrade} ${subjectName}.\nTopic: ${chapterInfo}\n\nIMPORTANT FORMAT REQUIREMENTS:\nGenerate in ${selectedLanguage} language following official ${selectedBoard} board exam format.\n\nQuestion Paper Structure:\n\n**SECTION A - Multiple Choice Questions (1 mark each)**\n1. [Question 1]\n   a) Option A\n   b) Option B\n   c) Option C\n   d) Option D\n\n**SECTION B - Very Short Answer Questions (2 marks each)**\n[5-6 questions requiring 2-3 sentence answers]\n\n**SECTION C - Short Answer Questions (3 marks each)**\n[4-5 questions requiring detailed explanations]\n\n**SECTION D - Long Answer Questions (5 marks each)**\n[3-4 questions requiring comprehensive answers with diagrams/derivations]\n\n${selectedBoard === 'ICSE' ? '**SECTION E - Application-Based Questions (6 marks each)**\n[2 questions requiring real-world application and problem-solving]\n\n' : ''}\nIMPORTANT:\n- Total marks: ${selectedBoard === 'ICSE' ? '80' : '100'}\n- Time: ${selectedBoard === 'ICSE' ? '2.5 hours' : '3 hours'}\n- Follow official ${selectedBoard} marking scheme\n- Include questions of varying difficulty\n- Cover all key concepts from the topic\n- Add instruction note at the beginning\n- Provide answer key at the end with detailed solutions`;
+          prompt = `Generate a comprehensive ${selectedBoard} board format question paper for Grade ${selectedGrade} ${subjectName}.\nTopic: ${chapterInfo}\n\nIMPORTANT FORMAT REQUIREMENTS:\nGenerate in ${selectedLanguage} language following official ${selectedBoard} board exam format.\n\nCRITICAL - For all formulas:\n- Use plain text with Unicode (×, ÷, ², ³, √, π) - NO LaTeX\n\nQuestion Paper Structure:\n\n**SECTION A - Multiple Choice Questions (1 mark each)**\n1. [Question 1]\n   a) Option A\n   b) Option B\n   c) Option C\n   d) Option D\n\n**SECTION B - Very Short Answer Questions (2 marks each)**\n[5-6 questions requiring 2-3 sentence answers]\n\n**SECTION C - Short Answer Questions (3 marks each)**\n[4-5 questions requiring detailed explanations]\n\n**SECTION D - Long Answer Questions (5 marks each)**\n[3-4 questions requiring comprehensive answers with diagrams/derivations]\n\n${selectedBoard === 'ICSE' ? '**SECTION E - Application-Based Questions (6 marks each)**\n[2 questions requiring real-world application and problem-solving]\n\n' : ''}\nIMPORTANT:\n- Total marks: ${selectedBoard === 'ICSE' ? '80' : '100'}\n- Time: ${selectedBoard === 'ICSE' ? '2.5 hours' : '3 hours'}\n- Follow official ${selectedBoard} marking scheme\n- Include questions of varying difficulty\n- Cover all key concepts from the topic\n- Add instruction note at the beginning\n- Provide answer key at the end with detailed solutions`;
           break;
       }
       
@@ -129,6 +129,21 @@ export default function TeacherContentGenerator() {
       .replace(/###? (.+)/g, '$1')
       .replace(/^- /gm, '• ')
       .replace(/^\|(.*)$/gm, '$1')
+      .replace(/\\\[/g, '')
+      .replace(/\\\]/g, '')
+      .replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, '($1)/($2)')
+      .replace(/\\times/g, '×')
+      .replace(/\\div/g, '÷')
+      .replace(/\\cdot/g, '·')
+      .replace(/\\pm/g, '±')
+      .replace(/\\sqrt\{([^}]+)\}/g, '√($1)')
+      .replace(/\\pi/g, 'π')
+      .replace(/\\theta/g, 'θ')
+      .replace(/\\alpha/g, 'α')
+      .replace(/\\beta/g, 'β')
+      .replace(/\\Delta/g, 'Δ')
+      .replace(/\^2/g, '²')
+      .replace(/\^3/g, '³')
       .split('\n')
       .filter(line => line.trim().length > 0 || line.includes(' '))
       .join('\n');
@@ -186,6 +201,8 @@ export default function TeacherContentGenerator() {
                 color: #94a3b8;
                 font-size: 12px;
               }
+              .math { background: #f1f5f9; padding: 12px 16px; margin: 12px 0; border-radius: 6px; font-family: 'Courier New', monospace; font-size: 15px; overflow-x: auto; border-left: 3px solid #f59e0b; display: block; }
+              .math-inline { background: #f1f5f9; padding: 2px 6px; border-radius: 3px; font-family: 'Courier New', monospace; font-size: 14px; }
             </style>
           </head>
           <body>
@@ -264,6 +281,8 @@ export default function TeacherContentGenerator() {
                 color: #94a3b8;
                 font-size: 12px;
               }
+              .math { background: #f1f5f9; padding: 12px 16px; margin: 12px 0; border-radius: 6px; font-family: 'Courier New', monospace; font-size: 15px; overflow-x: auto; border-left: 3px solid #f59e0b; display: block; }
+              .math-inline { background: #f1f5f9; padding: 2px 6px; border-radius: 3px; font-family: 'Courier New', monospace; font-size: 14px; }
             </style>
           </head>
           <body>
