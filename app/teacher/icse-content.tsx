@@ -52,7 +52,33 @@ export default function TeacherICESEContentBrowser() {
       .replace(/\*\*(.+?)\*\*/g, '$1')
       .replace(/###? (.+)/g, '$1')
       .replace(/^- /gm, '• ')
-      .replace(/^\| /gm, '');
+      .replace(/\\\[/g, '')
+      .replace(/\\\]/g, '')
+      .replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, '($1)/($2)')
+      .replace(/\\times/g, '×')
+      .replace(/\\div/g, '÷')
+      .replace(/\\cdot/g, '·')
+      .replace(/\\pm/g, '±')
+      .replace(/\\sqrt\{([^}]+)\}/g, '√($1)')
+      .replace(/\\pi/g, 'π')
+      .replace(/\\theta/g, 'θ')
+      .replace(/\\alpha/g, 'α')
+      .replace(/\\beta/g, 'β')
+      .replace(/\\gamma/g, 'γ')
+      .replace(/\\Delta/g, 'Δ')
+      .replace(/\\Sigma/g, 'Σ')
+      .replace(/\\lambda/g, 'λ')
+      .replace(/\\mu/g, 'μ')
+      .replace(/\\omega/g, 'ω')
+      .replace(/\^2/g, '²')
+      .replace(/\^3/g, '³')
+      .replace(/\^\{([^}]+)\}/g, '^($1)')
+      .replace(/\_\{([^}]+)\}/g, '_($1)')
+      .replace(/\\leq/g, '≤')
+      .replace(/\\geq/g, '≥')
+      .replace(/\\neq/g, '≠')
+      .replace(/\\approx/g, '≈')
+      .replace(/\\infty/g, '∞');
   };
 
   const generateContentMutation = useMutation({
@@ -69,12 +95,18 @@ IMPORTANT FORMATTING RULES:
 2. Use ### for subheadings (e.g., ### Definition)
 3. Use **text** for bold/highlighting important terms and concepts
 4. Use bullet points with - or • for lists
-5. For tables, use proper markdown table format:
+5. For tables, use proper markdown table format with clear spacing:
    | Column 1 | Column 2 | Column 3 |
    |----------|----------|----------|
    | Data 1   | Data 2   | Data 3   |
+   Keep table rows aligned and add blank lines before and after tables
 6. Add blank lines between sections for better readability
 7. Use *italics* for emphasis where needed
+8. CRITICAL - For all mathematical formulas:
+   - Use plain text with Unicode (×, ÷, ², ³, √, π, Δ, ≤, ≥, etc.) - NO LaTeX
+   - For fractions: use (numerator)/(denominator) format
+   - Example: SI = (P × R × T)/100, Area = πr², a² + b² = c²
+   - For complex equations: E = mc², F = ma, V = IR
 
 Content structure for teachers:
 ## Teaching Objectives
