@@ -1,318 +1,542 @@
-# Welcome to your Rork app
+ShikshaSetu: AI Learning Hub – Complete Project Documentation
+1. Project Overview
 
-## Project info
+ShikshaSetu is an AI-powered educational platform designed for Indian students (Grades 6–10) and teachers, supporting NCERT and ICSE curricula with multi-language support across 10 Indian languages.
 
-This is a native cross-platform mobile app created with [Rork](https://rork.com)
+Purpose
 
-**Platform**: Native iOS & Android app, exportable to web
-**Framework**: Expo Router + React Native
+To bridge learning gaps using Artificial Intelligence by enabling:
 
-## How can I edit this code?
+Personalized learning paths
 
-There are several ways of editing your native mobile application.
+Automated, syllabus-aligned content generation
 
-### **Use Rork**
+Intelligent assessments and evaluations
 
-Simply visit [rork.com](https://rork.com) and prompt to build your app with AI.
+AI-powered teacher productivity tools
 
-Changes made via Rork will be committed automatically to this GitHub repo.
+Positioning
 
-Whenever you make a change in your local code editor and push it to GitHub, it will be also reflected in Rork.
+ShikshaSetu functions as a learning companion, not merely a content app. It addresses real challenges in Indian education such as linguistic diversity, curriculum fragmentation, and teacher workload through a unified AI-driven platform.
 
-### **Use your preferred code editor**
+2. Architecture & Technology Stack
+2.1 Frontend Stack
 
-If you want to work locally using your own code editor, you can clone this repo and push changes. Pushed changes will also be reflected in Rork.
+Framework: React Native (Expo SDK 54.0.0+)
 
-If you are new to coding and unsure which editor to use, we recommend Cursor. If you're familiar with terminals, try Claude Code.
+Platforms: Android, iOS, Web (React Native Web)
 
-The only requirement is having Node.js & Bun installed - [install Node.js with nvm](https://github.com/nvm-sh/nvm) and [install Bun](https://bun.sh/docs/installation)
+Language: TypeScript (strict mode)
 
-Follow these steps:
+Routing: Expo Router (file-based routing)
 
-```bash
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+Styling: React Native StyleSheet API
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+Icons: lucide-react-native
 
-# Step 3: Install the necessary dependencies.
-bun i
+UI Components: Custom animated components with LinearGradient
 
-# Step 4: Start the instant web preview of your Rork app in your browser, with auto-reloading of your changes
-bun run start-web
+Technical Rationale:
+The frontend prioritizes cross-platform compatibility, type safety, and performance on low-end devices. Expo’s managed workflow removes native complexity while enabling access to camera, microphone, storage, and multimedia—critical for AI-powered educational features.
 
-# Step 5: Start iOS preview
-# Option A (recommended):
-bun run start  # then press "i" in the terminal to open iOS Simulator
-# Option B (if supported by your environment):
-bun run start -- --ios
-```
+3. State Management Architecture
 
-### **Edit a file directly in GitHub**
+Local UI State: React useState
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+Global Context: @nkzw/create-context-hook
 
-## What technologies are used for this project?
+Server / AI State: @tanstack/react-query v5
 
-This project is built with the most popular native mobile cross-platform technical stack:
+Persistence: @react-native-async-storage/async-storage
 
-- **React Native** - Cross-platform native mobile development framework created by Meta and used for Instagram, Airbnb, and lots of top apps in the App Store
-- **Expo** - Extension of React Native + platform used by Discord, Shopify, Coinbase, Telsa, Starlink, Eightsleep, and more
-- **Expo Router** - File-based routing system for React Native with support for web, server functions and SSR
-- **TypeScript** - Type-safe JavaScript
-- **React Query** - Server state management
-- **Lucide React Native** - Beautiful icons
+Design Philosophy:
+A layered state model avoids Redux complexity while remaining scalable. AI calls are treated as server-side mutations, and user progress is cached locally to support offline-first learning.
 
-## How can I test my app?
+4. Backend Architecture
 
-### **On your phone (Recommended)**
+API Framework: Hono
 
-1. **iOS**: Download the [Rork app from the App Store](https://apps.apple.com/app/rork) or [Expo Go](https://apps.apple.com/app/expo-go/id982107779)
-2. **Android**: Download the [Expo Go app from Google Play](https://play.google.com/store/apps/details?id=host.exp.exponent)
-3. Run `bun run start` and scan the QR code from your development server
+API Layer: tRPC (end-to-end type safety)
 
-### **In your browser**
+Database: SurrealDB
 
-Run `bun start-web` to test in a web browser. Note: The browser preview is great for quick testing, but some native features may not be available.
+Serialization: SuperJSON
 
-### **iOS Simulator / Android Emulator**
+Backend Location: /backend directory
 
-You can test Rork apps in Expo Go or Rork iOS app. You don't need XCode or Android Studio for most features.
+Engineering Perspective:
+The backend is optimized for AI-driven workloads, where response structures evolve dynamically. tRPC ensures type safety between frontend and backend, reducing integration errors and improving development velocity.
 
-**When do you need Custom Development Builds?**
+5. AI / ML Integration Overview
 
-- Native authentication (Face ID, Touch ID, Apple Sign In)
-- In-app purchases and subscriptions
-- Push notifications
-- Custom native modules
+AI SDK: @rork-ai/toolkit-sdk
 
-Learn more: [Expo Custom Development Builds Guide](https://docs.expo.dev/develop/development-builds/introduction/)
+Text Generation: generateText()
 
-If you have XCode (iOS) or Android Studio installed:
+Structured AI Output: generateObject() with Zod schemas
 
-```bash
-# iOS Simulator
-bun run start -- --ios
+Conversational AI: useRorkAgent()
 
-# Android Emulator
-bun run start -- --android
-```
+Speech-to-Text: Whisper-based models
 
-## How can I deploy this project?
+Vision AI: Multimodal evaluation models
 
-### **Publish to App Store (iOS)**
+Emotion Detection: Sentiment analysis from text/voice
 
-1. **Install EAS CLI**:
+Image Generation: DALL·E 3
 
-   ```bash
-   bun i -g @expo/eas-cli
-   ```
+AI Philosophy:
+ShikshaSetu combines deterministic AI (for assessments) with generative AI (for explanations) and stateful agents (for interaction), ensuring both reliability and engagement.
 
-2. **Configure your project**:
+6. AI / ML Pipeline Architecture
+6.1 AI Content Generation Pipeline
+const generateMutation = useMutation({
+  mutationFn: async () => {
+    const prompt = `Generate comprehensive study notes for ${board} Grade ${grade}...`;
+    const result = await generateText({ 
+      messages: [{ role: 'user', content: prompt }] 
+    });
+    return result;
+  }
+});
 
-   ```bash
-   eas build:configure
-   ```
 
-3. **Build for iOS**:
+Explanation:
+This pattern encapsulates prompt creation, AI invocation, and result handling. React Query manages loading, caching, retries, and errors, ensuring consistent and syllabus-aligned AI outputs.
 
-   ```bash
-   eas build --platform ios
-   ```
+6.2 Structured Quiz Generation
+const QuizSchema = z.object({
+  questions: z.array(z.object({
+    question: z.string(),
+    options: z.array(z.string()),
+    correctAnswer: z.number(),
+    explanation: z.string(),
+  }))
+});
 
-4. **Submit to App Store**:
-   ```bash
-   eas submit --platform ios
-   ```
 
-For detailed instructions, visit [Expo's App Store deployment guide](https://docs.expo.dev/submit/ios/).
+Explanation:
+Zod schemas act as AI output contracts, enforcing structured, machine-readable responses. This enables automatic grading, analytics, and reliable assessments.
 
-### **Publish to Google Play (Android)**
+6.3 Conversational AI Interview System
+const { messages, sendMessage } = useRorkAgent({
+  tools: {},
+});
 
-1. **Build for Android**:
 
-   ```bash
-   eas build --platform android
-   ```
+Explanation:
+useRorkAgent() maintains conversational memory, enabling viva-style oral assessments with adaptive difficulty and human-like interaction.
 
-2. **Submit to Google Play**:
-   ```bash
-   eas submit --platform android
-   ```
+6.4 Vision AI Exam Scanner
+const scanMutation = useMutation({
+  mutationFn: async () => {
+    const prompt = `You are an AI exam paper evaluator...`;
+    const result = await generateText({ 
+      messages: [{ role: 'user', content: prompt }] 
+    });
+    return JSON.parse(cleanedResult);
+  }
+});
 
-For detailed instructions, visit [Expo's Google Play deployment guide](https://docs.expo.dev/submit/android/).
 
-### **Publish as a Website**
+Explanation:
+Vision AI evaluates handwritten responses contextually and returns structured grading data, reducing subjectivity and teacher workload.
 
-Your React Native app can also run on the web:
+6.5 Voice Assistant Pipeline
+const processVoice = async (uri: string) => {
+  // Stage 1: Speech-to-Text
+  // Stage 2: Emotion Detection
+  // Stage 3: Content Generation
+};
 
-1. **Build for web**:
 
-   ```bash
-   eas build --platform web
-   ```
+Explanation:
+A multi-stage pipeline preserves emotional context and adapts explanations accordingly, enabling emotion-aware pedagogy.
 
-2. **Deploy with EAS Hosting**:
-   ```bash
-   eas hosting:configure
-   eas hosting:deploy
-   ```
+7. Environment Configuration & Security
 
-Alternative web deployment options:
+No physical .env file is used
 
-- **Vercel**: Deploy directly from your GitHub repository
-- **Netlify**: Connect your GitHub repo to Netlify for automatic deployments
+Environment variables are injected securely at runtime via the Rork platform
 
-## App Features
+process.env.EXPO_PUBLIC_RORK_API_BASE_URL
 
-This template includes:
 
-- **Cross-platform compatibility** - Works on iOS, Android, and Web
-- **File-based routing** with Expo Router
-- **Tab navigation** with customizable tabs
-- **Modal screens** for overlays and dialogs
-- **TypeScript support** for better development experience
-- **Async storage** for local data persistence
-- **Vector icons** with Lucide React Native
+Benefits:
 
-## Project Structure
+No credential leakage
 
-```
-├── app/                    # App screens (Expo Router)
-│   ├── (tabs)/            # Tab navigation screens
-│   │   ├── _layout.tsx    # Tab layout configuration
-│   │   └── index.tsx      # Home tab screen
-│   ├── _layout.tsx        # Root layout
-│   ├── modal.tsx          # Modal screen example
-│   └── +not-found.tsx     # 404 screen
-├── assets/                # Static assets
-│   └── images/           # App icons and images
-├── constants/            # App constants and configuration
-├── app.json             # Expo configuration
-├── package.json         # Dependencies and scripts
-└── tsconfig.json        # TypeScript configuration
-```
+Cross-platform compatibility
 
-## Custom Development Builds
+Cloud-native, production-ready security
 
-For advanced native features, you'll need to create a Custom Development Build instead of using Expo Go.
+8. Setup & Run Instructions (Brief)
+Prerequisites
 
-### **When do you need a Custom Development Build?**
+Node.js (v18 or later)
 
-- **Native Authentication**: Face ID, Touch ID, Apple Sign In, Google Sign In
-- **In-App Purchases**: App Store and Google Play subscriptions
-- **Advanced Native Features**: Third-party SDKs, platform-specifc features (e.g. Widgets on iOS)
-- **Background Processing**: Background tasks, location tracking
+npm or yarn
 
-### **Creating a Custom Development Build**
+Expo CLI
 
-```bash
-# Install EAS CLI
-bun i -g @expo/eas-cli
+Internet connection (for AI services)
 
-# Configure your project for development builds
-eas build:configure
+Steps to Run the Project
 
-# Create a development build for your device
-eas build --profile development --platform ios
-eas build --profile development --platform android
+Install dependencies
 
-# Install the development build on your device and start developing
-bun start --dev-client
-```
+npm install
 
-**Learn more:**
 
-- [Development Builds Introduction](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Creating Development Builds](https://docs.expo.dev/develop/development-builds/create-a-build/)
-- [Installing Development Builds](https://docs.expo.dev/develop/development-builds/installation/)
+Start the Expo development server
 
-## Advanced Features
+npx expo start
 
-### **Add a Database**
 
-Integrate with backend services:
+Run on device or emulator
 
-- **Supabase** - PostgreSQL database with real-time features
-- **Firebase** - Google's mobile development platform
-- **Custom API** - Connect to your own backend
+Scan QR code using Expo Go (Android/iOS), or
 
-### **Add Authentication**
+Press w to run on web, a for Android emulator
 
-Implement user authentication:
+Backend & AI Services
 
-**Basic Authentication (works in Expo Go):**
+Backend APIs, database (SurrealDB), and AI services are pre-configured via the Rork platform
 
-- **Expo AuthSession** - OAuth providers (Google, Facebook, Apple) - [Guide](https://docs.expo.dev/guides/authentication/)
-- **Supabase Auth** - Email/password and social login - [Integration Guide](https://supabase.com/docs/guides/getting-started/tutorials/with-expo-react-native)
-- **Firebase Auth** - Comprehensive authentication solution - [Setup Guide](https://docs.expo.dev/guides/using-firebase/)
+No manual environment setup is required
 
-**Native Authentication (requires Custom Development Build):**
+All credentials are injected securely at runtime
 
-- **Apple Sign In** - Native Apple authentication - [Implementation Guide](https://docs.expo.dev/versions/latest/sdk/apple-authentication/)
-- **Google Sign In** - Native Google authentication - [Setup Guide](https://docs.expo.dev/guides/google-authentication/)
+9. Key Outcomes
 
-### **Add Push Notifications**
+ShikshaSetu demonstrates:
 
-Send notifications to your users:
+Deterministic AI control using schemas
 
-- **Expo Notifications** - Cross-platform push notifications
-- **Firebase Cloud Messaging** - Advanced notification features
+Stateful conversational intelligence
 
-### **Add Payments**
+Multimodal AI (text, voice, vision)
 
-Monetize your app:
+Strong type safety across the stack
 
-**Web & Credit Card Payments (works in Expo Go):**
+Production-ready security practices
 
-- **Stripe** - Credit card payments and subscriptions - [Expo + Stripe Guide](https://docs.expo.dev/guides/using-stripe/)
-- **PayPal** - PayPal payments integration - [Setup Guide](https://developer.paypal.com/docs/checkout/mobile/react-native/)
+Pedagogically grounded AI design
 
-**Native In-App Purchases (requires Custom Development Build):**
+10.Implemented features
+1. Curriculum-Aware Multilingual Content Generation
+What is implemented?
 
-- **RevenueCat** - Cross-platform in-app purchases and subscriptions - [Expo Integration Guide](https://www.revenuecat.com/docs/expo)
-- **Expo In-App Purchases** - Direct App Store/Google Play integration - [Implementation Guide](https://docs.expo.dev/versions/latest/sdk/in-app-purchases/)
+AI generates study notes, explanations, and summaries in 10 Indian languages
 
-**Paywall Optimization:**
+Content is generated per board (NCERT / ICSE) and per grade (6–10)
 
-- **Superwall** - Paywall A/B testing and optimization - [React Native SDK](https://docs.superwall.com/docs/react-native)
-- **Adapty** - Mobile subscription analytics and paywalls - [Expo Integration](https://docs.adapty.io/docs/expo)
+Technical mechanism:
 
-## I want to use a custom domain - is that possible?
+Dynamic prompt construction injects:
 
-For web deployments, you can use custom domains with:
+board
 
-- **EAS Hosting** - Custom domains available on paid plans
-- **Netlify** - Free custom domain support
-- **Vercel** - Custom domains with automatic SSL
+grade
 
-For mobile apps, you'll configure your app's deep linking scheme in `app.json`.
+subject
 
-## Troubleshooting
+language
 
-### **App not loading on device?**
+AI generation is invoked using generateText() inside controlled mutations
 
-1. Make sure your phone and computer are on the same WiFi network
-2. Try using tunnel mode: `bun start -- --tunnel`
-3. Check if your firewall is blocking the connection
+Why this matters?
 
-### **Build failing?**
+Most AI tools translate English explanations.
+ShikshaSetu generates natively in the target language, preserving:
 
-1. Clear your cache: `bunx expo start --clear`
-2. Delete `node_modules` and reinstall: `rm -rf node_modules && bun install`
-3. Check [Expo's troubleshooting guide](https://docs.expo.dev/troubleshooting/build-errors/)
+Conceptual clarity
 
-### **Need help with native features?**
+Cultural context
 
-- Check [Expo's documentation](https://docs.expo.dev/) for native APIs
-- Browse [React Native's documentation](https://reactnative.dev/docs/getting-started) for core components
-- Visit [Rork's FAQ](https://rork.com/faq) for platform-specific questions
+Grade-appropriate vocabulary
 
-## About Rork
+2. Language-First AI Prompt Engineering (Not Translation-First)
+What is implemented
 
-Rork builds fully native mobile apps using React Native and Expo - the same technology stack used by Discord, Shopify, Coinbase, Instagram, and nearly 30% of the top 100 apps on the App Store.
+Prompts explicitly instruct the AI to:
 
-Your Rork app is production-ready and can be published to both the App Store and Google Play Store. You can also export your app to run on the web, making it truly cross-platform.
+Think and respond in the selected Indian language
+
+Avoid English sentence structures
+
+Use locally understandable terminology
+
+Technical mechanism
+
+Language preference is injected before AI generation
+
+Not applied as a post-processing translation step
+
+Why this matters
+
+Translation pipelines:
+
+Preserve English cognitive bias
+
+Increase hallucination risk
+
+Break pedagogical flow
+
+ShikshaSetu avoids this by language-native generation.
+
+3. Type-Safe Multilingual Output Enforcement
+What is implemented
+
+Zod schemas enforce structure on AI output across all languages
+
+z.object({
+  question: z.string(),
+  explanation: z.string()
+})
+
+Technical mechanism
+
+AI output is validated after generation
+
+Invalid or malformed responses are rejected
+
+Why this matters
+
+Multilingual AI often fails due to:
+
+Mixed scripts
+
+Partial translations
+
+Structural inconsistency
+
+Schemas ensure language independence with structural consistency.
+
+4. Multilingual Quiz & Assessment Generation
+What is implemented
+
+Quizzes are generated directly in the learner’s language
+
+Options, explanations, and feedback are all localized
+
+Technical mechanism
+
+Structured quiz generation via generateObject()
+
+Language parameter embedded in schema-driven AI calls
+
+Why this matters
+
+Most platforms:
+
+Teach in local language
+
+Assess in English
+
+ShikshaSetu ensures learning and evaluation happen in the same language, eliminating cognitive switching.
+
+5. Multilingual Conversational AI (Viva / Oral Exams)
+What is implemented
+
+AI interview system supports regional-language conversations
+
+Maintains context across turns
+
+Technical mechanism
+
+useRorkAgent() stores:
+
+Conversation history
+
+Language preference
+
+Difficulty progression
+
+Why this matters
+
+Rural learners struggle with:
+
+Oral exams conducted in English
+
+Concept explanation under language pressure
+
+ShikshaSetu enables native-language viva assessments.
+
+6. Emotion-Aware Language Adaptation (Voice Input)
+What is implemented
+
+Voice-based input supports regional accents
+
+Emotional cues influence explanation complexity
+
+Technical mechanism
+
+Speech-to-Text → Emotion Detection → Content Generation pipeline
+
+Language maintained throughout the pipeline
+
+Why this matters
+
+Language crisis is not only linguistic — it is emotional.
+This feature:
+
+Detects confusion or hesitation
+
+Simplifies explanations in the same language
+
+Improves learner confidence
+
+7. Multilingual Exam Evaluation (Vision + Language)
+What is implemented
+
+Handwritten answers in regional languages are evaluated
+
+Feedback is returned in the same language
+
+Technical mechanism
+
+Vision AI interprets handwriting
+
+AI evaluates semantics, not grammar
+
+JSON-structured multilingual feedback
+
+Why this matters
+
+Traditional OCR fails on:
+
+Regional scripts
+
+Mixed-language answers
+
+ShikshaSetu evaluates meaning, not spelling perfection.
+
+8. Language-Persistent Learning Profiles
+What is implemented
+
+Each learner’s language preference is persistent
+
+Language choice influences:
+
+Notes
+
+Quizzes
+
+Interviews
+
+Feedback
+
+Technical mechanism
+
+Language stored in Context + AsyncStorage
+
+Injected into every AI interaction
+
+Why this matters
+
+Learners are not forced to:
+
+Re-select language
+
+Adapt to English defaults
+
+The system adapts to the learner — not the reverse.
+
+9. Teacher-Side Multilingual Content Support
+What is implemented
+
+Teachers can generate:
+
+Lesson plans
+
+Explanations
+
+Assessment material
+in multiple Indian languages
+
+Technical mechanism
+
+Same AI pipelines reused with teacher-specific prompts
+
+Why this matters
+
+Teachers often:
+
+Teach in regional languages
+
+Prepare content in English
+
+ShikshaSetu removes this burden.
+
+10. Multilingual Video Learning Integration
+What is implemented
+
+Curated video links aligned with:
+
+Language
+
+Subject
+
+Grade
+
+Technical mechanism
+
+Video library mapped to language metadata
+
+Accessed directly from the platform
+
+Why this matters
+
+Students reinforce AI-generated explanations using human-created content in their language.
+
+11. Offline-First Multilingual Persistence
+What is implemented
+
+Generated content is cached locally
+
+Language consistency maintained offline
+
+Technical mechanism
+
+AsyncStorage persistence
+
+React Query cache hydration
+
+Why this matters
+
+Rural connectivity issues should not force:
+
+Language fallback
+
+Content loss
+
+12. Language-Neutral System Design
+What is implemented
+
+No hardcoded English strings in AI logic
+
+Language is always a parameter, never a default
+
+Technical mechanism
+
+Language injected at API boundary
+
+UI and AI layers decoupled
+
+Why this matters
+
+This ensures future scalability to:
+
+More Indian languages
+
+Dialects
+
+Code-mixed inputs
+10. Conclusion
+
+ShikshaSetu is a production-ready, education-first AI platform, designed to address real challenges in Indian classrooms.
+
+By integrating multilingual NLP, structured AI outputs, adaptive learning, and secure cloud-native architecture, ShikshaSetu ensures that language and location are no longer barriers to quality education.
+
+“When education speaks the learner’s language, understanding follows naturally.”
