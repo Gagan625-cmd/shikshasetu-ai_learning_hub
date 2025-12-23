@@ -1,12 +1,13 @@
 import { useRouter } from 'expo-router';
-import { ChevronLeft, BookOpen, Atom, FlaskConical, Microscope, Calculator, Sparkles, Landmark, Cpu, BookText, Languages } from 'lucide-react-native';
-import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Platform, Modal } from 'react-native';
+import { ChevronLeft, BookOpen, Atom, FlaskConical, Microscope, Calculator, Sparkles, Landmark, Cpu, BookText, Languages, Volume2, VolumeX } from 'lucide-react-native';
+import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Platform, Modal, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState } from 'react';
 import { ICSE_SUBJECTS } from '@/constants/icse-data';
 import { useApp } from '@/contexts/app-context';
 import { useMutation } from '@tanstack/react-query';
 import { generateText } from '@rork-ai/toolkit-sdk';
+import * as Speech from 'expo-speech';
 
 type SubjectType = 'Physics' | 'Chemistry' | 'Biology' | 'Mathematics' | 'History and Civics' | 'Computer Applications' | 'English Literature' | 'English Language';
 
@@ -40,11 +41,33 @@ export default function ICESEContentBrowser() {
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedChapter, setSelectedChapter] = useState<{ title: string; number: number; subject: string; grade: number } | null>(null);
   const [generatedContent, setGeneratedContent] = useState('');
+  const [isSpeaking, setIsSpeaking] = useState(false);
 
   const grades = [9, 10];
 
   const getSubjectsByType = (type: SubjectType) => {
     return ICSE_SUBJECTS.filter((s) => s.grade === selectedGrade && s.name === type);
+  };
+
+  const handleTextToSpeech = async () => {
+    if (isSpeaking) {
+      await Speech.stop();
+      setIsSpeaking(false);
+    } else {
+      const textToSpeak = cleanMarkdown(generatedContent);
+      setIsSpeaking(true);
+      Speech.speak(textToSpeak, {
+        language: selectedLanguage === 'hindi' ? 'hi-IN' : 'en-US',
+        pitch: 1.0,
+        rate: 0.9,
+        onDone: () => setIsSpeaking(false),
+        onStopped: () => setIsSpeaking(false),
+        onError: () => {
+          setIsSpeaking(false);
+          Alert.alert('Error', 'Text-to-speech failed. Please try again.');
+        },
+      });
+    }
   };
 
   const cleanMarkdown = (text: string) => {
@@ -330,6 +353,17 @@ Make it thorough, well-formatted, exam-oriented, and aligned with ICSE syllabus 
 
             {generatedContent && (
               <View style={styles.contentCard}>
+                <View style={styles.contentHeader}>
+                  <Text style={styles.contentHeaderTitle}>Generated Content</Text>
+                  <TouchableOpacity style={styles.speakerButton} onPress={handleTextToSpeech}>
+                    {isSpeaking ? (
+                      <VolumeX size={20} color="#059669" />
+                    ) : (
+                      <Volume2 size={20} color="#059669" />
+                    )}
+                    <Text style={styles.speakerButtonText}>{isSpeaking ? 'Stop' : 'Listen'}</Text>
+                  </TouchableOpacity>
+                </View>
                 <Text style={styles.contentText}>{cleanMarkdown(generatedContent)}</Text>
               </View>
             )}
@@ -668,5 +702,35 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#475569',
     lineHeight: 24,
+  },
+  contentHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
+  },
+  contentHeaderTitle: {
+    fontSize: 18,
+    fontWeight: '700' as const,
+    color: '#1e293b',
+  },
+  speakerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: '#d1fae5',
+    borderWidth: 1,
+    borderColor: '#059669',
+  },
+  speakerButtonText: {
+    fontSize: 13,
+    fontWeight: '600' as const,
+    color: '#059669',
   },
 });
