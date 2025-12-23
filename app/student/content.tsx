@@ -1,12 +1,13 @@
 import { useRouter } from 'expo-router';
-import { ChevronLeft, BookOpen, GraduationCap, Sparkles } from 'lucide-react-native';
-import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Platform, Modal } from 'react-native';
+import { ChevronLeft, BookOpen, GraduationCap, Sparkles, Volume2, VolumeX } from 'lucide-react-native';
+import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Platform, Modal, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState } from 'react';
 import { NCERT_SUBJECTS } from '@/constants/ncert-data';
 import { useApp } from '@/contexts/app-context';
 import { useMutation } from '@tanstack/react-query';
 import { generateText } from '@rork-ai/toolkit-sdk';
+import * as Speech from 'expo-speech';
 
 export default function ContentBrowser() {
   const router = useRouter();
@@ -16,9 +17,31 @@ export default function ContentBrowser() {
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedChapter, setSelectedChapter] = useState<{ title: string; number: number; subject: string; grade: number } | null>(null);
   const [generatedContent, setGeneratedContent] = useState('');
+  const [isSpeaking, setIsSpeaking] = useState(false);
 
   const subjects = NCERT_SUBJECTS.filter((s) => s.grade === selectedGrade);
   const grades = [6, 7, 8, 9, 10];
+
+  const handleTextToSpeech = async () => {
+    if (isSpeaking) {
+      await Speech.stop();
+      setIsSpeaking(false);
+    } else {
+      const textToSpeak = cleanMarkdown(generatedContent);
+      setIsSpeaking(true);
+      Speech.speak(textToSpeak, {
+        language: selectedLanguage === 'hindi' ? 'hi-IN' : 'en-US',
+        pitch: 1.0,
+        rate: 0.9,
+        onDone: () => setIsSpeaking(false),
+        onStopped: () => setIsSpeaking(false),
+        onError: () => {
+          setIsSpeaking(false);
+          Alert.alert('Error', 'Text-to-speech failed. Please try again.');
+        },
+      });
+    }
+  };
 
   const cleanMarkdown = (text: string) => {
     return text
@@ -249,6 +272,17 @@ Make it comprehensive, well-formatted, and easy to understand for students.`;
 
             {generatedContent && (
               <View style={styles.contentCard}>
+                <View style={styles.contentHeader}>
+                  <Text style={styles.contentHeaderTitle}>Generated Content</Text>
+                  <TouchableOpacity style={styles.speakerButton} onPress={handleTextToSpeech}>
+                    {isSpeaking ? (
+                      <VolumeX size={20} color="#3b82f6" />
+                    ) : (
+                      <Volume2 size={20} color="#3b82f6" />
+                    )}
+                    <Text style={styles.speakerButtonText}>{isSpeaking ? 'Stop' : 'Listen'}</Text>
+                  </TouchableOpacity>
+                </View>
                 <Text style={styles.contentText}>{cleanMarkdown(generatedContent)}</Text>
               </View>
             )}
@@ -534,5 +568,35 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#475569',
     lineHeight: 24,
+  },
+  contentHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
+  },
+  contentHeaderTitle: {
+    fontSize: 18,
+    fontWeight: '700' as const,
+    color: '#1e293b',
+  },
+  speakerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: '#eff6ff',
+    borderWidth: 1,
+    borderColor: '#3b82f6',
+  },
+  speakerButtonText: {
+    fontSize: 13,
+    fontWeight: '600' as const,
+    color: '#3b82f6',
   },
 });

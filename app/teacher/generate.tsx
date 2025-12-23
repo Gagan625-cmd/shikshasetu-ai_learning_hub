@@ -1,8 +1,9 @@
 import { useRouter } from 'expo-router';
-import { ChevronLeft, Sparkles, FileText, BookText, ScrollText, Loader2, Network, Download, Share2 } from 'lucide-react-native';
+import { ChevronLeft, Sparkles, FileText, BookText, ScrollText, Loader2, Network, Download, Share2, Volume2, VolumeX } from 'lucide-react-native';
 import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Platform, TextInput, Alert } from 'react-native';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
+import * as Speech from 'expo-speech';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState, useMemo, useCallback } from 'react';
 import { useApp } from '@/contexts/app-context';
@@ -33,6 +34,7 @@ export default function TeacherContentGenerator() {
   const [contentType, setContentType] = useState<'notes' | 'explanation' | 'summary' | 'worksheet' | 'lesson' | 'mindmap' | 'questionpaper'>('lesson');
   const [customTopic, setCustomTopic] = useState('');
   const [generatedContent, setGeneratedContent] = useState('');
+  const [isSpeaking, setIsSpeaking] = useState(false);
 
   const allSubjects = useMemo(
     () => selectedBoard === 'NCERT' ? NCERT_SUBJECTS : ICSE_SUBJECTS,
@@ -148,6 +150,27 @@ export default function TeacherContentGenerator() {
       .filter(line => line.trim().length > 0 || line.includes(' '))
       .join('\n');
   }, []);
+
+  const handleTextToSpeech = useCallback(async () => {
+    if (isSpeaking) {
+      await Speech.stop();
+      setIsSpeaking(false);
+    } else {
+      const textToSpeak = cleanMarkdown(generatedContent);
+      setIsSpeaking(true);
+      Speech.speak(textToSpeak, {
+        language: selectedLanguage === 'hindi' ? 'hi-IN' : 'en-US',
+        pitch: 1.0,
+        rate: 0.9,
+        onDone: () => setIsSpeaking(false),
+        onStopped: () => setIsSpeaking(false),
+        onError: () => {
+          setIsSpeaking(false);
+          Alert.alert('Error', 'Text-to-speech failed. Please try again.');
+        },
+      });
+    }
+  }, [isSpeaking, generatedContent, selectedLanguage, cleanMarkdown]);
 
   const handleExportPDF = useCallback(async () => {
     if (!generatedContent) return;
@@ -502,6 +525,14 @@ export default function TeacherContentGenerator() {
             <View style={styles.resultHeader}>
               <Text style={styles.resultTitle}>Generated Content</Text>
               <View style={styles.actionButtons}>
+                <TouchableOpacity style={styles.actionButton} onPress={handleTextToSpeech}>
+                  {isSpeaking ? (
+                    <VolumeX size={18} color="#8b5cf6" />
+                  ) : (
+                    <Volume2 size={18} color="#8b5cf6" />
+                  )}
+                  <Text style={styles.actionButtonText}>{isSpeaking ? 'Stop' : 'Listen'}</Text>
+                </TouchableOpacity>
                 <TouchableOpacity style={styles.actionButton} onPress={handleExportPDF}>
                   <Download size={18} color="#f59e0b" />
                   <Text style={styles.actionButtonText}>Export</Text>
