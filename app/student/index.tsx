@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { BookOpen, BrainCircuit, MessageSquare, Settings, FileText, LogOut, TrendingUp, MessageCircle, Info, ScanText, Target, Video, Bell, Link2, Shield } from 'lucide-react-native';
+import { BookOpen, BrainCircuit, MessageSquare, Settings, FileText, LogOut, TrendingUp, MessageCircle, Info, ScanText, Target, Video, Bell, Link2 } from 'lucide-react-native';
 import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Platform, Modal, TextInput, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useApp } from '@/contexts/app-context';
@@ -121,14 +121,6 @@ export default function StudentDashboard() {
       icon: Target,
       color: '#f59e0b',
       route: '/student/study-os',
-    },
-    {
-      id: 'focus-mode',
-      title: 'Focus Mode',
-      description: 'Block distractions & stay focused',
-      icon: Shield,
-      color: '#6366f1',
-      route: '/student/focus-mode',
     },
     {
       id: 'about',
