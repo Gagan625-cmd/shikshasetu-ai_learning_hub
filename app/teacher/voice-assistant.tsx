@@ -67,9 +67,31 @@ export default function VoiceAssistant({ visible, onClose }: VoiceAssistantProps
         playThroughEarpieceAndroid: false,
       });
 
-      const { recording: newRecording } = await Audio.Recording.createAsync(
-        Audio.RecordingOptionsPresets.HIGH_QUALITY
-      );
+      const { recording: newRecording } = await Audio.Recording.createAsync({
+        android: {
+          extension: '.m4a',
+          outputFormat: Audio.AndroidOutputFormat.MPEG_4,
+          audioEncoder: Audio.AndroidAudioEncoder.AAC,
+          sampleRate: 44100,
+          numberOfChannels: 2,
+          bitRate: 128000,
+        },
+        ios: {
+          extension: '.wav',
+          outputFormat: Audio.IOSOutputFormat.LINEARPCM,
+          audioQuality: Audio.IOSAudioQuality.HIGH,
+          sampleRate: 44100,
+          numberOfChannels: 2,
+          bitRate: 128000,
+          linearPCMBitDepth: 16,
+          linearPCMIsBigEndian: false,
+          linearPCMIsFloat: false,
+        },
+        web: {
+          mimeType: 'audio/webm',
+          bitsPerSecond: 128000,
+        },
+      });
 
       setRecording(newRecording);
       setIsRecording(true);
@@ -122,7 +144,9 @@ export default function VoiceAssistant({ visible, onClose }: VoiceAssistantProps
       
       formData.append('audio', audioFile);
       
-      const sttResponse = await fetch('https://toolkit.rork.com/stt/transcribe/', {
+      const sttUrl = new URL('/stt/transcribe/', process.env.EXPO_PUBLIC_TOOLKIT_URL!).toString();
+      
+      const sttResponse = await fetch(sttUrl, {
         method: 'POST',
         body: formData,
       });
