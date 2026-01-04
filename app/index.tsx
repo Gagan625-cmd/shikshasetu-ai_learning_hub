@@ -1,14 +1,47 @@
 import { useRouter } from 'expo-router';
 import { BookOpen, GraduationCap } from 'lucide-react-native';
-import { StyleSheet, Text, View, TouchableOpacity, Image } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, Image, Animated } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useApp } from '@/contexts/app-context';
+import { useAuth } from '@/contexts/auth-context';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useEffect, useState } from 'react';
 
 export default function WelcomeScreen() {
   const router = useRouter();
   const { selectRole } = useApp();
+  const { user, isLoading } = useAuth();
   const insets = useSafeAreaInsets();
+  const [fadeAnim] = useState(new Animated.Value(0));
+  const [slideAnim] = useState(new Animated.Value(50));
+
+  useEffect(() => {
+    if (isLoading) return;
+    
+    if (!user) {
+      router.replace('/auth');
+      return;
+    }
+
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 800,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [user, isLoading, router, fadeAnim, slideAnim]);
+
+  if (isLoading || !user) {
+    return (
+      <LinearGradient colors={['#1e3c72', '#2a5298', '#7e22ce']} style={{ flex: 1 }} />
+    );
+  }
 
   const handleRoleSelect = async (role: 'student' | 'teacher') => {
     await selectRole(role);
@@ -21,8 +54,17 @@ export default function WelcomeScreen() {
 
   return (
     <LinearGradient colors={['#1e3c72', '#2a5298', '#7e22ce']} style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
-      <View style={styles.content}>
+      <Animated.View 
+        style={[
+          styles.content,
+          {
+            opacity: fadeAnim,
+            transform: [{ translateY: slideAnim }],
+          },
+        ]}
+      >
         <View style={styles.header}>
+          <Text style={styles.greeting}>Hi {user.name}! 👋</Text>
           <Image
             source={{ uri: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/8vgf5j406eh85pmh23mp8' }}
             style={styles.logoImage}
@@ -74,7 +116,7 @@ export default function WelcomeScreen() {
         <View style={styles.footer}>
           <Text style={styles.footerText}>TECHFEST 2025-26 • Made for India</Text>
         </View>
-      </View>
+      </Animated.View>
     </LinearGradient>
   );
 }
@@ -91,6 +133,16 @@ const styles = StyleSheet.create({
   header: {
     alignItems: 'center',
     paddingHorizontal: 20,
+  },
+  greeting: {
+    fontSize: 28,
+    fontWeight: '700' as const,
+    color: '#ffffff',
+    marginBottom: 16,
+    textAlign: 'center',
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
   },
   logoImage: {
     width: 180,

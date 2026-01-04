@@ -4,6 +4,7 @@ import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { AppProvider } from "@/contexts/app-context";
+import { AuthProvider } from "@/contexts/auth-context";
 import { SubscriptionProvider } from "@/contexts/subscription-context";
 import { trpc, trpcClient } from "@/lib/trpc";
 
@@ -15,6 +16,7 @@ const queryClient = new QueryClient();
 function RootLayoutNav() {
   return (
     <Stack screenOptions={{ headerBackTitle: "Back" }}>
+      <Stack.Screen name="auth" options={{ headerShown: false }} />
       <Stack.Screen name="index" options={{ headerShown: false }} />
       <Stack.Screen name="student" options={{ headerShown: false }} />
       <Stack.Screen name="teacher" options={{ headerShown: false }} />
@@ -32,11 +34,13 @@ export default function RootLayout() {
     <trpc.Provider client={trpcClient} queryClient={queryClient}>
       <QueryClientProvider client={queryClient}>
         <SubscriptionProvider>
-          <AppProvider>
-            <GestureHandlerRootView style={{ flex: 1 }}>
-              <RootLayoutNav />
-            </GestureHandlerRootView>
-          </AppProvider>
+          <AuthProvider>
+            <AppProvider>
+              <GestureHandlerRootView style={{ flex: 1 }}>
+                <RootLayoutNav />
+              </GestureHandlerRootView>
+            </AppProvider>
+          </AuthProvider>
         </SubscriptionProvider>
       </QueryClientProvider>
     </trpc.Provider>
