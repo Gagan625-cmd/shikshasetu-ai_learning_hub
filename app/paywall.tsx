@@ -121,28 +121,28 @@ export default function PaywallScreen() {
               <View style={styles.featureIcon}>
                 <Check size={20} color="#10b981" strokeWidth={3} />
               </View>
+              <Text style={styles.featureText}>AI Exam Scanner with instant feedback</Text>
+            </View>
+
+            <View style={styles.feature}>
+              <View style={styles.featureIcon}>
+                <Check size={20} color="#10b981" strokeWidth={3} />
+              </View>
+              <Text style={styles.featureText}>Study OS: Focus timer, blocker & coach</Text>
+            </View>
+
+            <View style={styles.feature}>
+              <View style={styles.featureIcon}>
+                <Check size={20} color="#10b981" strokeWidth={3} />
+              </View>
+              <Text style={styles.featureText}>Advanced interview assessment</Text>
+            </View>
+
+            <View style={styles.feature}>
+              <View style={styles.featureIcon}>
+                <Check size={20} color="#10b981" strokeWidth={3} />
+              </View>
               <Text style={styles.featureText}>Unlimited AI-generated content</Text>
-            </View>
-
-            <View style={styles.feature}>
-              <View style={styles.featureIcon}>
-                <Check size={20} color="#10b981" strokeWidth={3} />
-              </View>
-              <Text style={styles.featureText}>Advanced interview practice</Text>
-            </View>
-
-            <View style={styles.feature}>
-              <View style={styles.featureIcon}>
-                <Check size={20} color="#10b981" strokeWidth={3} />
-              </View>
-              <Text style={styles.featureText}>Voice assistant</Text>
-            </View>
-
-            <View style={styles.feature}>
-              <View style={styles.featureIcon}>
-                <Check size={20} color="#10b981" strokeWidth={3} />
-              </View>
-              <Text style={styles.featureText}>Unlimited quiz generation</Text>
             </View>
 
             <View style={styles.feature}>

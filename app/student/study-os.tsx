@@ -7,11 +7,13 @@ import { useMutation } from '@tanstack/react-query';
 import { generateText } from '@rork-ai/toolkit-sdk';
 import { useApp } from '@/contexts/app-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useSubscription } from '@/contexts/subscription-context';
 
 export default function StudyOS() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { userProgress, addStudyTime } = useApp();
+  const { isPremium } = useSubscription();
   
   const [activeTab, setActiveTab] = useState<'timer' | 'blocker' | 'streaks' | 'coach'>('timer');
   
@@ -103,6 +105,63 @@ Respond with encouraging, motivational, and practical advice in 2-3 sentences. B
       coachMutation.mutate(coachInput);
     }
   };
+
+  if (!isPremium) {
+    return (
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+            <ChevronLeft size={24} color="#ffffff" />
+          </TouchableOpacity>
+          <Text style={styles.premiumHeaderTitle}>Study OS</Text>
+          <View style={styles.backButton} />
+        </View>
+        
+        <LinearGradient colors={['#7e22ce', '#9333ea']} style={styles.premiumContainer}>
+          <ScrollView
+            style={styles.content}
+            contentContainerStyle={[styles.premiumContent, { paddingBottom: insets.bottom + 20 }]}
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.lockIconContainer}>
+              <Lock size={72} color="#fbbf24" strokeWidth={2} />
+            </View>
+            
+            <Text style={styles.premiumTitle}>Premium Feature</Text>
+            <Text style={styles.premiumDescription}>
+              Study OS is an advanced productivity suite available exclusively for premium members.
+            </Text>
+
+            <View style={styles.premiumFeaturesList}>
+              <View style={styles.premiumFeatureItem}>
+                <Timer size={20} color="#fbbf24" />
+                <Text style={styles.premiumFeatureText}>Pomodoro Focus Timer</Text>
+              </View>
+              <View style={styles.premiumFeatureItem}>
+                <Lock size={20} color="#fbbf24" />
+                <Text style={styles.premiumFeatureText}>Distraction Blocker</Text>
+              </View>
+              <View style={styles.premiumFeatureItem}>
+                <Flame size={20} color="#fbbf24" />
+                <Text style={styles.premiumFeatureText}>Streaks & Rewards System</Text>
+              </View>
+              <View style={styles.premiumFeatureItem}>
+                <Sparkles size={20} color="#fbbf24" />
+                <Text style={styles.premiumFeatureText}>AI Motivational Coach</Text>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={styles.upgradeButton}
+              onPress={() => router.push('/paywall')}
+            >
+              <Text style={styles.upgradeButtonText}>Upgrade to Premium</Text>
+            </TouchableOpacity>
+          </ScrollView>
+        </LinearGradient>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -882,5 +941,87 @@ const styles = StyleSheet.create({
   suggestionText: {
     fontSize: 14,
     color: '#475569',
+  },
+  premiumContainer: {
+    flex: 1,
+  },
+  premiumContent: {
+    padding: 24,
+    alignItems: 'center',
+  },
+  premiumHeaderTitle: {
+    fontSize: 18,
+    fontWeight: '700' as const,
+    color: '#ffffff',
+  },
+  lockIconContainer: {
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: 'rgba(251, 191, 36, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 40,
+    marginBottom: 32,
+  },
+  premiumTitle: {
+    fontSize: 32,
+    fontWeight: '800' as const,
+    color: '#ffffff',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  premiumDescription: {
+    fontSize: 16,
+    color: '#e9d5ff',
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 32,
+    paddingHorizontal: 20,
+  },
+  premiumFeaturesList: {
+    width: '100%',
+    gap: 16,
+    marginBottom: 40,
+  },
+  premiumFeatureItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    padding: 16,
+    borderRadius: 12,
+  },
+  premiumFeatureText: {
+    flex: 1,
+    fontSize: 15,
+    color: '#ffffff',
+    fontWeight: '600' as const,
+  },
+  upgradeButton: {
+    width: '100%',
+    paddingVertical: 18,
+    borderRadius: 16,
+    backgroundColor: '#fbbf24',
+    alignItems: 'center',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#fbbf24',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.4,
+        shadowRadius: 12,
+      },
+      android: {
+        elevation: 8,
+      },
+      web: {
+        boxShadow: '0 4px 12px rgba(251, 191, 36, 0.4)',
+      },
+    }),
+  },
+  upgradeButtonText: {
+    fontSize: 18,
+    fontWeight: '700' as const,
+    color: '#ffffff',
   },
 });
