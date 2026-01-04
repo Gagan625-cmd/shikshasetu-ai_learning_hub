@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import Purchases, { PurchasesPackage } from 'react-native-purchases';
 import { Platform } from 'react-native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useAuth } from './auth-context';
 
 function getRCToken() {
   if (__DEV__ || Platform.OS === 'web') {
@@ -20,8 +21,11 @@ if (apiKey) {
   Purchases.configure({ apiKey });
 }
 
+const PREMIUM_EMAILS = ['gagandeepn49@gmail.com', 'ak.atharva2011@gmail.com'];
+
 export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
@@ -72,7 +76,8 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
     },
   });
 
-  const isPremium = customerInfoQuery.data?.entitlements.active['premium'] !== undefined;
+  const hasPremiumEmail = user?.email && PREMIUM_EMAILS.includes(user.email.toLowerCase());
+  const isPremium = hasPremiumEmail || customerInfoQuery.data?.entitlements.active['premium'] !== undefined;
 
   return {
     isInitialized,
