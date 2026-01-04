@@ -30,14 +30,14 @@ export default function AboutPage() {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Founders & CEOs</Text>
+          <Text style={styles.sectionTitle}>Founders</Text>
           <View style={styles.founderCard}>
             <View style={styles.founderInitials}>
               <Text style={styles.founderInitialsText}>GN</Text>
             </View>
             <View style={styles.founderInfo}>
               <Text style={styles.founderName}>Gagandeep.N</Text>
-              <Text style={styles.founderRole}>Co-Founder & CEO</Text>
+              <Text style={styles.founderRole}>Founder & CEO</Text>
             </View>
           </View>
           <View style={styles.founderCard}>
@@ -46,7 +46,7 @@ export default function AboutPage() {
             </View>
             <View style={styles.founderInfo}>
               <Text style={styles.founderName}>Atharva Kulkarni</Text>
-              <Text style={styles.founderRole}>Co-Founder & CEO</Text>
+              <Text style={styles.founderRole}>Founder & CEO</Text>
             </View>
           </View>
         </View>
@@ -66,14 +66,86 @@ export default function AboutPage() {
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Features</Text>
-          <Text style={styles.sectionText}>
-            • AI-generated notes, summaries, and worksheets{'\n'}
-            • Personalized quiz generation{'\n'}
-            • Interview practice with AI feedback{'\n'}
-            • NCERT & ICSE content coverage{'\n'}
-            • Multilingual support{'\n'}
-            • Offline & online accessibility
-          </Text>
+          
+          <View style={styles.featureItem}>
+            <Text style={styles.featureBullet}>📚</Text>
+            <View style={styles.featureContent}>
+              <Text style={styles.featureTitle}>AI Content Generator</Text>
+              <Text style={styles.featureDescription}>
+                Generate comprehensive notes, summaries, worksheets, mind maps, and question papers for any chapter with AI assistance.
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.featureItem}>
+            <Text style={styles.featureBullet}>📝</Text>
+            <View style={styles.featureContent}>
+              <Text style={styles.featureTitle}>AI Exam Scanner</Text>
+              <Text style={styles.featureDescription}>
+                Scan your exam papers and get instant AI-powered grading, detailed feedback, and personalized improvement plans.
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.featureItem}>
+            <Text style={styles.featureBullet}>🎯</Text>
+            <View style={styles.featureContent}>
+              <Text style={styles.featureTitle}>Adaptive Quiz Generation</Text>
+              <Text style={styles.featureDescription}>
+                Practice with AI-generated quizzes that adapt to your learning level and provide instant feedback on your performance.
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.featureItem}>
+            <Text style={styles.featureBullet}>💬</Text>
+            <View style={styles.featureContent}>
+              <Text style={styles.featureTitle}>AI Interview Practice</Text>
+              <Text style={styles.featureDescription}>
+                Prepare for interviews with AI-powered mock interviews, real-time feedback, and comprehensive performance analysis.
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.featureItem}>
+            <Text style={styles.featureBullet}>📖</Text>
+            <View style={styles.featureContent}>
+              <Text style={styles.featureTitle}>NCERT & ICSE Content</Text>
+              <Text style={styles.featureDescription}>
+                Complete syllabus coverage for NCERT (Grades 6-10) and ICSE (Grades 9-10) with chapter-wise content generation.
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.featureItem}>
+            <Text style={styles.featureBullet}>🌐</Text>
+            <View style={styles.featureContent}>
+              <Text style={styles.featureTitle}>Multilingual Support</Text>
+              <Text style={styles.featureDescription}>
+                Study in your preferred language with support for English, Hindi, and more regional languages.
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.featureItem}>
+            <Text style={styles.featureBullet}>📊</Text>
+            <View style={styles.featureContent}>
+              <Text style={styles.featureTitle}>Performance Analytics</Text>
+              <Text style={styles.featureDescription}>
+                Track your learning progress with detailed analytics, activity history, and personalized insights.
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.featureItem}>
+            <Text style={styles.featureBullet}>🔊</Text>
+            <View style={styles.featureContent}>
+              <Text style={styles.featureTitle}>Text-to-Speech</Text>
+              <Text style={styles.featureDescription}>
+                Listen to any generated content with high-quality text-to-speech in multiple languages for better accessibility.
+              </Text>
+            </View>
+          </View>
         </View>
 
         <View style={styles.section}>
@@ -181,5 +253,28 @@ const styles = StyleSheet.create({
   founderRole: {
     fontSize: 14,
     color: '#64748b',
+  },
+  featureItem: {
+    flexDirection: 'row',
+    marginBottom: 20,
+    gap: 12,
+  },
+  featureBullet: {
+    fontSize: 24,
+    lineHeight: 28,
+  },
+  featureContent: {
+    flex: 1,
+  },
+  featureTitle: {
+    fontSize: 16,
+    fontWeight: '700' as const,
+    color: '#1e293b',
+    marginBottom: 4,
+  },
+  featureDescription: {
+    fontSize: 14,
+    color: '#64748b',
+    lineHeight: 20,
   },
 });
