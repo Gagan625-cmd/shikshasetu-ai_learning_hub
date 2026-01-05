@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { ChevronLeft, BookOpen, Atom, FlaskConical, Microscope, Calculator, Sparkles, Landmark, Cpu, BookText, Languages, Volume2, VolumeX } from 'lucide-react-native';
+import { ChevronLeft, BookOpen, Atom, FlaskConical, Microscope, Calculator, Sparkles, Landmark, Cpu, BookText, Languages, Volume2, VolumeX, FileText } from 'lucide-react-native';
 import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Platform, Modal, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState } from 'react';
@@ -42,6 +42,7 @@ export default function TeacherICESEContentBrowser() {
   const [selectedChapter, setSelectedChapter] = useState<{ title: string; number: number; subject: string; grade: number } | null>(null);
   const [generatedContent, setGeneratedContent] = useState('');
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [contentType, setContentType] = useState<'detailed' | 'pyq'>('detailed');
 
   const grades = [9, 10];
 
@@ -105,8 +106,57 @@ export default function TeacherICESEContentBrowser() {
   };
 
   const generateContentMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (type: 'detailed' | 'pyq') => {
       if (!selectedChapter) return '';
+      
+      if (type === 'pyq') {
+        const prompt = `Generate AUTHENTIC ICSE Previous Year Questions with TEACHING NOTES for Grade ${selectedChapter.grade} ${selectedChapter.subject}.
+Chapter ${selectedChapter.number}: ${selectedChapter.title}
+
+Generate 15-20 GENUINE previous year questions from ICSE board examinations (2015-2024) with detailed teaching guidance.
+
+IMPORTANT REQUIREMENTS:
+1. Each question MUST include:
+   - The exact year it appeared (e.g., ICSE 2019, ICSE 2022)
+   - The marks allocated [e.g., [2 marks], [4 marks], [6 marks]]
+   - Question difficulty level (Easy/Medium/Hard)
+   - Teaching notes for explaining this question type
+
+2. Question Types:
+   - Short Answer Questions (2-3 marks)
+   - Long Answer Questions (4-6 marks)
+   - Multiple Choice Questions (1 mark)
+   - Numerical Problems (3-5 marks)
+   - Diagram-based questions (3-4 marks)
+
+3. Format each question as:
+   **Year: ICSE [YEAR] | Marks: [X] | Difficulty: [LEVEL]**
+   Question: [Full question text]
+   
+   **Teaching Notes:**
+   [Key concepts tested, common mistakes, teaching strategy]
+   
+   **Model Answer:**
+   [Detailed step-by-step solution with marking scheme]
+   
+   **Common Student Errors:**
+   [List typical mistakes students make]
+   
+   ---
+
+4. Include exam pattern analysis
+5. Provide marking scheme breakdown
+6. Suggest similar practice questions
+7. Add tips for teaching these question types
+8. Include time management advice for students
+
+Language: ${selectedLanguage}
+
+Generate comprehensive teaching material that helps teachers prepare students effectively for ICSE examinations.`;
+        
+        const result = await generateText({ messages: [{ role: 'user', content: prompt }] });
+        return result;
+      }
       
       const prompt = `Generate comprehensive and elaborate ICSE teaching material for Grade ${selectedChapter.grade} ${selectedChapter.subject}.
 Chapter ${selectedChapter.number}: ${selectedChapter.title}
@@ -221,6 +271,7 @@ Make it thorough, well-formatted, teaching-oriented, and aligned with ICSE sylla
       grade: selectedGrade,
     });
     setGeneratedContent('');
+    setContentType('detailed');
     setModalVisible(true);
   };
 
@@ -363,18 +414,38 @@ Make it thorough, well-formatted, teaching-oriented, and aligned with ICSE sylla
             </View>
 
             {!generatedContent && !generateContentMutation.isPending && (
-              <TouchableOpacity
-                style={styles.generateContentButton}
-                onPress={() => generateContentMutation.mutate()}
-              >
-                <Sparkles size={20} color="#ffffff" />
-                <Text style={styles.generateContentButtonText}>Generate Teaching Material</Text>
-              </TouchableOpacity>
+              <View style={styles.buttonsContainer}>
+                <TouchableOpacity
+                  style={styles.generateContentButton}
+                  onPress={() => {
+                    setContentType('detailed');
+                    generateContentMutation.mutate('detailed');
+                  }}
+                >
+                  <Sparkles size={20} color="#ffffff" />
+                  <Text style={styles.generateContentButtonText}>Generate Teaching Material</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity
+                  style={styles.pyqButton}
+                  onPress={() => {
+                    setContentType('pyq');
+                    generateContentMutation.mutate('pyq');
+                  }}
+                >
+                  <FileText size={20} color="#ffffff" />
+                  <Text style={styles.pyqButtonText}>Previous Year Questions</Text>
+                </TouchableOpacity>
+              </View>
             )}
 
             {generateContentMutation.isPending && (
               <View style={styles.loadingCard}>
-                <Text style={styles.loadingText}>Generating comprehensive teaching material...</Text>
+                <Text style={styles.loadingText}>
+                  {contentType === 'pyq' 
+                    ? 'Generating previous year questions with teaching notes...'
+                    : 'Generating comprehensive teaching material...'}
+                </Text>
               </View>
             )}
 
@@ -387,7 +458,9 @@ Make it thorough, well-formatted, teaching-oriented, and aligned with ICSE sylla
             {generatedContent && (
               <View style={styles.contentCard}>
                 <View style={styles.contentHeader}>
-                  <Text style={styles.contentHeaderTitle}>Teaching Material</Text>
+                  <Text style={styles.contentHeaderTitle}>
+                    {contentType === 'pyq' ? 'Previous Year Questions & Teaching Notes' : 'Teaching Material'}
+                  </Text>
                   <TouchableOpacity style={styles.speakerButton} onPress={handleTextToSpeech}>
                     {isSpeaking ? (
                       <VolumeX size={20} color="#7c3aed" />
@@ -685,6 +758,38 @@ const styles = StyleSheet.create({
     }),
   },
   generateContentButtonText: {
+    fontSize: 16,
+    fontWeight: '700' as const,
+    color: '#ffffff',
+  },
+  buttonsContainer: {
+    gap: 12,
+    marginBottom: 20,
+  },
+  pyqButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    padding: 16,
+    borderRadius: 12,
+    backgroundColor: '#f59e0b',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#f59e0b',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 6,
+      },
+      web: {
+        boxShadow: '0 4px 12px rgba(245, 158, 11, 0.3)',
+      },
+    }),
+  },
+  pyqButtonText: {
     fontSize: 16,
     fontWeight: '700' as const,
     color: '#ffffff',
