@@ -52,6 +52,8 @@ export default function WelcomeScreen() {
     }
   };
 
+  const displayName = user.isGuest ? 'Guest' : user.name;
+
   return (
     <LinearGradient colors={['#1e3c72', '#2a5298', '#7e22ce']} style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
       <Animated.View 
@@ -64,7 +66,7 @@ export default function WelcomeScreen() {
         ]}
       >
         <View style={styles.header}>
-          <Text style={styles.greeting}>Hi {user.name}! 👋</Text>
+          <Text style={styles.greeting}>Hi {displayName}! 👋</Text>
           <Image
             source={{ uri: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/8vgf5j406eh85pmh23mp8' }}
             style={styles.logoImage}

@@ -4,7 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '@/contexts/auth-context';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LogIn, UserPlus, Mail, Lock, User } from 'lucide-react-native';
+import { LogIn, UserPlus, Mail, Lock, User, UserCircle } from 'lucide-react-native';
 
 export default function AuthScreen() {
   const [isSignUp, setIsSignUp] = useState(false);
@@ -12,7 +12,7 @@ export default function AuthScreen() {
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [error, setError] = useState('');
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, continueAsGuest } = useAuth();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [buttonScale] = useState(new Animated.Value(1));
@@ -62,6 +62,26 @@ export default function AuthScreen() {
   const toggleMode = () => {
     setIsSignUp(!isSignUp);
     setError('');
+  };
+
+  const handleGuestAccess = async () => {
+    Animated.sequence([
+      Animated.timing(buttonScale, {
+        toValue: 0.95,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+      Animated.timing(buttonScale, {
+        toValue: 1,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    const result = await continueAsGuest();
+    if (result.success) {
+      router.replace('/');
+    }
   };
 
   return (
@@ -183,6 +203,21 @@ export default function AuthScreen() {
                   {isSignUp ? 'Sign In' : 'Sign Up'}
                 </Text>
               </Text>
+            </TouchableOpacity>
+
+            <View style={styles.divider}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>OR</Text>
+              <View style={styles.dividerLine} />
+            </View>
+
+            <TouchableOpacity
+              style={styles.guestButton}
+              onPress={handleGuestAccess}
+              activeOpacity={0.8}
+            >
+              <UserCircle size={20} color="#667eea" />
+              <Text style={styles.guestButtonText}>Continue as Guest</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -308,5 +343,38 @@ const styles = StyleSheet.create({
   toggleTextBold: {
     fontWeight: '700' as const,
     color: '#ffffff',
+  },
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 24,
+    marginBottom: 16,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  dividerText: {
+    marginHorizontal: 16,
+    fontSize: 14,
+    color: '#f0f9ff',
+    fontWeight: '600' as const,
+  },
+  guestButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 16,
+    paddingVertical: 16,
+    borderWidth: 2,
+    borderColor: 'rgba(102, 126, 234, 0.3)',
+  },
+  guestButtonText: {
+    fontSize: 16,
+    fontWeight: '600' as const,
+    color: '#667eea',
   },
 });

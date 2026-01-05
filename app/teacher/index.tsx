@@ -3,6 +3,7 @@ import { BookOpen, BrainCircuit, Settings, FileText, LogOut, Video, Upload, Tren
 import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useApp } from '@/contexts/app-context';
+import { useAuth } from '@/contexts/auth-context';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState } from 'react';
 import { LANGUAGES } from '@/constants/ncert-data';
@@ -11,13 +12,15 @@ import VoiceAssistant from './voice-assistant';
 export default function TeacherDashboard() {
   const router = useRouter();
   const { resetApp, selectedLanguage, changeLanguage } = useApp();
+  const { signOut } = useAuth();
   const insets = useSafeAreaInsets();
   const [showSettings, setShowSettings] = useState(false);
   const [showVoiceAssistant, setShowVoiceAssistant] = useState(false);
 
   const handleLogout = async () => {
+    await signOut();
     await resetApp();
-    router.replace('/');
+    router.replace('/auth');
   };
 
   const features = [

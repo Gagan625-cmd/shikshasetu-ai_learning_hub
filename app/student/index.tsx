@@ -3,6 +3,7 @@ import { BookOpen, BrainCircuit, MessageSquare, Settings, FileText, LogOut, Tren
 import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Platform, Modal, TextInput, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useApp } from '@/contexts/app-context';
+import { useAuth } from '@/contexts/auth-context';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState } from 'react';
 import { LANGUAGES } from '@/constants/ncert-data';
@@ -17,6 +18,7 @@ interface Message {
 export default function StudentDashboard() {
   const router = useRouter();
   const { resetApp, selectedLanguage, changeLanguage, userProgress } = useApp();
+  const { signOut } = useAuth();
   const insets = useSafeAreaInsets();
   const [showSettings, setShowSettings] = useState(false);
   const [showChatbot, setShowChatbot] = useState(false);
@@ -24,8 +26,9 @@ export default function StudentDashboard() {
   const [inputText, setInputText] = useState('');
 
   const handleLogout = async () => {
+    await signOut();
     await resetApp();
-    router.replace('/');
+    router.replace('/auth');
   };
 
   const chatMutation = useMutation({

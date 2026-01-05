@@ -53,6 +53,11 @@ export default function VoiceAssistant({ visible, onClose }: VoiceAssistantProps
         await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       }
 
+      if (Platform.OS === 'web') {
+        Alert.alert('Not Available', 'Voice recording is not available on web. Please use the mobile app.');
+        return;
+      }
+
       const { status } = await Audio.requestPermissionsAsync();
       if (status !== 'granted') {
         Alert.alert('Permission Required', 'Please grant microphone permission to use voice features.');
@@ -67,15 +72,7 @@ export default function VoiceAssistant({ visible, onClose }: VoiceAssistantProps
         playThroughEarpieceAndroid: false,
       });
 
-      const { recording: newRecording } = await Audio.Recording.createAsync({
-        android: {
-          extension: '.m4a',
-          outputFormat: Audio.AndroidOutputFormat.MPEG_4,
-          audioEncoder: Audio.AndroidAudioEncoder.AAC,
-          sampleRate: 44100,
-          numberOfChannels: 2,
-          bitRate: 128000,
-        },
+      const recordingOptions = Platform.select({
         ios: {
           extension: '.wav',
           outputFormat: Audio.IOSOutputFormat.LINEARPCM,
@@ -87,11 +84,17 @@ export default function VoiceAssistant({ visible, onClose }: VoiceAssistantProps
           linearPCMIsBigEndian: false,
           linearPCMIsFloat: false,
         },
-        web: {
-          mimeType: 'audio/webm',
-          bitsPerSecond: 128000,
+        android: {
+          extension: '.m4a',
+          outputFormat: Audio.AndroidOutputFormat.MPEG_4,
+          audioEncoder: Audio.AndroidAudioEncoder.AAC,
+          sampleRate: 44100,
+          numberOfChannels: 2,
+          bitRate: 128000,
         },
       });
+
+      const { recording: newRecording } = await Audio.Recording.createAsync(recordingOptions as any);
 
       setRecording(newRecording);
       setIsRecording(true);
@@ -126,7 +129,10 @@ export default function VoiceAssistant({ visible, onClose }: VoiceAssistantProps
   };
 
   const processVoice = async (uri: string | null) => {
-    if (!uri) return;
+    if (!uri) {
+      Alert.alert('Error', 'No audio file to process.');
+      return;
+    }
 
     setIsProcessing(true);
     
@@ -144,7 +150,11 @@ export default function VoiceAssistant({ visible, onClose }: VoiceAssistantProps
       
       formData.append('audio', audioFile);
       
-      const sttUrl = new URL('/stt/transcribe/', process.env.EXPO_PUBLIC_TOOLKIT_URL!).toString();
+      if (!process.env.EXPO_PUBLIC_TOOLKIT_URL) {
+        throw new Error('Toolkit URL not configured');
+      }
+
+      const sttUrl = new URL('/stt/transcribe/', process.env.EXPO_PUBLIC_TOOLKIT_URL).toString();
       
       const sttResponse = await fetch(sttUrl, {
         method: 'POST',
@@ -152,7 +162,9 @@ export default function VoiceAssistant({ visible, onClose }: VoiceAssistantProps
       });
       
       if (!sttResponse.ok) {
-        throw new Error('Speech-to-text failed');
+        const errorText = await sttResponse.text();
+        console.error('STT error:', errorText);
+        throw new Error('Speech-to-text failed: ' + sttResponse.statusText);
       }
       
       const sttData = await sttResponse.json() as { text: string; language: string };

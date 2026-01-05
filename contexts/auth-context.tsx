@@ -5,6 +5,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 export interface User {
   email: string;
   name: string;
+  isGuest?: boolean;
 }
 
 export const [AuthProvider, useAuth] = createContextHook(() => {
@@ -78,11 +79,19 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     await AsyncStorage.removeItem('user');
   }, []);
 
+  const continueAsGuest = useCallback(async () => {
+    const guestUser = { email: 'guest@app.com', name: 'Guest', isGuest: true };
+    setUser(guestUser);
+    await AsyncStorage.setItem('user', JSON.stringify(guestUser));
+    return { success: true };
+  }, []);
+
   return useMemo(() => ({
     user,
     isLoading,
     signUp,
     signIn,
     signOut,
-  }), [user, isLoading, signUp, signIn, signOut]);
+    continueAsGuest,
+  }), [user, isLoading, signUp, signIn, signOut, continueAsGuest]);
 });
