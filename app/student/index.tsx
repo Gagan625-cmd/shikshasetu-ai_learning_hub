@@ -1,11 +1,11 @@
 import { useRouter } from 'expo-router';
 import { BookOpen, BrainCircuit, MessageSquare, Settings, FileText, LogOut, TrendingUp, MessageCircle, Info, ScanText, Target, Video, Bell, Link2 } from 'lucide-react-native';
-import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Platform, Modal, TextInput, Alert } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Platform, Modal, TextInput, Alert, FlatList } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useApp } from '@/contexts/app-context';
 import { useAuth } from '@/contexts/auth-context';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useState } from 'react';
+import { useState, useCallback, useMemo, memo } from 'react';
 import { LANGUAGES } from '@/constants/ncert-data';
 import { useMutation } from '@tanstack/react-query';
 import { generateText } from '@rork-ai/toolkit-sdk';
@@ -14,6 +14,46 @@ interface Message {
   role: 'user' | 'assistant';
   content: string;
 }
+
+const FeatureCard = memo(({ feature, onPress }: { feature: any; onPress: () => void }) => {
+  const Icon = feature.icon;
+  return (
+    <TouchableOpacity
+      style={styles.featureCard}
+      onPress={onPress}
+      activeOpacity={0.8}
+    >
+      <View style={[styles.iconCircle, { backgroundColor: feature.color + '20' }]}>
+        <Icon size={32} color={feature.color} strokeWidth={2} />
+      </View>
+      <Text style={styles.featureTitle}>{feature.title}</Text>
+      <Text style={styles.featureDescription}>{feature.description}</Text>
+    </TouchableOpacity>
+  );
+});
+
+FeatureCard.displayName = 'FeatureCard';
+
+const UploadCard = memo(({ upload, onPress }: { upload: any; onPress: () => void }) => (
+  <TouchableOpacity
+    style={styles.uploadCard}
+    activeOpacity={0.8}
+    onPress={onPress}
+  >
+    <View style={[styles.uploadIconCircle, { backgroundColor: upload.type === 'video' ? '#eff6ff' : '#fef3c7' }]}>
+      {upload.type === 'video' ? (
+        <Video size={24} color="#3b82f6" />
+      ) : (
+        <FileText size={24} color="#f59e0b" />
+      )}
+    </View>
+    <Text style={styles.uploadTitle} numberOfLines={2}>{upload.title}</Text>
+    <Text style={styles.uploadMeta}>{upload.board} Grade {upload.grade}</Text>
+    <Text style={styles.uploadSubject} numberOfLines={1}>{upload.subject}</Text>
+  </TouchableOpacity>
+));
+
+UploadCard.displayName = 'UploadCard';
 
 export default function StudentDashboard() {
   const router = useRouter();
@@ -25,11 +65,11 @@ export default function StudentDashboard() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
 
-  const handleLogout = async () => {
+  const handleLogout = useCallback(async () => {
     await signOut();
     await resetApp();
     router.replace('/auth');
-  };
+  }, [signOut, resetApp, router]);
 
   const chatMutation = useMutation({
     mutationFn: async (userMessage: string) => {
@@ -54,13 +94,13 @@ export default function StudentDashboard() {
     },
   });
 
-  const handleSendMessage = () => {
+  const handleSendMessage = useCallback(() => {
     if (inputText.trim()) {
       chatMutation.mutate(inputText.trim());
     }
-  };
+  }, [inputText, chatMutation.mutate]);
 
-  const features = [
+  const features = useMemo(() => [
     {
       id: 'content',
       title: 'NCERT Content',
@@ -141,7 +181,34 @@ export default function StudentDashboard() {
       color: '#14b8a6',
       route: '/student/useful-link',
     },
-  ];
+  ], []);
+
+  const recentUploads = useMemo(() => 
+    userProgress.teacherUploads.slice(-5).reverse(),
+    [userProgress.teacherUploads]
+  );
+
+  const handleUploadPress = useCallback((upload: any) => {
+    if (upload.type === 'video' && upload.videoUrl) {
+      Alert.alert(
+        upload.title,
+        `Watch video: ${upload.videoUrl}\n\nGrade: ${upload.grade}\nSubject: ${upload.subject}\nChapter: ${upload.chapter}`,
+        [
+          { text: 'Copy Link', onPress: () => {} },
+          { text: 'Close', style: 'cancel' },
+        ]
+      );
+    } else {
+      Alert.alert(
+        upload.title,
+        `${upload.content}\n\nGrade: ${upload.grade}\nSubject: ${upload.subject}\nChapter: ${upload.chapter}`
+      );
+    }
+  }, []);
+
+  const handleFeaturePress = useCallback((route: string) => {
+    router.push(route as any);
+  }, [router]);
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -202,6 +269,7 @@ export default function StudentDashboard() {
         style={styles.content}
         contentContainerStyle={[styles.contentContainer, { paddingBottom: insets.bottom + 20 }]}
         showsVerticalScrollIndicator={false}
+        removeClippedSubviews={true}
       >
         {userProgress.teacherUploads.length > 0 && (
           <View style={styles.uploadsSection}>
@@ -209,66 +277,36 @@ export default function StudentDashboard() {
               <Bell size={20} color="#f59e0b" />
               <Text style={styles.uploadsSectionTitle}>New from your Teacher!</Text>
             </View>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.uploadsScroll}>
-              {userProgress.teacherUploads.slice(-5).reverse().map((upload) => (
-                <TouchableOpacity
-                  key={upload.id}
-                  style={styles.uploadCard}
-                  activeOpacity={0.8}
-                  onPress={() => {
-                    if (upload.type === 'video' && upload.videoUrl) {
-                      Alert.alert(
-                        upload.title,
-                        `Watch video: ${upload.videoUrl}\n\nGrade: ${upload.grade}\nSubject: ${upload.subject}\nChapter: ${upload.chapter}`,
-                        [
-                          { text: 'Copy Link', onPress: () => {} },
-                          { text: 'Close', style: 'cancel' },
-                        ]
-                      );
-                    } else {
-                      Alert.alert(
-                        upload.title,
-                        `${upload.content}\n\nGrade: ${upload.grade}\nSubject: ${upload.subject}\nChapter: ${upload.chapter}`
-                      );
-                    }
-                  }}
-                >
-                  <View style={[styles.uploadIconCircle, { backgroundColor: upload.type === 'video' ? '#eff6ff' : '#fef3c7' }]}>
-                    {upload.type === 'video' ? (
-                      <Video size={24} color="#3b82f6" />
-                    ) : (
-                      <FileText size={24} color="#f59e0b" />
-                    )}
-                  </View>
-                  <Text style={styles.uploadTitle} numberOfLines={2}>{upload.title}</Text>
-                  <Text style={styles.uploadMeta}>{upload.board} Grade {upload.grade}</Text>
-                  <Text style={styles.uploadSubject} numberOfLines={1}>{upload.subject}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+            <FlatList
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.uploadsScroll}
+              data={recentUploads}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => (
+                <UploadCard upload={item} onPress={() => handleUploadPress(item)} />
+              )}
+              removeClippedSubviews={true}
+              maxToRenderPerBatch={3}
+              windowSize={5}
+              initialNumToRender={3}
+            />
           </View>
         )}
 
         <Text style={styles.sectionTitle}>Features</Text>
-        <View style={styles.grid}>
-          {features.map((feature) => {
-            const Icon = feature.icon;
-            return (
-              <TouchableOpacity
-                key={feature.id}
-                style={styles.featureCard}
-                onPress={() => router.push(feature.route as any)}
-                activeOpacity={0.8}
-              >
-                <View style={[styles.iconCircle, { backgroundColor: feature.color + '20' }]}>
-                  <Icon size={32} color={feature.color} strokeWidth={2} />
-                </View>
-                <Text style={styles.featureTitle}>{feature.title}</Text>
-                <Text style={styles.featureDescription}>{feature.description}</Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
+        <FlatList
+          data={features}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <FeatureCard feature={item} onPress={() => handleFeaturePress(item.route)} />
+          )}
+          scrollEnabled={false}
+          removeClippedSubviews={true}
+          maxToRenderPerBatch={5}
+          windowSize={10}
+          initialNumToRender={10}
+        />
 
         <View style={styles.infoCard}>
           <Text style={styles.infoTitle}>✨ Offline & Online</Text>
