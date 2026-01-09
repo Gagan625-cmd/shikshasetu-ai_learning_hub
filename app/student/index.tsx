@@ -94,11 +94,13 @@ export default function StudentDashboard() {
     },
   });
 
+  const { mutate: sendMessage, isPending: isSending } = chatMutation;
+
   const handleSendMessage = useCallback(() => {
     if (inputText.trim()) {
-      chatMutation.mutate(inputText.trim());
+      sendMessage(inputText.trim());
     }
-  }, [inputText, chatMutation.mutate]);
+  }, [inputText, sendMessage]);
 
   const features = useMemo(() => [
     {
@@ -383,14 +385,14 @@ export default function StudentDashboard() {
               onChangeText={setInputText}
               multiline
               maxLength={500}
-              editable={!chatMutation.isPending}
+              editable={!isSending}
             />
             <TouchableOpacity
               style={[styles.sendButton, !inputText.trim() && styles.sendButtonDisabled]}
               onPress={handleSendMessage}
-              disabled={!inputText.trim() || chatMutation.isPending}
+              disabled={!inputText.trim() || isSending}
             >
-              <Text style={styles.sendButtonText}>{chatMutation.isPending ? '...' : '→'}</Text>
+              <Text style={styles.sendButtonText}>{isSending ? '...' : '→'}</Text>
             </TouchableOpacity>
           </View>
         </View>
