@@ -72,32 +72,13 @@ export default function VoiceAssistant({ visible, onClose }: VoiceAssistantProps
         playThroughEarpieceAndroid: false,
       });
 
-      const recordingOptions = Platform.select({
-        ios: {
-          extension: '.wav',
-          outputFormat: Audio.IOSOutputFormat.LINEARPCM,
-          audioQuality: Audio.IOSAudioQuality.HIGH,
-          sampleRate: 44100,
-          numberOfChannels: 2,
-          bitRate: 128000,
-          linearPCMBitDepth: 16,
-          linearPCMIsBigEndian: false,
-          linearPCMIsFloat: false,
-        },
-        android: {
-          extension: '.m4a',
-          outputFormat: Audio.AndroidOutputFormat.MPEG_4,
-          audioEncoder: Audio.AndroidAudioEncoder.AAC,
-          sampleRate: 44100,
-          numberOfChannels: 2,
-          bitRate: 128000,
-        },
-      });
-
-      const { recording: newRecording } = await Audio.Recording.createAsync(recordingOptions as any);
+      const { recording: newRecording } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY
+      );
 
       setRecording(newRecording);
       setIsRecording(true);
+      console.log('Recording started successfully');
     } catch (error) {
       console.error('Failed to start recording:', error);
       Alert.alert('Error', 'Failed to start recording. Please try again.');
@@ -135,6 +116,7 @@ export default function VoiceAssistant({ visible, onClose }: VoiceAssistantProps
     }
 
     setIsProcessing(true);
+    console.log('Processing audio from URI:', uri);
     
     try {
       const formData = new FormData();
@@ -145,18 +127,14 @@ export default function VoiceAssistant({ visible, onClose }: VoiceAssistantProps
       const audioFile = {
         uri,
         name: `recording.${fileType}`,
-        type: `audio/${fileType}`,
+        type: `audio/${fileType === 'm4a' ? 'mp4' : fileType}`,
       } as any;
       
       formData.append('audio', audioFile);
       
-      if (!process.env.EXPO_PUBLIC_TOOLKIT_URL) {
-        throw new Error('Toolkit URL not configured');
-      }
-
-      const sttUrl = new URL('/stt/transcribe/', process.env.EXPO_PUBLIC_TOOLKIT_URL).toString();
+      console.log('Sending audio to STT API...');
       
-      const sttResponse = await fetch(sttUrl, {
+      const sttResponse = await fetch('https://toolkit.rork.com/stt/transcribe/', {
         method: 'POST',
         body: formData,
       });
@@ -169,6 +147,7 @@ export default function VoiceAssistant({ visible, onClose }: VoiceAssistantProps
       
       const sttData = await sttResponse.json() as { text: string; language: string };
       const transcribedText = sttData.text;
+      console.log('Transcribed text:', transcribedText);
       
       setTranscript(transcribedText);
       
