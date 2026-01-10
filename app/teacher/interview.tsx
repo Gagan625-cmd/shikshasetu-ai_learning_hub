@@ -1,8 +1,8 @@
 import { useRouter } from 'expo-router';
-import { ChevronLeft, Video, Sparkles, Send, Camera, Globe, Lock } from 'lucide-react-native';
-import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Platform, TextInput } from 'react-native';
+import { ChevronLeft, Video, Sparkles, Send, Camera, Globe, Lock, Mic, MicOff, ChevronRight, CheckCircle, Type } from 'lucide-react-native';
+import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Platform, TextInput, Animated } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { Audio } from 'expo-av';
 import { useApp } from '@/contexts/app-context';
@@ -12,6 +12,8 @@ import { NCERT_SUBJECTS, LANGUAGES } from '@/constants/ncert-data';
 import { ICSE_SUBJECTS } from '@/constants/icse-data';
 import { useSubscription } from '@/contexts/subscription-context';
 import { LinearGradient } from 'expo-linear-gradient';
+
+
 
 const INTERVIEW_TOPICS = [
   { id: 'subject', label: 'Subject Expert', icon: '📚' },
@@ -24,16 +26,20 @@ const INTERVIEW_TOPICS = [
   { id: 'teaching', label: 'Teaching/Education', icon: '👨‍🏫' },
 ];
 
+const MAX_QUESTIONS = 5;
+
 export default function TeacherInterview() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   useApp();
   const { isPremium } = useSubscription();
-  const scrollViewRef = useRef<ScrollView>(null);
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const [hasAudioPermission, setHasAudioPermission] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
+  const [isVoiceRecording, setIsVoiceRecording] = useState(false);
+  const [voiceRecording, setVoiceRecording] = useState<Audio.Recording | null>(null);
+  const [isTranscribing, setIsTranscribing] = useState(false);
   
   const [interviewLanguage, setInterviewLanguage] = useState<string>('english');
   const [interviewTopic, setInterviewTopic] = useState<string>('subject');
@@ -43,17 +49,22 @@ export default function TeacherInterview() {
   const [selectedChapter, setSelectedChapter] = useState<string>('');
   const [hasStarted, setHasStarted] = useState(false);
   const [inputText, setInputText] = useState('');
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [questions, setQuestions] = useState<string[]>([]);
+  const [answers, setAnswers] = useState<{ text: string; voice: string; hasVideo: boolean }[]>([]);
+  const [isInterviewEnded, setIsInterviewEnded] = useState(false);
+  const [activeInputMethod, setActiveInputMethod] = useState<'text' | 'voice' | 'video'>('text');
+  
+  const slideAnim = useRef(new Animated.Value(0)).current;
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+  
   const [evaluation, setEvaluation] = useState<{
     strengths: string[];
     weaknesses: string[];
     recommendations: string[];
     overallScore?: number;
-  }>({ strengths: [], weaknesses: [], recommendations: [] });
-  const [analysisResults, setAnalysisResults] = useState<{
-    expression?: string;
-    voiceConfidence?: string;
-    answerQuality?: string;
-  }>({});
+    questionScores?: { question: number; score: number; feedback: string }[];
+  }>({ strengths: [], weaknesses: [], recommendations: [], questionScores: [] });
 
   const allSubjects = selectedBoard === 'NCERT' ? NCERT_SUBJECTS : ICSE_SUBJECTS;
   const subjects = allSubjects.filter((s) => s.grade === selectedGrade);
@@ -61,85 +72,94 @@ export default function TeacherInterview() {
   const selectedChapterData = chapters.find((c) => c.id === selectedChapter);
   const selectedTopicData = INTERVIEW_TOPICS.find((t) => t.id === interviewTopic);
 
-  const { messages, sendMessage } = useRorkAgent({
+  const { sendMessage, setMessages } = useRorkAgent({
     tools: {
-      recordExpression: createRorkTool({
-        description: "Analyze facial expressions and body language from video recording",
+      askQuestion: createRorkTool({
+        description: "Present the next interview question to the candidate",
         zodSchema: z.object({
-          emotion: z.string().describe("Detected emotion (confident, nervous, focused, professional, etc.)"),
-          feedback: z.string().describe("Detailed feedback on body language, expressions, and professionalism"),
-          score: z.number().min(1).max(10).describe("Score out of 10 for expression and body language"),
+          questionNumber: z.number().min(1).max(5).describe("Question number (1-5)"),
+          question: z.string().describe("The interview question to ask"),
+          category: z.string().describe("Category of the question (e.g., Technical, Behavioral, Analytical)"),
         }),
         execute(input) {
-          setAnalysisResults(prev => ({ 
-            ...prev, 
-            expression: `${input.emotion} (${input.score}/10): ${input.feedback}` 
-          }));
-          return "Expression analyzed";
+          console.log('New question received:', input.questionNumber, input.question);
+          setQuestions(prev => {
+            const newQuestions = [...prev];
+            newQuestions[input.questionNumber - 1] = input.question;
+            return newQuestions;
+          });
+          setCurrentQuestionIndex(input.questionNumber - 1);
+          animateSlide();
+          return `Question ${input.questionNumber} presented: ${input.question}`;
         },
       }),
-      analyzeVoice: createRorkTool({
-        description: "Analyze voice confidence, clarity, and communication skills",
+      evaluateAnswer: createRorkTool({
+        description: "Evaluate a single answer with score and feedback",
         zodSchema: z.object({
-          confidence: z.enum(["high", "medium", "low"]).describe("Voice confidence level"),
-          clarity: z.string().describe("Assessment of speech clarity and articulation"),
-          pace: z.string().describe("Speaking pace assessment"),
-          feedback: z.string().describe("Comprehensive feedback on voice quality and communication"),
-          score: z.number().min(1).max(10).describe("Score out of 10 for voice confidence"),
+          questionNumber: z.number().min(1).max(5).describe("Question number being evaluated"),
+          score: z.number().min(1).max(10).describe("Score out of 10"),
+          feedback: z.string().describe("Brief feedback on the answer"),
         }),
         execute(input) {
-          setAnalysisResults(prev => ({ 
-            ...prev, 
-            voiceConfidence: `Confidence: ${input.confidence}, Clarity: ${input.clarity}, Pace: ${input.pace} (${input.score}/10). ${input.feedback}` 
+          setEvaluation(prev => ({
+            ...prev,
+            questionScores: [
+              ...(prev.questionScores || []),
+              { question: input.questionNumber, score: input.score, feedback: input.feedback }
+            ]
           }));
-          return "Voice analyzed";
-        },
-      }),
-      assessAnswer: createRorkTool({
-        description: "Assess the quality, correctness, and depth of the answer",
-        zodSchema: z.object({
-          correctness: z.enum(["excellent", "good", "fair", "poor"]).describe("Answer correctness level"),
-          depth: z.string().describe("Depth of understanding and knowledge shown"),
-          relevance: z.string().describe("How relevant and on-topic the answer was"),
-          feedback: z.string().describe("Detailed feedback on the answer quality"),
-          score: z.number().min(1).max(10).describe("Score out of 10 for answer quality"),
-        }),
-        execute(input) {
-          setAnalysisResults(prev => ({ 
-            ...prev, 
-            answerQuality: `${input.correctness} (${input.score}/10): ${input.depth}. Relevance: ${input.relevance}. ${input.feedback}` 
-          }));
-          return "Answer assessed";
+          return `Answer ${input.questionNumber} evaluated`;
         },
       }),
       provideEvaluation: createRorkTool({
-        description: "Provide comprehensive evaluation with strengths, weaknesses, and recommendations",
+        description: "Provide comprehensive final evaluation after all questions",
         zodSchema: z.object({
-          strengths: z.array(z.string()).describe("List of candidate's strengths demonstrated"),
+          strengths: z.array(z.string()).describe("List of candidate's strengths"),
           weaknesses: z.array(z.string()).describe("List of areas needing improvement"),
-          recommendations: z.array(z.string()).describe("Specific recommendations for improvement"),
-          overallScore: z.number().min(1).max(100).describe("Overall interview score out of 100"),
+          recommendations: z.array(z.string()).describe("Specific recommendations"),
+          overallScore: z.number().min(1).max(100).describe("Overall score out of 100"),
         }),
         execute(input) {
-          setEvaluation({
+          setEvaluation(prev => ({
+            ...prev,
             strengths: input.strengths,
             weaknesses: input.weaknesses,
             recommendations: input.recommendations,
             overallScore: input.overallScore,
-          });
-          return "Evaluation completed";
+          }));
+          setIsInterviewEnded(true);
+          return "Final evaluation completed";
         },
       }),
     },
   });
 
-  useEffect(() => {
-    if (scrollViewRef.current && messages.length > 0) {
-      setTimeout(() => {
-        scrollViewRef.current?.scrollToEnd({ animated: true });
-      }, 100);
-    }
-  }, [messages]);
+  const animateSlide = useCallback(() => {
+    Animated.sequence([
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 1,
+        duration: 0,
+        useNativeDriver: true,
+      }),
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]),
+    ]).start();
+  }, [fadeAnim, slideAnim]);
 
   const requestPermissions = async () => {
     await requestCameraPermission();
@@ -170,42 +190,40 @@ export default function TeacherInterview() {
     
     const languageName = LANGUAGES.find(l => l.id === interviewLanguage)?.name || 'English';
     
-    const systemPrompt = `You are an advanced AI interviewer for professional assessment in ShikshaSetu. Conduct a comprehensive interview ${contextInfo}.
+    const systemPrompt = `You are an AI interviewer for ShikshaSetu conducting a professional interview ${contextInfo}.
 
 Interview Language: ${languageName}
 Conduct the ENTIRE interview in ${languageName} language.
 
-Your responsibilities:
-1. Ask 5-7 in-depth professional questions in ${languageName} language
-2. Use the recordExpression tool after each answer to analyze facial expressions and body language
-3. Use the analyzeVoice tool after each answer to assess voice confidence, clarity, and communication
-4. Use the assessAnswer tool after each answer to evaluate answer quality, correctness, and depth
-5. Provide immediate feedback after each answer
-6. At the end, use the provideEvaluation tool to provide comprehensive feedback including:
-   - Detailed strengths demonstrated during the interview
-   - Areas for improvement and weaknesses
-   - Specific, actionable recommendations
-   - Overall score out of 100
+IMPORTANT INSTRUCTIONS:
+1. You will ask exactly 5 questions, one at a time
+2. Use the askQuestion tool to present each question - this will display it as a slide
+3. After the candidate answers (via text, voice, or video), evaluate using evaluateAnswer tool
+4. Then immediately ask the next question using askQuestion tool
+5. After question 5 is answered, provide final evaluation using provideEvaluation tool
 
-Assessment Criteria:
-- Content Knowledge & Expertise (30%)
-- Communication Skills (25%)
-- Confidence & Professionalism (20%)
-- Problem-solving Ability (15%)
-- Body Language & Presentation (10%)
+Question Format:
+- Mix question types: technical knowledge, problem-solving, situational, conceptual
+- Make questions progressively challenging
+- Keep questions clear and concise
 
-Start by greeting the interviewee in ${languageName} and explaining the interview process, then ask your first question. After each answer, use all three analysis tools (recordExpression, analyzeVoice, assessAnswer) before proceeding. At the end, provide comprehensive evaluation using provideEvaluation tool.`;
+Start now by greeting briefly in ${languageName} and then immediately use askQuestion tool to ask Question 1.`;
 
     setHasStarted(true);
+    setAnswers([]);
+    setQuestions([]);
+    setCurrentQuestionIndex(0);
+    
     try {
-      await startRecording();
+      await startVideoRecording();
     } catch (err) {
-      console.error('Failed to start recording:', err);
+      console.error('Failed to start video recording:', err);
     }
+    
     sendMessage(systemPrompt);
   };
 
-  const startRecording = async () => {
+  const startVideoRecording = async () => {
     try {
       if (Platform.OS !== 'web') {
         await Audio.setAudioModeAsync({
@@ -239,40 +257,158 @@ Start by greeting the interviewee in ${languageName} and explaining the intervie
       }
       setIsRecording(true);
     } catch (err) {
-      console.error('Failed to start recording', err);
+      console.error('Failed to start video recording', err);
     }
   };
 
-  const stopRecording = async () => {
+  const stopVideoRecording = async () => {
     if (recording && Platform.OS !== 'web') {
       await recording.stopAndUnloadAsync();
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: false,
       });
-      const uri = recording.getURI();
-      console.log('Recording stopped and stored at', uri);
       setRecording(null);
     }
     setIsRecording(false);
   };
 
-  const handleSend = () => {
-    if (inputText.trim()) {
-      sendMessage(inputText);
-      setInputText('');
+  const startVoiceRecording = async () => {
+    try {
+      if (Platform.OS !== 'web') {
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: true,
+          playsInSilentModeIOS: true,
+        });
+        
+        const { recording: newRecording } = await Audio.Recording.createAsync({
+          android: {
+            extension: '.m4a',
+            outputFormat: Audio.RecordingOptionsPresets.HIGH_QUALITY.android.outputFormat,
+            audioEncoder: Audio.RecordingOptionsPresets.HIGH_QUALITY.android.audioEncoder,
+            sampleRate: Audio.RecordingOptionsPresets.HIGH_QUALITY.android.sampleRate,
+            numberOfChannels: Audio.RecordingOptionsPresets.HIGH_QUALITY.android.numberOfChannels,
+            bitRate: Audio.RecordingOptionsPresets.HIGH_QUALITY.android.bitRate,
+          },
+          ios: {
+            extension: '.wav',
+            outputFormat: Audio.IOSOutputFormat.LINEARPCM,
+            audioQuality: Audio.IOSAudioQuality.HIGH,
+            sampleRate: 44100,
+            numberOfChannels: 2,
+            bitRate: 128000,
+            linearPCMBitDepth: 16,
+            linearPCMIsBigEndian: false,
+            linearPCMIsFloat: false,
+          },
+          web: {},
+        });
+        setVoiceRecording(newRecording);
+        setIsVoiceRecording(true);
+      } else {
+        setIsVoiceRecording(true);
+      }
+    } catch (err) {
+      console.error('Failed to start voice recording:', err);
+    }
+  };
+
+  const stopVoiceRecordingAndTranscribe = async () => {
+    if (!voiceRecording && Platform.OS !== 'web') {
+      setIsVoiceRecording(false);
+      return;
+    }
+
+    setIsTranscribing(true);
+    
+    try {
+      if (Platform.OS !== 'web' && voiceRecording) {
+        await voiceRecording.stopAndUnloadAsync();
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: false,
+        });
+        
+        const uri = voiceRecording.getURI();
+        if (uri) {
+          const uriParts = uri.split('.');
+          const fileType = uriParts[uriParts.length - 1];
+          
+          const formData = new FormData();
+          const audioFile = {
+            uri,
+            name: `recording.${fileType}`,
+            type: `audio/${fileType}`,
+          };
+          formData.append('audio', audioFile as unknown as Blob);
+          
+          const response = await fetch('https://toolkit.rork.com/stt/transcribe/', {
+            method: 'POST',
+            body: formData,
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            if (data.text) {
+              setInputText(prev => prev ? `${prev} ${data.text}` : data.text);
+            }
+          }
+        }
+        setVoiceRecording(null);
+      } else {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    } catch (err) {
+      console.error('Failed to transcribe voice:', err);
+    } finally {
+      setIsVoiceRecording(false);
+      setIsTranscribing(false);
+    }
+  };
+
+  const handleSubmitAnswer = async () => {
+    const currentAnswer = {
+      text: inputText.trim(),
+      voice: '',
+      hasVideo: isRecording,
+    };
+    
+    if (!currentAnswer.text) {
+      return;
+    }
+    
+    setAnswers(prev => {
+      const newAnswers = [...prev];
+      newAnswers[currentQuestionIndex] = currentAnswer;
+      return newAnswers;
+    });
+    
+    const answerMessage = `Answer for Question ${currentQuestionIndex + 1}: ${currentAnswer.text}${currentAnswer.hasVideo ? ' (with video expression recorded)' : ''}`;
+    
+    setInputText('');
+    
+    if (currentQuestionIndex >= MAX_QUESTIONS - 1) {
+      sendMessage(`${answerMessage}\n\nThis was the final answer. Please evaluate this answer using evaluateAnswer tool, then provide the comprehensive final evaluation using provideEvaluation tool with overall score, strengths, weaknesses, and recommendations.`);
+    } else {
+      sendMessage(`${answerMessage}\n\nPlease evaluate this answer briefly using evaluateAnswer tool, then immediately ask the next question (Question ${currentQuestionIndex + 2}) using askQuestion tool.`);
     }
   };
 
   const handleEndInterview = async () => {
-    await stopRecording();
+    await stopVideoRecording();
     
-    if (evaluation.strengths.length === 0) {
-      await sendMessage('The interview has ended. Please provide comprehensive evaluation now using the provideEvaluation tool with detailed strengths, weaknesses, recommendations, and overall score based on all answers given. This is mandatory - provide the evaluation immediately.');
+    if (evaluation.overallScore) {
+      setIsInterviewEnded(true);
+      return;
     }
+    
+    const answeredCount = answers.filter(a => a?.text).length;
+    sendMessage(`Interview ended early after ${answeredCount} questions. Please provide comprehensive final evaluation using provideEvaluation tool based on the answers given so far. Include overall score, strengths, weaknesses, and recommendations.`);
   };
 
   const canStart = (interviewTopic === 'subject' ? (selectedChapter && selectedSubject) : true) && 
                    cameraPermission?.granted && hasAudioPermission;
+
+  const currentQuestion = questions[currentQuestionIndex] || '';
+  const progressPercentage = ((currentQuestionIndex + 1) / MAX_QUESTIONS) * 100;
 
   if (!isPremium) {
     return (
@@ -317,10 +453,6 @@ Start by greeting the interviewee in ${languageName} and explaining the intervie
                 <Globe size={20} color="#fbbf24" />
                 <Text style={styles.premiumFeatureText}>Multi-language support</Text>
               </View>
-              <View style={styles.premiumFeatureItem}>
-                <Sparkles size={20} color="#fbbf24" />
-                <Text style={styles.premiumFeatureText}>Comprehensive performance report</Text>
-              </View>
             </View>
 
             <TouchableOpacity
@@ -331,6 +463,103 @@ Start by greeting the interviewee in ${languageName} and explaining the intervie
             </TouchableOpacity>
           </ScrollView>
         </LinearGradient>
+      </View>
+    );
+  }
+
+  if (isInterviewEnded && evaluation.overallScore) {
+    return (
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+            <ChevronLeft size={24} color="#1e293b" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Interview Results</Text>
+          <View style={styles.backButton} />
+        </View>
+
+        <ScrollView
+          style={styles.content}
+          contentContainerStyle={[styles.resultsContainer, { paddingBottom: insets.bottom + 20 }]}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.scoreCard}>
+            <Text style={styles.scoreLabel}>Overall Score</Text>
+            <View style={styles.scoreCircle}>
+              <Text style={styles.scoreValue}>{evaluation.overallScore}</Text>
+              <Text style={styles.scoreMax}>/100</Text>
+            </View>
+            <Text style={styles.scoreGrade}>
+              {evaluation.overallScore >= 80 ? 'Excellent' : 
+               evaluation.overallScore >= 60 ? 'Good' : 
+               evaluation.overallScore >= 40 ? 'Fair' : 'Needs Improvement'}
+            </Text>
+          </View>
+
+          {evaluation.questionScores && evaluation.questionScores.length > 0 && (
+            <View style={styles.questionScoresCard}>
+              <Text style={styles.sectionTitle}>Question-wise Performance</Text>
+              {evaluation.questionScores.map((qs, idx) => (
+                <View key={idx} style={styles.questionScoreItem}>
+                  <View style={styles.questionScoreHeader}>
+                    <Text style={styles.questionScoreNumber}>Q{qs.question}</Text>
+                    <View style={styles.questionScoreBadge}>
+                      <Text style={styles.questionScoreValue}>{qs.score}/10</Text>
+                    </View>
+                  </View>
+                  <Text style={styles.questionScoreFeedback}>{qs.feedback}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+
+          <View style={styles.evaluationSection}>
+            <View style={styles.evaluationCard}>
+              <Text style={styles.evaluationTitle}>💪 Strengths</Text>
+              {evaluation.strengths.map((item, idx) => (
+                <View key={idx} style={styles.evaluationItem}>
+                  <CheckCircle size={16} color="#10b981" />
+                  <Text style={styles.evaluationText}>{item}</Text>
+                </View>
+              ))}
+            </View>
+
+            <View style={[styles.evaluationCard, styles.weaknessCard]}>
+              <Text style={styles.evaluationTitle}>⚠️ Areas to Improve</Text>
+              {evaluation.weaknesses.map((item, idx) => (
+                <View key={idx} style={styles.evaluationItem}>
+                  <View style={styles.bulletPoint} />
+                  <Text style={styles.evaluationText}>{item}</Text>
+                </View>
+              ))}
+            </View>
+
+            <View style={[styles.evaluationCard, styles.recommendationCard]}>
+              <Text style={styles.evaluationTitle}>💡 Recommendations</Text>
+              {evaluation.recommendations.map((item, idx) => (
+                <View key={idx} style={styles.evaluationItem}>
+                  <ChevronRight size={16} color="#3b82f6" />
+                  <Text style={styles.evaluationText}>{item}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+
+          <TouchableOpacity
+            style={styles.retryButton}
+            onPress={() => {
+              setHasStarted(false);
+              setIsInterviewEnded(false);
+              setEvaluation({ strengths: [], weaknesses: [], recommendations: [], questionScores: [] });
+              setAnswers([]);
+              setQuestions([]);
+              setCurrentQuestionIndex(0);
+              setMessages([]);
+            }}
+          >
+            <Text style={styles.retryButtonText}>Start New Interview</Text>
+          </TouchableOpacity>
+        </ScrollView>
       </View>
     );
   }
@@ -354,15 +583,13 @@ Start by greeting the interviewee in ${languageName} and explaining the intervie
           <View style={styles.infoCard}>
             <View style={styles.infoHeader}>
               <Camera size={40} color="#f59e0b" />
-              <Text style={styles.infoTitle}>Professional AI Interview</Text>
+              <Text style={styles.infoTitle}>AI Interview</Text>
             </View>
             <Text style={styles.infoText}>
-              Comprehensive assessment with:
-              {"\n"}• Multi-language interview support
-              {"\n"}• Live camera for expression analysis
-              {"\n"}• Voice recording for confidence assessment
-              {"\n"}• AI-generated questions on any topic
-              {"\n"}• Detailed evaluation with strengths, weaknesses, and recommendations
+              {"\n"}• 5 Questions presented as slides
+              {"\n"}• Answer via Text, Voice, or Video
+              {"\n"}• Real-time expression analysis
+              {"\n"}• Comprehensive AI evaluation
             </Text>
           </View>
 
@@ -527,157 +754,153 @@ Start by greeting the interviewee in ${languageName} and explaining the intervie
         </ScrollView>
       ) : (
         <View style={styles.interviewContainer}>
-          <View style={styles.cameraContainer}>
-            {Platform.OS !== 'web' ? (
-              <CameraView
-                style={styles.camera}
-                facing="front"
-              />
-            ) : (
-              <View style={[styles.camera, styles.cameraPlaceholder]}>
-                <Camera size={48} color="#94a3b8" />
-                <Text style={styles.cameraPlaceholderText}>
-                  Camera preview (web mode)
-                </Text>
-              </View>
-            )}
-            
-            {isRecording && (
-              <View style={styles.recordingIndicator}>
-                <View style={styles.recordingDot} />
-                <Text style={styles.recordingText}>Recording</Text>
-              </View>
-            )}
+          <View style={styles.progressContainer}>
+            <View style={styles.progressHeader}>
+              <Text style={styles.progressText}>Question {currentQuestionIndex + 1} of {MAX_QUESTIONS}</Text>
+              <TouchableOpacity style={styles.endButtonSmall} onPress={handleEndInterview}>
+                <Text style={styles.endButtonSmallText}>End Interview</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.progressBar}>
+              <View style={[styles.progressFill, { width: `${progressPercentage}%` }]} />
+            </View>
           </View>
 
-          <ScrollView
-            ref={scrollViewRef}
-            style={styles.messagesContainer}
-            contentContainerStyle={[styles.messagesContent, { paddingBottom: 20 }]}
-            showsVerticalScrollIndicator={false}
-          >
-            {messages.map((message, index) => (
-              <View key={index} style={styles.messageWrapper}>
-                <View
-                  style={[
-                    styles.messageBubble,
-                    message.role === 'user' ? styles.userMessage : styles.aiMessage,
-                  ]}
+          <View style={styles.mainContent}>
+            <View style={styles.cameraSection}>
+              {Platform.OS !== 'web' ? (
+                <CameraView style={styles.camera} facing="front" />
+              ) : (
+                <View style={[styles.camera, styles.cameraPlaceholder]}>
+                  <Camera size={32} color="#94a3b8" />
+                  <Text style={styles.cameraPlaceholderText}>Camera</Text>
+                </View>
+              )}
+              {isRecording && (
+                <View style={styles.recordingIndicator}>
+                  <View style={styles.recordingDot} />
+                  <Text style={styles.recordingText}>REC</Text>
+                </View>
+              )}
+            </View>
+
+            <Animated.View 
+              style={[
+                styles.questionSlide,
+                {
+                  opacity: fadeAnim,
+                  transform: [{
+                    translateX: slideAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0, 50],
+                    }),
+                  }],
+                },
+              ]}
+            >
+              <View style={styles.questionBadge}>
+                <Text style={styles.questionBadgeText}>Question {currentQuestionIndex + 1}</Text>
+              </View>
+              <Text style={styles.questionText}>
+                {currentQuestion || 'Preparing your question...'}
+              </Text>
+            </Animated.View>
+
+            <View style={styles.inputMethodsContainer}>
+              <Text style={styles.inputMethodsTitle}>Answer using:</Text>
+              <View style={styles.inputMethodTabs}>
+                <TouchableOpacity
+                  style={[styles.inputMethodTab, activeInputMethod === 'text' && styles.inputMethodTabActive]}
+                  onPress={() => setActiveInputMethod('text')}
                 >
-                  {message.parts.map((part, partIndex) => {
-                    if (part.type === 'text') {
-                      return (
-                        <Text
-                          key={partIndex}
-                          style={[
-                            styles.messageText,
-                            message.role === 'user' ? styles.userMessageText : styles.aiMessageText,
-                          ]}
-                        >
-                          {part.text}
-                        </Text>
-                      );
-                    }
-                    if (part.type === 'tool') {
-                      if (part.state === 'output-available') {
-                        return (
-                          <View key={partIndex} style={styles.toolOutput}>
-                            <Text style={styles.toolOutputLabel}>
-                              {part.toolName === 'recordExpression' && '📹 Expression Analysis'}
-                              {part.toolName === 'analyzeVoice' && '🎤 Voice Analysis'}
-                              {part.toolName === 'assessAnswer' && '✅ Answer Assessment'}
-                              {part.toolName === 'provideEvaluation' && '🎯 Final Evaluation'}
-                            </Text>
-                          </View>
-                        );
-                      }
-                    }
-                    return null;
-                  })}
-                </View>
+                  <Type size={18} color={activeInputMethod === 'text' ? '#ffffff' : '#64748b'} />
+                  <Text style={[styles.inputMethodTabText, activeInputMethod === 'text' && styles.inputMethodTabTextActive]}>Text</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.inputMethodTab, activeInputMethod === 'voice' && styles.inputMethodTabActive]}
+                  onPress={() => setActiveInputMethod('voice')}
+                >
+                  <Mic size={18} color={activeInputMethod === 'voice' ? '#ffffff' : '#64748b'} />
+                  <Text style={[styles.inputMethodTabText, activeInputMethod === 'voice' && styles.inputMethodTabTextActive]}>Voice</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.inputMethodTab, activeInputMethod === 'video' && styles.inputMethodTabActive]}
+                  onPress={() => setActiveInputMethod('video')}
+                >
+                  <Video size={18} color={activeInputMethod === 'video' ? '#ffffff' : '#64748b'} />
+                  <Text style={[styles.inputMethodTabText, activeInputMethod === 'video' && styles.inputMethodTabTextActive]}>Video</Text>
+                </TouchableOpacity>
               </View>
-            ))}
 
-            {(analysisResults.expression || analysisResults.voiceConfidence || analysisResults.answerQuality) && (
-              <View style={styles.analysisCard}>
-                <Text style={styles.analysisTitle}>Real-time Analysis</Text>
-                {analysisResults.expression && (
-                  <View style={styles.analysisItem}>
-                    <Text style={styles.analysisLabel}>📹 Expression:</Text>
-                    <Text style={styles.analysisValue}>{analysisResults.expression}</Text>
-                  </View>
-                )}
-                {analysisResults.voiceConfidence && (
-                  <View style={styles.analysisItem}>
-                    <Text style={styles.analysisLabel}>🎤 Voice:</Text>
-                    <Text style={styles.analysisValue}>{analysisResults.voiceConfidence}</Text>
-                  </View>
-                )}
-                {analysisResults.answerQuality && (
-                  <View style={styles.analysisItem}>
-                    <Text style={styles.analysisLabel}>✅ Answer Quality:</Text>
-                    <Text style={styles.analysisValue}>{analysisResults.answerQuality}</Text>
-                  </View>
-                )}
-              </View>
-            )}
-
-            {evaluation.strengths.length > 0 && (
-              <View style={styles.evaluationCard}>
-                <Text style={styles.evaluationTitle}>📊 Final Evaluation</Text>
-                {evaluation.overallScore && (
-                  <View style={styles.scoreContainer}>
-                    <Text style={styles.scoreLabel}>Overall Score:</Text>
-                    <Text style={styles.scoreValue}>{evaluation.overallScore}/100</Text>
-                  </View>
-                )}
-                
-                <View style={styles.evaluationSection}>
-                  <Text style={styles.evaluationSectionTitle}>💪 Strengths:</Text>
-                  {evaluation.strengths.map((strength, idx) => (
-                    <Text key={idx} style={styles.evaluationItem}>• {strength}</Text>
-                  ))}
+              {activeInputMethod === 'voice' && (
+                <View style={styles.voiceInputContainer}>
+                  <TouchableOpacity
+                    style={[styles.voiceButton, isVoiceRecording && styles.voiceButtonActive]}
+                    onPress={isVoiceRecording ? stopVoiceRecordingAndTranscribe : startVoiceRecording}
+                    disabled={isTranscribing}
+                  >
+                    {isTranscribing ? (
+                      <Text style={styles.voiceButtonText}>Transcribing...</Text>
+                    ) : isVoiceRecording ? (
+                      <>
+                        <MicOff size={24} color="#ffffff" />
+                        <Text style={styles.voiceButtonText}>Stop & Transcribe</Text>
+                      </>
+                    ) : (
+                      <>
+                        <Mic size={24} color="#ffffff" />
+                        <Text style={styles.voiceButtonText}>Start Speaking</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                  <Text style={styles.voiceHint}>Your speech will be converted to text</Text>
                 </View>
+              )}
 
-                <View style={styles.evaluationSection}>
-                  <Text style={styles.evaluationSectionTitle}>⚠️ Areas for Improvement:</Text>
-                  {evaluation.weaknesses.map((weakness, idx) => (
-                    <Text key={idx} style={styles.evaluationItem}>• {weakness}</Text>
-                  ))}
+              {activeInputMethod === 'video' && (
+                <View style={styles.videoInputContainer}>
+                  <View style={styles.videoStatusCard}>
+                    <Video size={24} color="#10b981" />
+                    <Text style={styles.videoStatusText}>
+                      {isRecording ? 'Video recording active - Your expressions are being captured' : 'Video paused'}
+                    </Text>
+                  </View>
+                  <Text style={styles.videoHint}>Type or speak your answer while video records your expressions</Text>
                 </View>
+              )}
+            </View>
+          </View>
 
-                <View style={styles.evaluationSection}>
-                  <Text style={styles.evaluationSectionTitle}>💡 Recommendations:</Text>
-                  {evaluation.recommendations.map((rec, idx) => (
-                    <Text key={idx} style={styles.evaluationItem}>• {rec}</Text>
-                  ))}
-                </View>
-              </View>
-            )}
-          </ScrollView>
-
-          <View style={[styles.inputContainer, { paddingBottom: insets.bottom || 20 }]}>
-            <TextInput
-              style={styles.input}
-              placeholder="Type your answer..."
-              placeholderTextColor="#94a3b8"
-              value={inputText}
-              onChangeText={setInputText}
-              multiline
-              maxLength={1000}
-            />
+          <View style={[styles.answerInputContainer, { paddingBottom: insets.bottom || 16 }]}>
+            <View style={styles.textInputRow}>
+              <TextInput
+                style={styles.answerInput}
+                placeholder="Type your answer here..."
+                placeholderTextColor="#94a3b8"
+                value={inputText}
+                onChangeText={setInputText}
+                multiline
+                maxLength={2000}
+              />
+              <TouchableOpacity
+                style={styles.quickVoiceButton}
+                onPress={isVoiceRecording ? stopVoiceRecordingAndTranscribe : startVoiceRecording}
+                disabled={isTranscribing}
+              >
+                {isVoiceRecording ? (
+                  <MicOff size={20} color="#ef4444" />
+                ) : (
+                  <Mic size={20} color="#64748b" />
+                )}
+              </TouchableOpacity>
+            </View>
             <TouchableOpacity
-              style={[styles.sendButton, !inputText.trim() && styles.sendButtonDisabled]}
-              onPress={handleSend}
+              style={[styles.submitButton, !inputText.trim() && styles.submitButtonDisabled]}
+              onPress={handleSubmitAnswer}
               disabled={!inputText.trim()}
             >
               <Send size={20} color="#ffffff" />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.endButton}
-              onPress={handleEndInterview}
-            >
-              <Text style={styles.endButtonText}>End</Text>
+              <Text style={styles.submitButtonText}>Submit Answer</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -721,7 +944,7 @@ const styles = StyleSheet.create({
   infoCard: {
     backgroundColor: '#fff7ed',
     borderRadius: 16,
-    padding: 24,
+    padding: 20,
     marginBottom: 24,
     borderWidth: 1,
     borderColor: '#fed7aa',
@@ -730,7 +953,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    marginBottom: 12,
+    marginBottom: 8,
   },
   infoTitle: {
     fontSize: 20,
@@ -738,9 +961,9 @@ const styles = StyleSheet.create({
     color: '#92400e',
   },
   infoText: {
-    fontSize: 15,
+    fontSize: 14,
     color: '#92400e',
-    lineHeight: 24,
+    lineHeight: 22,
   },
   permissionWarning: {
     backgroundColor: '#fef2f2',
@@ -950,224 +1173,458 @@ const styles = StyleSheet.create({
   interviewContainer: {
     flex: 1,
   },
-  cameraContainer: {
-    position: 'relative',
-    width: '100%',
-    height: 200,
-    backgroundColor: '#000000',
+  progressContainer: {
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    backgroundColor: '#ffffff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
+  },
+  progressHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  progressText: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: '#64748b',
+  },
+  endButtonSmall: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    backgroundColor: '#fee2e2',
+  },
+  endButtonSmallText: {
+    fontSize: 12,
+    fontWeight: '600' as const,
+    color: '#dc2626',
+  },
+  progressBar: {
+    height: 6,
+    backgroundColor: '#e2e8f0',
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: '#f59e0b',
+    borderRadius: 3,
+  },
+  mainContent: {
+    flex: 1,
+    padding: 16,
+  },
+  cameraSection: {
+    width: 120,
+    height: 160,
+    borderRadius: 12,
+    overflow: 'hidden',
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    zIndex: 10,
+    borderWidth: 3,
+    borderColor: '#ffffff',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 4,
+      },
+      web: {
+        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
+      },
+    }),
   },
   camera: {
     width: '100%',
     height: '100%',
+    backgroundColor: '#1e293b',
   },
   cameraPlaceholder: {
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 12,
   },
   cameraPlaceholderText: {
-    fontSize: 14,
+    fontSize: 10,
     color: '#94a3b8',
+    marginTop: 4,
   },
   recordingIndicator: {
     position: 'absolute',
-    top: 12,
-    right: 12,
+    top: 8,
+    left: 8,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 16,
+    gap: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 10,
     backgroundColor: 'rgba(239, 68, 68, 0.9)',
   },
   recordingDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
     backgroundColor: '#ffffff',
   },
   recordingText: {
-    fontSize: 12,
-    fontWeight: '600' as const,
+    fontSize: 9,
+    fontWeight: '700' as const,
     color: '#ffffff',
   },
-  messagesContainer: {
-    flex: 1,
-  },
-  messagesContent: {
-    padding: 16,
-  },
-  messageWrapper: {
-    marginBottom: 12,
-  },
-  messageBubble: {
-    maxWidth: '85%',
-    padding: 14,
-    borderRadius: 14,
-  },
-  userMessage: {
-    backgroundColor: '#f59e0b',
-    alignSelf: 'flex-end',
-    borderBottomRightRadius: 4,
-  },
-  aiMessage: {
+  questionSlide: {
     backgroundColor: '#ffffff',
-    alignSelf: 'flex-start',
-    borderBottomLeftRadius: 4,
+    borderRadius: 20,
+    padding: 24,
+    marginRight: 140,
+    marginBottom: 20,
+    minHeight: 180,
+    justifyContent: 'center',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
+        shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.1,
-        shadowRadius: 3,
+        shadowRadius: 12,
       },
       android: {
-        elevation: 2,
+        elevation: 4,
       },
       web: {
-        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+        boxShadow: '0 4px 16px rgba(0, 0, 0, 0.1)',
       },
     }),
   },
-  messageText: {
-    fontSize: 15,
-    lineHeight: 22,
+  questionBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#fef3c7',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    marginBottom: 16,
   },
-  userMessageText: {
-    color: '#ffffff',
-  },
-  aiMessageText: {
-    color: '#1e293b',
-  },
-  toolOutput: {
-    marginTop: 8,
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#e2e8f0',
-  },
-  toolOutputLabel: {
+  questionBadgeText: {
     fontSize: 12,
+    fontWeight: '700' as const,
+    color: '#92400e',
+  },
+  questionText: {
+    fontSize: 18,
+    fontWeight: '600' as const,
+    color: '#1e293b',
+    lineHeight: 28,
+  },
+  inputMethodsContainer: {
+    flex: 1,
+  },
+  inputMethodsTitle: {
+    fontSize: 14,
     fontWeight: '600' as const,
     color: '#64748b',
-  },
-  analysisCard: {
-    backgroundColor: '#eff6ff',
-    borderRadius: 12,
-    padding: 16,
-    marginTop: 12,
-    borderLeftWidth: 4,
-    borderLeftColor: '#3b82f6',
-  },
-  analysisTitle: {
-    fontSize: 16,
-    fontWeight: '700' as const,
-    color: '#1e40af',
     marginBottom: 12,
   },
-  analysisItem: {
-    marginBottom: 8,
-  },
-  analysisLabel: {
-    fontSize: 13,
-    fontWeight: '600' as const,
-    color: '#3b82f6',
-    marginBottom: 2,
-  },
-  analysisValue: {
-    fontSize: 14,
-    color: '#1e40af',
-    lineHeight: 20,
-  },
-  evaluationCard: {
-    backgroundColor: '#f0fdf4',
-    borderRadius: 16,
-    padding: 20,
-    marginTop: 16,
-    borderLeftWidth: 4,
-    borderLeftColor: '#10b981',
-  },
-  evaluationTitle: {
-    fontSize: 18,
-    fontWeight: '700' as const,
-    color: '#047857',
+  inputMethodTabs: {
+    flexDirection: 'row',
+    gap: 8,
     marginBottom: 16,
   },
-  scoreContainer: {
+  inputMethodTab: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 12,
+    borderRadius: 10,
     backgroundColor: '#ffffff',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 16,
-  },
-  scoreLabel: {
-    fontSize: 16,
-    fontWeight: '600' as const,
-    color: '#047857',
-  },
-  scoreValue: {
-    fontSize: 32,
-    fontWeight: '700' as const,
-    color: '#10b981',
-  },
-  evaluationSection: {
-    marginBottom: 16,
-  },
-  evaluationSectionTitle: {
-    fontSize: 15,
-    fontWeight: '700' as const,
-    color: '#047857',
-    marginBottom: 8,
-  },
-  evaluationItem: {
-    fontSize: 14,
-    color: '#065f46',
-    lineHeight: 22,
-    marginBottom: 4,
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    padding: 12,
-    backgroundColor: '#ffffff',
-    borderTopWidth: 1,
-    borderTopColor: '#e2e8f0',
-    gap: 8,
-  },
-  input: {
-    flex: 1,
-    backgroundColor: '#f8fafc',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    fontSize: 15,
-    color: '#1e293b',
-    maxHeight: 80,
     borderWidth: 1,
     borderColor: '#e2e8f0',
   },
-  sendButton: {
+  inputMethodTabActive: {
+    backgroundColor: '#f59e0b',
+    borderColor: '#f59e0b',
+  },
+  inputMethodTabText: {
+    fontSize: 13,
+    fontWeight: '600' as const,
+    color: '#64748b',
+  },
+  inputMethodTabTextActive: {
+    color: '#ffffff',
+  },
+  voiceInputContainer: {
+    alignItems: 'center',
+    paddingVertical: 20,
+  },
+  voiceButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    borderRadius: 30,
+    backgroundColor: '#10b981',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#10b981',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 4,
+      },
+      web: {
+        boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
+      },
+    }),
+  },
+  voiceButtonActive: {
+    backgroundColor: '#ef4444',
+  },
+  voiceButtonText: {
+    fontSize: 16,
+    fontWeight: '600' as const,
+    color: '#ffffff',
+  },
+  voiceHint: {
+    fontSize: 12,
+    color: '#94a3b8',
+    marginTop: 12,
+  },
+  videoInputContainer: {
+    paddingVertical: 16,
+  },
+  videoStatusCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#ecfdf5',
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#a7f3d0',
+  },
+  videoStatusText: {
+    flex: 1,
+    fontSize: 14,
+    color: '#047857',
+    fontWeight: '500' as const,
+  },
+  videoHint: {
+    fontSize: 12,
+    color: '#94a3b8',
+    marginTop: 12,
+    textAlign: 'center',
+  },
+  answerInputContainer: {
+    padding: 16,
+    backgroundColor: '#ffffff',
+    borderTopWidth: 1,
+    borderTopColor: '#e2e8f0',
+    gap: 12,
+  },
+  textInputRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 8,
+  },
+  answerInput: {
+    flex: 1,
+    backgroundColor: '#f8fafc',
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 15,
+    color: '#1e293b',
+    maxHeight: 100,
+    minHeight: 50,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  quickVoiceButton: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#f59e0b',
+    backgroundColor: '#f1f5f9',
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
   },
-  sendButtonDisabled: {
+  submitButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: '#f59e0b',
+  },
+  submitButtonDisabled: {
     backgroundColor: '#cbd5e1',
   },
-  endButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 12,
-    backgroundColor: '#ef4444',
-    justifyContent: 'center',
+  submitButtonText: {
+    fontSize: 16,
+    fontWeight: '600' as const,
+    color: '#ffffff',
   },
-  endButtonText: {
+  resultsContainer: {
+    padding: 20,
+  },
+  scoreCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 24,
+    padding: 32,
+    alignItems: 'center',
+    marginBottom: 24,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 12,
+      },
+      android: {
+        elevation: 4,
+      },
+      web: {
+        boxShadow: '0 4px 16px rgba(0, 0, 0, 0.1)',
+      },
+    }),
+  },
+  scoreLabel: {
     fontSize: 14,
     fontWeight: '600' as const,
+    color: '#64748b',
+    marginBottom: 16,
+  },
+  scoreCircle: {
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: '#fef3c7',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+    borderWidth: 6,
+    borderColor: '#f59e0b',
+  },
+  scoreValue: {
+    fontSize: 48,
+    fontWeight: '800' as const,
+    color: '#92400e',
+  },
+  scoreMax: {
+    fontSize: 16,
+    fontWeight: '600' as const,
+    color: '#b45309',
+  },
+  scoreGrade: {
+    fontSize: 18,
+    fontWeight: '700' as const,
+    color: '#f59e0b',
+  },
+  questionScoresCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 20,
+  },
+  questionScoreItem: {
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+  },
+  questionScoreHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  questionScoreNumber: {
+    fontSize: 14,
+    fontWeight: '700' as const,
+    color: '#1e293b',
+  },
+  questionScoreBadge: {
+    backgroundColor: '#fef3c7',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  questionScoreValue: {
+    fontSize: 13,
+    fontWeight: '700' as const,
+    color: '#92400e',
+  },
+  questionScoreFeedback: {
+    fontSize: 13,
+    color: '#64748b',
+    lineHeight: 20,
+  },
+  evaluationSection: {
+    gap: 16,
+  },
+  evaluationCard: {
+    backgroundColor: '#ecfdf5',
+    borderRadius: 16,
+    padding: 20,
+    borderLeftWidth: 4,
+    borderLeftColor: '#10b981',
+  },
+  weaknessCard: {
+    backgroundColor: '#fef2f2',
+    borderLeftColor: '#ef4444',
+  },
+  recommendationCard: {
+    backgroundColor: '#eff6ff',
+    borderLeftColor: '#3b82f6',
+  },
+  evaluationTitle: {
+    fontSize: 16,
+    fontWeight: '700' as const,
+    color: '#1e293b',
+    marginBottom: 12,
+  },
+  evaluationItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    marginBottom: 8,
+  },
+  bulletPoint: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#ef4444',
+    marginTop: 6,
+  },
+  evaluationText: {
+    flex: 1,
+    fontSize: 14,
+    color: '#374151',
+    lineHeight: 22,
+  },
+  retryButton: {
+    marginTop: 24,
+    paddingVertical: 16,
+    borderRadius: 12,
+    backgroundColor: '#f59e0b',
+    alignItems: 'center',
+  },
+  retryButtonText: {
+    fontSize: 16,
+    fontWeight: '700' as const,
     color: '#ffffff',
   },
   boardButtons: {
