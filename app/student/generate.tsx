@@ -327,24 +327,74 @@ IMPORTANT REQUIREMENTS:
 
   const canGenerate = (selectedChapter || customTopic.trim().length > 0) && selectedSubject;
 
-  const handleTextToSpeech = async () => {
-    if (isSpeaking) {
-      await Speech.stop();
-      setIsSpeaking(false);
-    } else {
-      const textToSpeak = cleanMarkdown(generatedContent);
-      setIsSpeaking(true);
-      Speech.speak(textToSpeak, {
-        language: selectedLanguage === 'hindi' ? 'hi-IN' : 'en-US',
+  const speakChunks = async (text: string, language: string) => {
+    const MAX_CHUNK_SIZE = 3500;
+    const chunks: string[] = [];
+    
+    const sentences = text.split(/(?<=[.!?।]\s+)|(?<=[.!?।]$)/g).filter(s => s.trim());
+    let currentChunk = '';
+    
+    for (const sentence of sentences) {
+      if ((currentChunk + sentence).length > MAX_CHUNK_SIZE) {
+        if (currentChunk) {
+          chunks.push(currentChunk.trim());
+        }
+        if (sentence.length > MAX_CHUNK_SIZE) {
+          const words = sentence.split(' ');
+          currentChunk = '';
+          for (const word of words) {
+            if ((currentChunk + ' ' + word).length > MAX_CHUNK_SIZE) {
+              chunks.push(currentChunk.trim());
+              currentChunk = word;
+            } else {
+              currentChunk = currentChunk ? currentChunk + ' ' + word : word;
+            }
+          }
+        } else {
+          currentChunk = sentence;
+        }
+      } else {
+        currentChunk = currentChunk ? currentChunk + ' ' + sentence : sentence;
+      }
+    }
+    if (currentChunk.trim()) {
+      chunks.push(currentChunk.trim());
+    }
+    
+    const speakNextChunk = (index: number) => {
+      if (index >= chunks.length) {
+        setIsSpeaking(false);
+        return;
+      }
+      Speech.speak(chunks[index], {
+        language,
         pitch: 1.0,
         rate: 0.9,
-        onDone: () => setIsSpeaking(false),
+        onDone: () => speakNextChunk(index + 1),
         onStopped: () => setIsSpeaking(false),
         onError: () => {
           setIsSpeaking(false);
           Alert.alert('Error', 'Text-to-speech failed. Please try again.');
         },
       });
+    };
+    
+    speakNextChunk(0);
+  };
+
+  const handleTextToSpeech = async () => {
+    if (isSpeaking) {
+      await Speech.stop();
+      setIsSpeaking(false);
+    } else {
+      const textToSpeak = cleanMarkdown(generatedContent);
+      if (!textToSpeak.trim()) {
+        Alert.alert('Error', 'No content to read.');
+        return;
+      }
+      setIsSpeaking(true);
+      const language = selectedLanguage === 'hindi' ? 'hi-IN' : 'en-US';
+      speakChunks(textToSpeak, language);
     }
   };
 
