@@ -21,6 +21,7 @@ export default function ContentGenerator() {
   const [selectedGrade, setSelectedGrade] = useState<number>(6);
   const [selectedSubject, setSelectedSubject] = useState<string>('');
   const [selectedChapter, setSelectedChapter] = useState<string>('');
+  const [selectedChapters, setSelectedChapters] = useState<string[]>([]);
   const [contentType, setContentType] = useState<'notes' | 'summary' | 'worksheet' | 'mindmap' | 'questionpaper'>('notes');
   const [customTopic, setCustomTopic] = useState('');
   const [generatedContent, setGeneratedContent] = useState('');
@@ -30,6 +31,20 @@ export default function ContentGenerator() {
   const subjects = allSubjects.filter((s) => s.grade === selectedGrade);
   const chapters = subjects.find((s) => s.id === selectedSubject)?.chapters || [];
   const selectedChapterData = chapters.find((c) => c.id === selectedChapter);
+  const selectedChaptersData = chapters.filter((c) => selectedChapters.includes(c.id));
+
+  const toggleChapterSelection = (chapterId: string) => {
+    setSelectedChapters(prev => {
+      if (prev.includes(chapterId)) {
+        return prev.filter(id => id !== chapterId);
+      }
+      return [...prev, chapterId];
+    });
+    setSelectedChapter('');
+    setCustomTopic('');
+  };
+
+  const isMultiChapterMode = selectedBoard === 'ICSE' && contentType === 'questionpaper';
 
   const generateMutation = useMutation({
     mutationFn: async () => {
@@ -103,43 +118,117 @@ Create 15 questions in ${selectedLanguage} language:
 - 5 Long Answer/Problem Solving Questions
 Vary difficulty levels and include application-based questions.`;
       } else if (contentType === 'questionpaper') {
-        prompt = `Generate a comprehensive ICSE board format question paper for ${selectedBoard} Grade ${selectedGrade} ${subjectName}.
+        if (selectedBoard === 'ICSE') {
+          const chaptersForPaper = isMultiChapterMode && selectedChaptersData.length > 0 
+            ? selectedChaptersData.map(c => `${c.number}. ${c.title}`).join(', ')
+            : chapterInfo;
+          
+          prompt = `Generate a comprehensive ICSE Board format question paper for Class ${selectedGrade} ${subjectName}.
+
+Chapters Covered: ${chaptersForPaper}
+
+Detailed Syllabus Coverage:
+${chapterInfo}
+
+IMPORTANT - Generate in ${selectedLanguage} language following OFFICIAL ICSE BOARD EXAM PATTERN.
+
+CRITICAL - For all formulas:
+- Use plain text with Unicode (×, ÷, ², ³, √, π, Δ, θ) - NO LaTeX syntax
+
+══════════════════════════════════════════════════════════════
+                    ICSE BOARD EXAMINATION
+                        CLASS ${selectedGrade}
+                    SUBJECT: ${subjectName.toUpperCase()}
+══════════════════════════════════════════════════════════════
+
+Time: 2 Hours                                Maximum Marks: 80
+
+GENERAL INSTRUCTIONS:
+• Answers to this paper must be written on the paper provided separately.
+• You will NOT be allowed to write during the first 15 minutes. This time is to be spent in reading the question paper.
+• The time given at the head of this paper is the time allowed for writing the answers.
+• Attempt ALL questions from Section A and any FOUR questions from Section B.
+• The intended marks for questions or parts of questions are given in brackets [ ].
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                         SECTION A (40 Marks)
+                    (Attempt ALL questions)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+**Question 1** [20 marks]
+(a) to (j) - Short answer questions (2 marks each)
+
+[Generate 10 short objective/fill-in-the-blank/one-word answer/MCQ questions covering ALL selected chapters proportionally]
+
+**Question 2** [20 marks]
+(a) to (j) - Short structured questions (2 marks each)
+
+[Generate 10 questions requiring brief explanations, definitions, reasons, or short calculations from ALL selected chapters]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                         SECTION B (40 Marks)
+              (Attempt any FOUR questions from this Section)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+**Question 3** [10 marks]
+[Long answer question with parts (a), (b), (c) - covering first chapter topic]
+
+**Question 4** [10 marks]
+[Long answer question with parts (a), (b), (c) - covering second chapter topic]
+
+**Question 5** [10 marks]
+[Long answer question with parts (a), (b), (c) - covering third chapter topic]
+
+**Question 6** [10 marks]
+[Long answer question with parts (a), (b), (c) - covering fourth chapter topic or application-based]
+
+**Question 7** [10 marks]
+[Long answer question with parts (a), (b), (c) - numerical problems/diagram-based/practical applications]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+IMPORTANT REQUIREMENTS:
+1. Questions MUST cover ALL selected chapters proportionally
+2. Follow ICSE marking scheme strictly with marks in brackets []
+3. Include internal choices in Section B (OR option)
+4. Mix difficulty: Easy (30%), Medium (50%), Hard (20%)
+5. Include diagram-based questions where relevant [mark with "Draw a neat labeled diagram"]
+6. For Science subjects: Include numerical problems with proper steps
+7. For Mathematics: Show all working steps expected
+8. Provide complete ANSWER KEY with detailed solutions at the end`;
+        } else {
+          prompt = `Generate a comprehensive NCERT/CBSE board format question paper for Grade ${selectedGrade} ${subjectName}.
 Topic: ${chapterInfo}
 
-IMPORTANT QUESTION PAPER FORMAT:
-Create in ${selectedLanguage} language following ICSE board exam pattern.
+IMPORTANT FORMAT REQUIREMENTS:
+Generate in ${selectedLanguage} language following official CBSE board exam format.
 
-CRITICAL - For all mathematical formulas:
-- Use plain text with Unicode symbols (×, ÷, ², ³, √, π, Δ, etc.)
-- NO LaTeX syntax like \\[ \\] or $ $
-- Example: Area = πr², Volume = (4/3)πr³, Force = m × a
+CRITICAL - For all formulas:
+- Use plain text with Unicode (×, ÷, ², ³, √, π) - NO LaTeX
 
-STRUCTURE:
-**${selectedBoard} Board - Grade ${selectedGrade}**
-**Subject: ${subjectName}**
-**Time: 2 Hours | Maximum Marks: 80**
+Question Paper Structure:
 
-**SECTION A (20 Marks)**
-Multiple Choice Questions (10 questions × 2 marks)
+**SECTION A - Multiple Choice Questions (1 mark each)**
+[10 MCQs]
 
-**SECTION B (20 Marks)**
-Short Answer Questions (4 questions × 5 marks)
+**SECTION B - Very Short Answer Questions (2 marks each)**
+[5-6 questions requiring 2-3 sentence answers]
 
-**SECTION C (25 Marks)**
-Long Answer Questions (5 questions × 5 marks)
-Attempt any THREE questions
+**SECTION C - Short Answer Questions (3 marks each)**
+[4-5 questions requiring detailed explanations]
 
-**SECTION D (15 Marks)**
-Application/Problem-Solving Questions (3 questions × 5 marks)
+**SECTION D - Long Answer Questions (5 marks each)**
+[3-4 questions requiring comprehensive answers with diagrams/derivations]
 
-REQUIREMENTS:
-- Follow ICSE marking scheme strictly
-- Include proper question numbering
-- Add internal choices where applicable
-- Cover entire chapter scope
-- Mix difficulty levels (Easy 30%, Medium 50%, Hard 20%)
-- Include diagrams/tables where relevant (mention [Diagram Required])
-- Use proper ICSE terminology and format`;
+IMPORTANT:
+- Total marks: 80
+- Time: 3 hours
+- Follow official CBSE marking scheme
+- Include questions of varying difficulty
+- Cover all key concepts from the topic
+- Add instruction note at the beginning
+- Provide answer key at the end with detailed solutions`;
+        }
       } else {
         prompt = `Generate a colorful and comprehensive mind map for ${selectedBoard} Grade ${selectedGrade} ${subjectName}.
 Topic: ${chapterInfo}
@@ -325,7 +414,9 @@ IMPORTANT REQUIREMENTS:
     { id: 'questionpaper' as const, label: 'Question Paper', icon: FileText, color: '#ef4444' },
   ];
 
-  const canGenerate = (selectedChapter || customTopic.trim().length > 0) && selectedSubject;
+  const canGenerate = isMultiChapterMode 
+    ? selectedChapters.length > 0 && selectedSubject
+    : (selectedChapter || customTopic.trim().length > 0) && selectedSubject;
 
   const speakChunks = async (text: string, language: string) => {
     const MAX_CHUNK_SIZE = 3500;
@@ -629,41 +720,88 @@ IMPORTANT REQUIREMENTS:
 
         {selectedSubject && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Select Chapter (or enter custom topic)</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.optionScroll}>
-              {chapters.map((chapter) => (
-                <TouchableOpacity
-                  key={chapter.id}
-                  style={[styles.chapterButton, selectedChapter === chapter.id && styles.chapterButtonActive]}
-                  onPress={() => {
-                    setSelectedChapter(chapter.id);
-                    setCustomTopic('');
+            {isMultiChapterMode ? (
+              <>
+                <Text style={styles.sectionTitle}>Select Chapters for Question Paper</Text>
+                <Text style={styles.sectionSubtitle}>
+                  Select multiple chapters to create a comprehensive ICSE board exam paper
+                </Text>
+                {selectedChapters.length > 0 && (
+                  <View style={styles.selectedChaptersInfo}>
+                    <Text style={styles.selectedChaptersText}>
+                      {selectedChapters.length} chapter{selectedChapters.length > 1 ? 's' : ''} selected
+                    </Text>
+                  </View>
+                )}
+                <View style={styles.multiChapterGrid}>
+                  {chapters.map((chapter) => {
+                    const isSelected = selectedChapters.includes(chapter.id);
+                    return (
+                      <TouchableOpacity
+                        key={chapter.id}
+                        style={[styles.multiChapterButton, isSelected && styles.multiChapterButtonActive]}
+                        onPress={() => toggleChapterSelection(chapter.id)}
+                      >
+                        <View style={[styles.checkboxContainer, isSelected && styles.checkboxChecked]}>
+                          {isSelected && <Text style={styles.checkmark}>✓</Text>}
+                        </View>
+                        <View style={styles.chapterInfo}>
+                          <Text style={[styles.chapterNumber, isSelected && styles.chapterNumberActive]}>
+                            Ch {chapter.number}
+                          </Text>
+                          <Text
+                            style={[styles.multiChapterTitle, isSelected && styles.multiChapterTitleActive]}
+                            numberOfLines={2}
+                          >
+                            {chapter.title}
+                          </Text>
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </>
+            ) : (
+              <>
+                <Text style={styles.sectionTitle}>Select Chapter (or enter custom topic)</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.optionScroll}>
+                  {chapters.map((chapter) => (
+                    <TouchableOpacity
+                      key={chapter.id}
+                      style={[styles.chapterButton, selectedChapter === chapter.id && styles.chapterButtonActive]}
+                      onPress={() => {
+                        setSelectedChapter(chapter.id);
+                        setCustomTopic('');
+                        setSelectedChapters([]);
+                      }}
+                    >
+                      <Text style={[styles.chapterNumber, selectedChapter === chapter.id && styles.chapterNumberActive]}>
+                        {chapter.number}
+                      </Text>
+                      <Text
+                        style={[styles.chapterTitle, selectedChapter === chapter.id && styles.chapterTitleActive]}
+                        numberOfLines={2}
+                      >
+                        {chapter.title}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+                
+                <TextInput
+                  style={styles.customInput}
+                  placeholder="Or enter custom topic..."
+                  placeholderTextColor="#94a3b8"
+                  value={customTopic}
+                  onChangeText={(text) => {
+                    setCustomTopic(text);
+                    setSelectedChapter('');
+                    setSelectedChapters([]);
                   }}
-                >
-                  <Text style={[styles.chapterNumber, selectedChapter === chapter.id && styles.chapterNumberActive]}>
-                    {chapter.number}
-                  </Text>
-                  <Text
-                    style={[styles.chapterTitle, selectedChapter === chapter.id && styles.chapterTitleActive]}
-                    numberOfLines={2}
-                  >
-                    {chapter.title}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-            
-            <TextInput
-              style={styles.customInput}
-              placeholder="Or enter custom topic..."
-              placeholderTextColor="#94a3b8"
-              value={customTopic}
-              onChangeText={(text) => {
-                setCustomTopic(text);
-                setSelectedChapter('');
-              }}
-              multiline
-            />
+                  multiline
+                />
+              </>
+            )}
           </View>
         )}
 
@@ -927,6 +1065,75 @@ const styles = StyleSheet.create({
   },
   chapterTitleActive: {
     color: '#1e40af',
+  },
+  sectionSubtitle: {
+    fontSize: 13,
+    color: '#64748b',
+    marginBottom: 12,
+    marginTop: -8,
+  },
+  selectedChaptersInfo: {
+    backgroundColor: '#059669',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    alignSelf: 'flex-start',
+    marginBottom: 12,
+  },
+  selectedChaptersText: {
+    fontSize: 13,
+    fontWeight: '600' as const,
+    color: '#ffffff',
+  },
+  multiChapterGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  multiChapterButton: {
+    width: '48%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: '#ffffff',
+    borderWidth: 2,
+    borderColor: '#e2e8f0',
+    gap: 10,
+  },
+  multiChapterButtonActive: {
+    backgroundColor: '#ecfdf5',
+    borderColor: '#059669',
+  },
+  checkboxContainer: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: '#cbd5e1',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  checkboxChecked: {
+    backgroundColor: '#059669',
+    borderColor: '#059669',
+  },
+  checkmark: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '700' as const,
+  },
+  chapterInfo: {
+    flex: 1,
+  },
+  multiChapterTitle: {
+    fontSize: 12,
+    fontWeight: '500' as const,
+    color: '#64748b',
+    lineHeight: 16,
+  },
+  multiChapterTitleActive: {
+    color: '#047857',
   },
   customInput: {
     marginTop: 12,
