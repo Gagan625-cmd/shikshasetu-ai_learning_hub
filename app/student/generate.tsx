@@ -48,9 +48,17 @@ export default function ContentGenerator() {
 
   const generateMutation = useMutation({
     mutationFn: async () => {
-      const chapterInfo = selectedChapterData 
-        ? `Chapter ${selectedChapterData.number}: ${selectedChapterData.title} - ${selectedChapterData.description}`
-        : customTopic;
+      let chapterInfo = '';
+      
+      if (isMultiChapterMode && selectedChaptersData.length > 0) {
+        chapterInfo = selectedChaptersData.map(c => 
+          `Chapter ${c.number}: ${c.title} - ${c.description}`
+        ).join('\n');
+      } else if (selectedChapterData) {
+        chapterInfo = `Chapter ${selectedChapterData.number}: ${selectedChapterData.title} - ${selectedChapterData.description}`;
+      } else {
+        chapterInfo = customTopic;
+      }
       
       const subjectName = subjects.find((s) => s.id === selectedSubject)?.name || 'General Topic';
       
@@ -121,7 +129,7 @@ Vary difficulty levels and include application-based questions.`;
         if (selectedBoard === 'ICSE') {
           const chaptersForPaper = isMultiChapterMode && selectedChaptersData.length > 0 
             ? selectedChaptersData.map(c => `${c.number}. ${c.title}`).join(', ')
-            : chapterInfo;
+            : (selectedChapterData ? `${selectedChapterData.number}. ${selectedChapterData.title}` : chapterInfo);
           
           prompt = `Generate a comprehensive ICSE Board format question paper for Class ${selectedGrade} ${subjectName}.
 
