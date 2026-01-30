@@ -138,7 +138,7 @@ Chapters Covered: ${chaptersForPaper}
 Detailed Syllabus Coverage:
 ${chapterInfo}
 
-IMPORTANT - Generate in ${selectedLanguage} language following OFFICIAL ICSE BOARD EXAM PATTERN.
+IMPORTANT - Generate in ${selectedLanguage} language following the OFFICIAL ICSE BOARD EXAM PATTERN EXACTLY as shown below.
 
 CRITICAL - For all formulas:
 - Use plain text with Unicode (×, ÷, ², ³, √, π, Δ, θ) - NO LaTeX syntax
@@ -160,18 +160,54 @@ GENERAL INSTRUCTIONS:
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
                          SECTION A (40 Marks)
-                    (Attempt ALL questions)
+                    (Attempt ALL questions from this Section)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-**Question 1** [20 marks]
-(a) to (j) - Short answer questions (2 marks each)
+**Question 1** [15 marks]
+Select the correct answers to the questions from the given options.
+(Do not copy the questions, write the correct answer only).
 
-[Generate 10 short objective/fill-in-the-blank/one-word answer/MCQ questions covering ALL selected chapters proportionally]
+[Generate 15 MCQs numbered (i) to (xv) with 4 options each. Include different question types:
+- Direct MCQs
+- Assertion-Reason questions in format:
+  Assertion (A): [statement]
+  Reason (R): [statement]
+  (a) (A) is true and (R) is false.
+  (b) (A) is false and (R) is true.
+  (c) Both (A) and (R) are true.
+  (d) Both (A) and (R) are false.
+- Diagram/image-based identification questions
+- Match the following type questions
+Cover ALL selected chapters proportionally]
 
-**Question 2** [20 marks]
-(a) to (j) - Short structured questions (2 marks each)
+**Question 2** [25 marks]
 
-[Generate 10 questions requiring brief explanations, definitions, reasons, or short calculations from ALL selected chapters]
+(i) Name the following: [5 marks]
+(a) [Question requiring one-word/short answer]
+(b) [Question requiring one-word/short answer]
+(c) [Question requiring one-word/short answer]
+(d) [Question requiring one-word/short answer]
+(e) [Question requiring one-word/short answer]
+
+(ii) Given below is a diagram. Study it and fill in the blanks: [5 marks]
+[Include a diagram description and ask to identify/label parts (a) to (e)]
+
+(iii) Arrange the terms in each group in the correct order. Write them in a logical sequence beginning with the term that is underlined: [5 marks]
+(a) [Series of terms with one underlined]
+(b) [Series of terms with one underlined]
+(c) [Series of terms with one underlined]
+(d) [Series of terms with one underlined]
+(e) [Series of terms with one underlined]
+
+(iv) Read the explanations given below and name the structures: [5 marks]
+(a) [Explanation requiring identification]
+(b) [Explanation requiring identification]
+(c) [Explanation requiring identification]
+(d) [Explanation requiring identification]
+(e) [Explanation requiring identification]
+
+(v) Match the items in Column A with Column B OR Given below is a diagram, match the parts with their functions: [5 marks]
+[Create a matching exercise with 5 items]
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
                          SECTION B (40 Marks)
@@ -179,31 +215,60 @@ GENERAL INSTRUCTIONS:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 **Question 3** [10 marks]
-[Long answer question with parts (a), (b), (c) - covering first chapter topic]
+(i) [1 mark question - definition/one-liner]
+(ii) [2 marks question - brief explanation with two parts (a) and (b)]
+(iii) [2 marks question - differentiate/compare OR give reasons]
+(iv) [2 marks question - application-based with parts (a) and (b)]
+(v) [3 marks question - Draw a neat, labelled diagram OR detailed explanation]
 
 **Question 4** [10 marks]
-[Long answer question with parts (a), (b), (c) - covering second chapter topic]
+(i) [1 mark question - definition/one-liner]
+(ii) [2 marks question - brief explanation with two parts (a) and (b)]
+(iii) [2 marks question - differentiate/compare OR give reasons]
+(iv) [2 marks question - application-based with parts (a) and (b)]
+(v) [3 marks question - Draw a neat, labelled diagram OR detailed explanation]
 
 **Question 5** [10 marks]
-[Long answer question with parts (a), (b), (c) - covering third chapter topic]
+(i) [1 mark question - definition/one-liner]
+(ii) [2 marks question - brief explanation with two parts (a) and (b)]
+(iii) [2 marks question - differentiate/compare OR give reasons]
+(iv) [2 marks question - application-based with parts (a) and (b)]
+(v) [3 marks question - Draw a neat, labelled diagram OR detailed explanation]
 
 **Question 6** [10 marks]
-[Long answer question with parts (a), (b), (c) - covering fourth chapter topic or application-based]
+(i) [1 mark question - definition/one-liner]
+(ii) [2 marks question - brief explanation with two parts (a) and (b)]
+(iii) [2 marks question - differentiate/compare OR give reasons]
+(iv) [2 marks question - application-based with parts (a) and (b)]
+(v) [3 marks question - Draw a neat, labelled diagram OR detailed explanation]
 
 **Question 7** [10 marks]
-[Long answer question with parts (a), (b), (c) - numerical problems/diagram-based/practical applications]
+(i) [1 mark question - definition/one-liner]
+(ii) [2 marks question - brief explanation with two parts (a) and (b)]
+(iii) [2 marks question - differentiate/compare OR give reasons]
+(iv) [2 marks question - application-based with parts (a) and (b)]
+(v) [3 marks question - Draw a neat, labelled diagram OR detailed explanation]
+
+**Question 8** [10 marks]
+(i) [1 mark question - definition/one-liner]
+(ii) [2 marks question - brief explanation with two parts (a) and (b)]
+(iii) [2 marks question - differentiate/compare OR give reasons]
+(iv) [2 marks question - application-based with parts (a) and (b)]
+(v) [3 marks question - Draw a neat, labelled diagram OR detailed explanation]
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 IMPORTANT REQUIREMENTS:
 1. Questions MUST cover ALL selected chapters proportionally
-2. Follow ICSE marking scheme strictly with marks in brackets []
-3. Include internal choices in Section B (OR option)
-4. Mix difficulty: Easy (30%), Medium (50%), Hard (20%)
+2. Follow ICSE marking scheme STRICTLY with marks in brackets []
+3. Section B: Each question MUST have (i) 1 mark, (ii) 2 marks, (iii) 2 marks, (iv) 2 marks, (v) 3 marks = 10 marks total
+4. Include case-study/application-based questions with real-life scenarios
 5. Include diagram-based questions where relevant [mark with "Draw a neat labeled diagram"]
 6. For Science subjects: Include numerical problems with proper steps
-7. For Mathematics: Show all working steps expected
-8. Provide complete ANSWER KEY with detailed solutions at the end`;
+7. For Mathematics: Include step-by-step working questions
+8. Mix difficulty: Easy (30%), Medium (50%), Hard (20%)
+9. Provide complete ANSWER KEY with detailed solutions at the end
+10. For MCQs, include Assertion-Reason type questions as per ICSE pattern`;
         } else {
           prompt = `Generate a comprehensive NCERT/CBSE board format question paper for Grade ${selectedGrade} ${subjectName}.
 Topic: ${chapterInfo}
