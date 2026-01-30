@@ -2,7 +2,7 @@ import { useRouter } from 'expo-router';
 import { ChevronLeft, Video, Sparkles, Send, Camera, Globe, Lock, Mic, MicOff, ChevronRight, CheckCircle, Type } from 'lucide-react-native';
 import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Platform, TextInput, Animated } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useState, useRef, useCallback, useMemo } from 'react';
+import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { Audio } from 'expo-av';
 import { useApp } from '@/contexts/app-context';
@@ -36,10 +36,11 @@ export default function TeacherInterview() {
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const [hasAudioPermission, setHasAudioPermission] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
-  const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [isVoiceRecording, setIsVoiceRecording] = useState(false);
-  const [voiceRecording, setVoiceRecording] = useState<Audio.Recording | null>(null);
   const [isTranscribing, setIsTranscribing] = useState(false);
+  
+  const voiceRecordingRef = useRef<Audio.Recording | null>(null);
+  const isMountedRef = useRef(true);
   
   const [interviewLanguage, setInterviewLanguage] = useState<string>('english');
   const [interviewTopic, setInterviewTopic] = useState<string>('subject');
@@ -165,14 +166,29 @@ export default function TeacherInterview() {
 
   animateSlideRef.current = animateSlide;
 
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      if (voiceRecordingRef.current) {
+        voiceRecordingRef.current.stopAndUnloadAsync().catch(console.error);
+        voiceRecordingRef.current = null;
+      }
+    };
+  }, []);
+
   const requestPermissions = async () => {
-    await requestCameraPermission();
-    
-    if (Platform.OS !== 'web') {
-      const audioStatus = await Audio.requestPermissionsAsync();
-      setHasAudioPermission(audioStatus.granted);
-    } else {
-      setHasAudioPermission(true);
+    try {
+      await requestCameraPermission();
+      
+      if (Platform.OS !== 'web') {
+        const audioStatus = await Audio.requestPermissionsAsync();
+        setHasAudioPermission(audioStatus.granted);
+      } else {
+        setHasAudioPermission(true);
+      }
+    } catch (err) {
+      console.error('Failed to request permissions:', err);
     }
   };
 
@@ -217,154 +233,100 @@ Start now by greeting briefly in ${languageName} and then immediately use askQue
     setAnswers([]);
     setQuestions([]);
     setCurrentQuestionIndex(0);
-    
-    try {
-      await startVideoRecording();
-    } catch (err) {
-      console.error('Failed to start video recording:', err);
-    }
+    setIsRecording(true);
     
     sendMessage(systemPrompt);
   };
 
-  const startVideoRecording = async () => {
-    try {
-      if (Platform.OS !== 'web') {
-        await Audio.setAudioModeAsync({
-          allowsRecordingIOS: true,
-          playsInSilentModeIOS: true,
-        });
-        
-        const { recording: newRecording } = await Audio.Recording.createAsync({
-          android: {
-            extension: '.m4a',
-            outputFormat: Audio.RecordingOptionsPresets.HIGH_QUALITY.android.outputFormat,
-            audioEncoder: Audio.RecordingOptionsPresets.HIGH_QUALITY.android.audioEncoder,
-            sampleRate: Audio.RecordingOptionsPresets.HIGH_QUALITY.android.sampleRate,
-            numberOfChannels: Audio.RecordingOptionsPresets.HIGH_QUALITY.android.numberOfChannels,
-            bitRate: Audio.RecordingOptionsPresets.HIGH_QUALITY.android.bitRate,
-          },
-          ios: {
-            extension: '.wav',
-            outputFormat: Audio.IOSOutputFormat.LINEARPCM,
-            audioQuality: Audio.IOSAudioQuality.HIGH,
-            sampleRate: 44100,
-            numberOfChannels: 2,
-            bitRate: 128000,
-            linearPCMBitDepth: 16,
-            linearPCMIsBigEndian: false,
-            linearPCMIsFloat: false,
-          },
-          web: {},
-        });
-        setRecording(newRecording);
-      }
-      setIsRecording(true);
-    } catch (err) {
-      console.error('Failed to start video recording', err);
-    }
-  };
-
   const stopVideoRecording = async () => {
-    if (recording && Platform.OS !== 'web') {
-      await recording.stopAndUnloadAsync();
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: false,
-      });
-      setRecording(null);
-    }
     setIsRecording(false);
   };
 
   const startVoiceRecording = async () => {
+    if (voiceRecordingRef.current || Platform.OS === 'web') {
+      console.log('Recording not available or already active');
+      return;
+    }
+    
     try {
-      if (Platform.OS !== 'web') {
-        await Audio.setAudioModeAsync({
-          allowsRecordingIOS: true,
-          playsInSilentModeIOS: true,
-        });
-        
-        const { recording: newRecording } = await Audio.Recording.createAsync({
-          android: {
-            extension: '.m4a',
-            outputFormat: Audio.RecordingOptionsPresets.HIGH_QUALITY.android.outputFormat,
-            audioEncoder: Audio.RecordingOptionsPresets.HIGH_QUALITY.android.audioEncoder,
-            sampleRate: Audio.RecordingOptionsPresets.HIGH_QUALITY.android.sampleRate,
-            numberOfChannels: Audio.RecordingOptionsPresets.HIGH_QUALITY.android.numberOfChannels,
-            bitRate: Audio.RecordingOptionsPresets.HIGH_QUALITY.android.bitRate,
-          },
-          ios: {
-            extension: '.wav',
-            outputFormat: Audio.IOSOutputFormat.LINEARPCM,
-            audioQuality: Audio.IOSAudioQuality.HIGH,
-            sampleRate: 44100,
-            numberOfChannels: 2,
-            bitRate: 128000,
-            linearPCMBitDepth: 16,
-            linearPCMIsBigEndian: false,
-            linearPCMIsFloat: false,
-          },
-          web: {},
-        });
-        setVoiceRecording(newRecording);
-        setIsVoiceRecording(true);
-      } else {
-        setIsVoiceRecording(true);
-      }
+      console.log('Starting voice recording...');
+      setIsVoiceRecording(true);
+      
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+      });
+      
+      const { recording: newRecording } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY
+      );
+      
+      voiceRecordingRef.current = newRecording;
+      console.log('Voice recording started successfully');
     } catch (err) {
       console.error('Failed to start voice recording:', err);
+      setIsVoiceRecording(false);
     }
   };
 
   const stopVoiceRecordingAndTranscribe = async () => {
-    if (!voiceRecording && Platform.OS !== 'web') {
+    if (!voiceRecordingRef.current) {
       setIsVoiceRecording(false);
       return;
     }
 
+    setIsVoiceRecording(false);
     setIsTranscribing(true);
     
     try {
-      if (Platform.OS !== 'web' && voiceRecording) {
-        await voiceRecording.stopAndUnloadAsync();
-        await Audio.setAudioModeAsync({
-          allowsRecordingIOS: false,
+      console.log('Stopping voice recording...');
+      const recordingToStop = voiceRecordingRef.current;
+      voiceRecordingRef.current = null;
+      
+      await recordingToStop.stopAndUnloadAsync();
+      
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+        playsInSilentModeIOS: true,
+      });
+      
+      const uri = recordingToStop.getURI();
+      console.log('Recording URI:', uri);
+      
+      if (uri && isMountedRef.current) {
+        const uriParts = uri.split('.');
+        const fileType = uriParts[uriParts.length - 1] || 'm4a';
+        
+        const formData = new FormData();
+        const audioFile = {
+          uri,
+          name: `recording.${fileType}`,
+          type: fileType === 'caf' ? 'audio/x-caf' : `audio/${fileType}`,
+        };
+        formData.append('audio', audioFile as unknown as Blob);
+        
+        console.log('Sending audio for transcription...');
+        const response = await fetch('https://toolkit.rork.com/stt/transcribe/', {
+          method: 'POST',
+          body: formData,
         });
         
-        const uri = voiceRecording.getURI();
-        if (uri) {
-          const uriParts = uri.split('.');
-          const fileType = uriParts[uriParts.length - 1];
-          
-          const formData = new FormData();
-          const audioFile = {
-            uri,
-            name: `recording.${fileType}`,
-            type: `audio/${fileType}`,
-          };
-          formData.append('audio', audioFile as unknown as Blob);
-          
-          const response = await fetch('https://toolkit.rork.com/stt/transcribe/', {
-            method: 'POST',
-            body: formData,
-          });
-          
-          if (response.ok) {
-            const data = await response.json();
-            if (data.text) {
-              setInputText(prev => prev ? `${prev} ${data.text}` : data.text);
-            }
+        if (response.ok && isMountedRef.current) {
+          const data = await response.json();
+          console.log('Transcription result:', data);
+          if (data.text) {
+            setInputText(prev => prev ? `${prev} ${data.text}` : data.text);
           }
+        } else {
+          console.error('Transcription failed:', response.status);
         }
-        setVoiceRecording(null);
-      } else {
-        await new Promise(resolve => setTimeout(resolve, 1000));
       }
     } catch (err) {
       console.error('Failed to transcribe voice:', err);
     } finally {
-      setIsVoiceRecording(false);
-      setIsTranscribing(false);
+      if (isMountedRef.current) {
+        setIsTranscribing(false);
+      }
     }
   };
 
@@ -887,14 +849,21 @@ Start now by greeting briefly in ${languageName} and then immediately use askQue
                 maxLength={2000}
               />
               <TouchableOpacity
-                style={styles.quickVoiceButton}
+                style={[
+                  styles.quickVoiceButton,
+                  isVoiceRecording && styles.quickVoiceButtonActive,
+                  isTranscribing && styles.quickVoiceButtonTranscribing
+                ]}
                 onPress={isVoiceRecording ? stopVoiceRecordingAndTranscribe : startVoiceRecording}
-                disabled={isTranscribing}
+                disabled={isTranscribing || Platform.OS === 'web'}
+                activeOpacity={0.7}
               >
-                {isVoiceRecording ? (
-                  <MicOff size={20} color="#ef4444" />
+                {isTranscribing ? (
+                  <View style={styles.smallSpinner} />
+                ) : isVoiceRecording ? (
+                  <MicOff size={20} color="#ffffff" />
                 ) : (
-                  <Mic size={20} color="#64748b" />
+                  <Mic size={20} color={Platform.OS === 'web' ? '#cbd5e1' : '#64748b'} />
                 )}
               </TouchableOpacity>
             </View>
@@ -1464,6 +1433,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: '#e2e8f0',
+  },
+  quickVoiceButtonActive: {
+    backgroundColor: '#ef4444',
+    borderColor: '#ef4444',
+  },
+  quickVoiceButtonTranscribing: {
+    backgroundColor: '#6366f1',
+    borderColor: '#6366f1',
+  },
+  smallSpinner: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: '#ffffff',
+    borderTopColor: 'transparent',
   },
   submitButton: {
     flexDirection: 'row',
