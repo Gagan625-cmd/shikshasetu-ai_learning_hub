@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, Animated, Alert } from 'react-native';
+import { useState } from 'react';
+import { StyleSheet, Text, View, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, Animated } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '@/contexts/auth-context';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LogIn, UserPlus, Mail, Lock, User, UserCircle, Fingerprint } from 'lucide-react-native';
+import { LogIn, UserPlus, Mail, Lock, User, UserCircle } from 'lucide-react-native';
 
 export default function AuthScreen() {
   const [isSignUp, setIsSignUp] = useState(false);
@@ -12,21 +12,10 @@ export default function AuthScreen() {
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [error, setError] = useState('');
-  const { signIn, signUp, continueAsGuest, checkBiometricAvailability, signInWithBiometric, enableBiometricLogin } = useAuth();
+  const { signIn, signUp, continueAsGuest } = useAuth();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [buttonScale] = useState(new Animated.Value(1));
-  const [biometricInfo, setBiometricInfo] = useState<{ available: boolean; enrolled: boolean; hasSavedCredentials: boolean }>({ available: false, enrolled: false, hasSavedCredentials: false });
-  const [isAuthenticating, setIsAuthenticating] = useState(false);
-
-  useEffect(() => {
-    const checkBiometric = async () => {
-      const info = await checkBiometricAvailability();
-      console.log('Biometric info:', info);
-      setBiometricInfo(info);
-    };
-    checkBiometric();
-  }, [checkBiometricAvailability]);
 
   const handleSubmit = async () => {
     setError('');
@@ -64,24 +53,7 @@ export default function AuthScreen() {
       : await signIn(email, password);
 
     if (result.success) {
-      if (!isSignUp && biometricInfo.available && biometricInfo.enrolled && !biometricInfo.hasSavedCredentials && Platform.OS !== 'web') {
-        Alert.alert(
-          'Enable Biometric Login',
-          'Would you like to enable Face ID / Touch ID for faster sign-in next time?',
-          [
-            { text: 'Not Now', style: 'cancel', onPress: () => router.replace('/') },
-            { 
-              text: 'Enable', 
-              onPress: async () => {
-                await enableBiometricLogin(email, password);
-                router.replace('/');
-              }
-            },
-          ]
-        );
-      } else {
-        router.replace('/');
-      }
+      router.replace('/');
     } else {
       setError(result.error || 'An error occurred');
     }
@@ -90,33 +62,6 @@ export default function AuthScreen() {
   const toggleMode = () => {
     setIsSignUp(!isSignUp);
     setError('');
-  };
-
-  const handleBiometricSignIn = async () => {
-    setIsAuthenticating(true);
-    setError('');
-    
-    Animated.sequence([
-      Animated.timing(buttonScale, {
-        toValue: 0.95,
-        duration: 100,
-        useNativeDriver: true,
-      }),
-      Animated.timing(buttonScale, {
-        toValue: 1,
-        duration: 100,
-        useNativeDriver: true,
-      }),
-    ]).start();
-
-    const result = await signInWithBiometric();
-    setIsAuthenticating(false);
-    
-    if (result.success) {
-      router.replace('/');
-    } else {
-      setError(result.error || 'Biometric authentication failed');
-    }
   };
 
   const handleGuestAccess = async () => {
@@ -260,36 +205,9 @@ export default function AuthScreen() {
               </Text>
             </TouchableOpacity>
 
-            {biometricInfo.available && biometricInfo.enrolled && biometricInfo.hasSavedCredentials && Platform.OS !== 'web' && (
-              <>
-                <View style={styles.divider}>
-                  <View style={styles.dividerLine} />
-                  <Text style={styles.dividerText}>OR</Text>
-                  <View style={styles.dividerLine} />
-                </View>
-
-                <TouchableOpacity
-                  style={styles.biometricButton}
-                  onPress={handleBiometricSignIn}
-                  activeOpacity={0.8}
-                  disabled={isAuthenticating}
-                >
-                  <LinearGradient
-                    colors={['rgba(255,255,255,0.95)', 'rgba(240,249,255,0.95)']}
-                    style={styles.biometricButtonGradient}
-                  >
-                    <Fingerprint size={24} color="#667eea" />
-                    <Text style={styles.biometricButtonText}>
-                      {isAuthenticating ? 'Authenticating...' : 'Sign in with Face ID / Touch ID'}
-                    </Text>
-                  </LinearGradient>
-                </TouchableOpacity>
-              </>
-            )}
-
             <View style={styles.divider}>
               <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>{biometricInfo.hasSavedCredentials ? 'OR' : 'OR'}</Text>
+              <Text style={styles.dividerText}>OR</Text>
               <View style={styles.dividerLine} />
             </View>
 
@@ -455,30 +373,6 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(102, 126, 234, 0.3)',
   },
   guestButtonText: {
-    fontSize: 16,
-    fontWeight: '600' as const,
-    color: '#667eea',
-  },
-  biometricButton: {
-    borderRadius: 16,
-    overflow: 'hidden',
-    shadowColor: '#667eea',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  biometricButtonGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 12,
-    paddingVertical: 16,
-    borderRadius: 16,
-    borderWidth: 2,
-    borderColor: 'rgba(102, 126, 234, 0.4)',
-  },
-  biometricButtonText: {
     fontSize: 16,
     fontWeight: '600' as const,
     color: '#667eea',
