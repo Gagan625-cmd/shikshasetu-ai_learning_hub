@@ -38,9 +38,11 @@ export default function TeacherInterview() {
   const [isRecording, setIsRecording] = useState(false);
   const [isVoiceRecording, setIsVoiceRecording] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
+  const [isProcessingVoice, setIsProcessingVoice] = useState(false);
   
   const voiceRecordingRef = useRef<Audio.Recording | null>(null);
   const isMountedRef = useRef(true);
+  const isRecordingInProgressRef = useRef(false);
   
   const [interviewLanguage, setInterviewLanguage] = useState<string>('english');
   const [interviewTopic, setInterviewTopic] = useState<string>('subject');
@@ -168,12 +170,39 @@ export default function TeacherInterview() {
 
   useEffect(() => {
     isMountedRef.current = true;
+    
+    const initAudio = async () => {
+      if (Platform.OS !== 'web') {
+        try {
+          await Audio.setAudioModeAsync({
+            allowsRecordingIOS: false,
+            playsInSilentModeIOS: true,
+          });
+        } catch (err) {
+          console.log('Audio init error:', err);
+        }
+      }
+    };
+    initAudio();
+    
     return () => {
       isMountedRef.current = false;
-      if (voiceRecordingRef.current) {
-        voiceRecordingRef.current.stopAndUnloadAsync().catch(console.error);
-        voiceRecordingRef.current = null;
-      }
+      isRecordingInProgressRef.current = false;
+      
+      const cleanup = async () => {
+        if (voiceRecordingRef.current) {
+          try {
+            const status = await voiceRecordingRef.current.getStatusAsync();
+            if (status.isRecording) {
+              await voiceRecordingRef.current.stopAndUnloadAsync();
+            }
+          } catch (err) {
+            console.log('Cleanup error:', err);
+          }
+          voiceRecordingRef.current = null;
+        }
+      };
+      cleanup();
     };
   }, []);
 
@@ -243,14 +272,32 @@ Start now by greeting briefly in ${languageName} and then immediately use askQue
   };
 
   const startVoiceRecording = async () => {
-    if (voiceRecordingRef.current || Platform.OS === 'web') {
-      console.log('Recording not available or already active');
+    if (Platform.OS === 'web') {
+      console.log('Recording not available on web');
       return;
     }
     
+    if (isRecordingInProgressRef.current || voiceRecordingRef.current) {
+      console.log('Recording already in progress');
+      return;
+    }
+    
+    isRecordingInProgressRef.current = true;
+    setIsProcessingVoice(true);
+    
     try {
       console.log('Starting voice recording...');
-      setIsVoiceRecording(true);
+      
+      const permissionResult = await Audio.getPermissionsAsync();
+      if (!permissionResult.granted) {
+        const newPermission = await Audio.requestPermissionsAsync();
+        if (!newPermission.granted) {
+          console.log('Audio permission denied');
+          isRecordingInProgressRef.current = false;
+          setIsProcessingVoice(false);
+          return;
+        }
+      }
       
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: true,
@@ -261,34 +308,64 @@ Start now by greeting briefly in ${languageName} and then immediately use askQue
         Audio.RecordingOptionsPresets.HIGH_QUALITY
       );
       
+      if (!isMountedRef.current) {
+        await newRecording.stopAndUnloadAsync();
+        isRecordingInProgressRef.current = false;
+        return;
+      }
+      
       voiceRecordingRef.current = newRecording;
+      setIsVoiceRecording(true);
       console.log('Voice recording started successfully');
     } catch (err) {
       console.error('Failed to start voice recording:', err);
+      voiceRecordingRef.current = null;
       setIsVoiceRecording(false);
+    } finally {
+      if (isMountedRef.current) {
+        setIsProcessingVoice(false);
+      }
     }
   };
 
   const stopVoiceRecordingAndTranscribe = async () => {
-    if (!voiceRecordingRef.current) {
+    const recordingToStop = voiceRecordingRef.current;
+    
+    if (!recordingToStop) {
       setIsVoiceRecording(false);
+      isRecordingInProgressRef.current = false;
       return;
     }
 
     setIsVoiceRecording(false);
     setIsTranscribing(true);
+    voiceRecordingRef.current = null;
     
     try {
       console.log('Stopping voice recording...');
-      const recordingToStop = voiceRecordingRef.current;
-      voiceRecordingRef.current = null;
       
-      await recordingToStop.stopAndUnloadAsync();
+      let status;
+      try {
+        status = await recordingToStop.getStatusAsync();
+      } catch (err) {
+        console.log('Could not get recording status:', err);
+        isRecordingInProgressRef.current = false;
+        if (isMountedRef.current) setIsTranscribing(false);
+        return;
+      }
       
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: false,
-        playsInSilentModeIOS: true,
-      });
+      if (status.isRecording) {
+        await recordingToStop.stopAndUnloadAsync();
+      }
+      
+      try {
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: false,
+          playsInSilentModeIOS: true,
+        });
+      } catch (err) {
+        console.log('Audio mode reset error:', err);
+      }
       
       const uri = recordingToStop.getURI();
       console.log('Recording URI:', uri);
@@ -306,24 +383,40 @@ Start now by greeting briefly in ${languageName} and then immediately use askQue
         formData.append('audio', audioFile as unknown as Blob);
         
         console.log('Sending audio for transcription...');
-        const response = await fetch('https://toolkit.rork.com/stt/transcribe/', {
-          method: 'POST',
-          body: formData,
-        });
         
-        if (response.ok && isMountedRef.current) {
-          const data = await response.json();
-          console.log('Transcription result:', data);
-          if (data.text) {
-            setInputText(prev => prev ? `${prev} ${data.text}` : data.text);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000);
+        
+        try {
+          const response = await fetch('https://toolkit.rork.com/stt/transcribe/', {
+            method: 'POST',
+            body: formData,
+            signal: controller.signal,
+          });
+          clearTimeout(timeoutId);
+          
+          if (response.ok && isMountedRef.current) {
+            const data = await response.json();
+            console.log('Transcription result:', data);
+            if (data.text) {
+              setInputText(prev => prev ? `${prev} ${data.text}` : data.text);
+            }
+          } else {
+            console.error('Transcription failed:', response.status);
           }
-        } else {
-          console.error('Transcription failed:', response.status);
+        } catch (fetchErr: unknown) {
+          clearTimeout(timeoutId);
+          if (fetchErr instanceof Error && fetchErr.name === 'AbortError') {
+            console.error('Transcription request timed out');
+          } else {
+            console.error('Transcription fetch error:', fetchErr);
+          }
         }
       }
     } catch (err) {
       console.error('Failed to transcribe voice:', err);
     } finally {
+      isRecordingInProgressRef.current = false;
       if (isMountedRef.current) {
         setIsTranscribing(false);
       }
@@ -803,10 +896,12 @@ Start now by greeting briefly in ${languageName} and then immediately use askQue
                   <TouchableOpacity
                     style={[styles.voiceButton, isVoiceRecording && styles.voiceButtonActive]}
                     onPress={isVoiceRecording ? stopVoiceRecordingAndTranscribe : startVoiceRecording}
-                    disabled={isTranscribing}
+                    disabled={isTranscribing || isProcessingVoice}
                   >
                     {isTranscribing ? (
                       <Text style={styles.voiceButtonText}>Transcribing...</Text>
+                    ) : isProcessingVoice ? (
+                      <Text style={styles.voiceButtonText}>Starting...</Text>
                     ) : isVoiceRecording ? (
                       <>
                         <MicOff size={24} color="#ffffff" />
@@ -855,7 +950,7 @@ Start now by greeting briefly in ${languageName} and then immediately use askQue
                   isTranscribing && styles.quickVoiceButtonTranscribing
                 ]}
                 onPress={isVoiceRecording ? stopVoiceRecordingAndTranscribe : startVoiceRecording}
-                disabled={isTranscribing || Platform.OS === 'web'}
+                disabled={isTranscribing || isProcessingVoice || Platform.OS === 'web'}
                 activeOpacity={0.7}
               >
                 {isTranscribing ? (
