@@ -2,7 +2,7 @@ import { useRouter } from 'expo-router';
 import { ChevronLeft, Video, Sparkles, Send, Camera, Globe, Lock, Mic, MicOff, ChevronRight, CheckCircle, Type } from 'lucide-react-native';
 import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Platform, TextInput, Animated } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useMemo } from 'react';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { Audio } from 'expo-av';
 import { useApp } from '@/contexts/app-context';
@@ -72,67 +72,69 @@ export default function TeacherInterview() {
   const selectedChapterData = chapters.find((c) => c.id === selectedChapter);
   const selectedTopicData = INTERVIEW_TOPICS.find((t) => t.id === interviewTopic);
 
-  const { sendMessage, setMessages } = useRorkAgent({
-    tools: {
-      askQuestion: createRorkTool({
-        description: "Present the next interview question to the candidate",
-        zodSchema: z.object({
-          questionNumber: z.number().min(1).max(5).describe("Question number (1-5)"),
-          question: z.string().describe("The interview question to ask"),
-          category: z.string().describe("Category of the question (e.g., Technical, Behavioral, Analytical)"),
-        }),
-        execute(input) {
-          console.log('New question received:', input.questionNumber, input.question);
-          setQuestions(prev => {
-            const newQuestions = [...prev];
-            newQuestions[input.questionNumber - 1] = input.question;
-            return newQuestions;
-          });
-          setCurrentQuestionIndex(input.questionNumber - 1);
-          animateSlide();
-          return `Question ${input.questionNumber} presented: ${input.question}`;
-        },
+  const animateSlideRef = useRef<() => void>(() => {});
+
+  const tools = useMemo(() => ({
+    askQuestion: createRorkTool({
+      description: "Present the next interview question to the candidate",
+      zodSchema: z.object({
+        questionNumber: z.number().min(1).max(5).describe("Question number (1-5)"),
+        question: z.string().describe("The interview question to ask"),
+        category: z.string().describe("Category of the question (e.g., Technical, Behavioral, Analytical)"),
       }),
-      evaluateAnswer: createRorkTool({
-        description: "Evaluate a single answer with score and feedback",
-        zodSchema: z.object({
-          questionNumber: z.number().min(1).max(5).describe("Question number being evaluated"),
-          score: z.number().min(1).max(10).describe("Score out of 10"),
-          feedback: z.string().describe("Brief feedback on the answer"),
-        }),
-        execute(input) {
-          setEvaluation(prev => ({
-            ...prev,
-            questionScores: [
-              ...(prev.questionScores || []),
-              { question: input.questionNumber, score: input.score, feedback: input.feedback }
-            ]
-          }));
-          return `Answer ${input.questionNumber} evaluated`;
-        },
+      execute(input) {
+        console.log('New question received:', input.questionNumber, input.question);
+        setQuestions(prev => {
+          const newQuestions = [...prev];
+          newQuestions[input.questionNumber - 1] = input.question;
+          return newQuestions;
+        });
+        setCurrentQuestionIndex(input.questionNumber - 1);
+        animateSlideRef.current();
+        return `Question ${input.questionNumber} presented: ${input.question}`;
+      },
+    }),
+    evaluateAnswer: createRorkTool({
+      description: "Evaluate a single answer with score and feedback",
+      zodSchema: z.object({
+        questionNumber: z.number().min(1).max(5).describe("Question number being evaluated"),
+        score: z.number().min(1).max(10).describe("Score out of 10"),
+        feedback: z.string().describe("Brief feedback on the answer"),
       }),
-      provideEvaluation: createRorkTool({
-        description: "Provide comprehensive final evaluation after all questions",
-        zodSchema: z.object({
-          strengths: z.array(z.string()).describe("List of candidate's strengths"),
-          weaknesses: z.array(z.string()).describe("List of areas needing improvement"),
-          recommendations: z.array(z.string()).describe("Specific recommendations"),
-          overallScore: z.number().min(1).max(100).describe("Overall score out of 100"),
-        }),
-        execute(input) {
-          setEvaluation(prev => ({
-            ...prev,
-            strengths: input.strengths,
-            weaknesses: input.weaknesses,
-            recommendations: input.recommendations,
-            overallScore: input.overallScore,
-          }));
-          setIsInterviewEnded(true);
-          return "Final evaluation completed";
-        },
+      execute(input) {
+        setEvaluation(prev => ({
+          ...prev,
+          questionScores: [
+            ...(prev.questionScores || []),
+            { question: input.questionNumber, score: input.score, feedback: input.feedback }
+          ]
+        }));
+        return `Answer ${input.questionNumber} evaluated`;
+      },
+    }),
+    provideEvaluation: createRorkTool({
+      description: "Provide comprehensive final evaluation after all questions",
+      zodSchema: z.object({
+        strengths: z.array(z.string()).describe("List of candidate's strengths"),
+        weaknesses: z.array(z.string()).describe("List of areas needing improvement"),
+        recommendations: z.array(z.string()).describe("Specific recommendations"),
+        overallScore: z.number().min(1).max(100).describe("Overall score out of 100"),
       }),
-    },
-  });
+      execute(input) {
+        setEvaluation(prev => ({
+          ...prev,
+          strengths: input.strengths,
+          weaknesses: input.weaknesses,
+          recommendations: input.recommendations,
+          overallScore: input.overallScore,
+        }));
+        setIsInterviewEnded(true);
+        return "Final evaluation completed";
+      },
+    }),
+  }), []);
+
+  const { sendMessage, setMessages } = useRorkAgent({ tools });
 
   const animateSlide = useCallback(() => {
     Animated.sequence([
@@ -160,6 +162,8 @@ export default function TeacherInterview() {
       ]),
     ]).start();
   }, [fadeAnim, slideAnim]);
+
+  animateSlideRef.current = animateSlide;
 
   const requestPermissions = async () => {
     await requestCameraPermission();
