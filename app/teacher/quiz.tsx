@@ -24,7 +24,7 @@ const QuizSchema = z.object({
 export default function TeacherQuizGenerator() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { selectedLanguage } = useApp();
+  const { selectedLanguage, maybeRequestReview } = useApp();
   
   const [syllabus, setSyllabus] = useState<'NCERT' | 'ICSE'>('NCERT');
   const [selectedGrade, setSelectedGrade] = useState<number>(6);
@@ -87,6 +87,7 @@ Make questions aligned with ${syllabus} exam pattern and difficulty level.`;
     onSuccess: (data) => {
       setQuiz(data);
       setCurrentQuestion(0);
+      maybeRequestReview();
     },
   });
 

@@ -1,7 +1,13 @@
 import createContextHook from '@nkzw/create-context-hook';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { Platform } from 'react-native';
+import * as StoreReview from 'expo-store-review';
 import { UserRole, Language, UserProgress, QuizResult, ContentActivity, TeacherActivity, ExamActivity, TeacherUpload } from '@/types';
+
+const REVIEW_STORAGE_KEY = 'storeReviewData';
+const MIN_ACTIONS_FOR_REVIEW = 3;
+const MIN_DAYS_BETWEEN_REVIEWS = 30;
 
 export const [AppProvider, useApp] = createContextHook(() => {
   const [userRole, setUserRole] = useState<UserRole | null>(null);
@@ -164,6 +170,40 @@ export const [AppProvider, useApp] = createContextHook(() => {
     });
   }, [saveProgress]);
 
+  const maybeRequestReview = useCallback(async () => {
+    if (Platform.OS === 'web') return;
+    
+    try {
+      const isAvailable = await StoreReview.isAvailableAsync();
+      if (!isAvailable) {
+        console.log('Store review not available on this device');
+        return;
+      }
+
+      const stored = await AsyncStorage.getItem(REVIEW_STORAGE_KEY);
+      const reviewData = stored ? JSON.parse(stored) : { actionCount: 0, lastRequestDate: null };
+      
+      reviewData.actionCount = (reviewData.actionCount || 0) + 1;
+      
+      const now = new Date();
+      const lastRequest = reviewData.lastRequestDate ? new Date(reviewData.lastRequestDate) : null;
+      const daysSinceLastRequest = lastRequest 
+        ? Math.floor((now.getTime() - lastRequest.getTime()) / (1000 * 60 * 60 * 24)) 
+        : MIN_DAYS_BETWEEN_REVIEWS + 1;
+      
+      if (reviewData.actionCount >= MIN_ACTIONS_FOR_REVIEW && daysSinceLastRequest >= MIN_DAYS_BETWEEN_REVIEWS) {
+        console.log('Requesting store review...');
+        await StoreReview.requestReview();
+        reviewData.actionCount = 0;
+        reviewData.lastRequestDate = now.toISOString();
+      }
+      
+      await AsyncStorage.setItem(REVIEW_STORAGE_KEY, JSON.stringify(reviewData));
+    } catch (error) {
+      console.log('Error with store review:', error);
+    }
+  }, []);
+
   return useMemo(() => ({
     userRole,
     selectedLanguage,
@@ -178,5 +218,6 @@ export const [AppProvider, useApp] = createContextHook(() => {
     addTeacherActivity,
     addExamActivity,
     addTeacherUpload,
-  }), [userRole, selectedLanguage, isLoading, userProgress, selectRole, changeLanguage, resetApp, addQuizResult, addContentActivity, addStudyTime, addTeacherActivity, addExamActivity, addTeacherUpload]);
+    maybeRequestReview,
+  }), [userRole, selectedLanguage, isLoading, userProgress, selectRole, changeLanguage, resetApp, addQuizResult, addContentActivity, addStudyTime, addTeacherActivity, addExamActivity, addTeacherUpload, maybeRequestReview]);
 });

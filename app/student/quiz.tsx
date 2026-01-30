@@ -25,7 +25,7 @@ const QuizSchema = z.object({
 export default function QuizGenerator() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { selectedLanguage, addQuizResult } = useApp();
+  const { selectedLanguage, addQuizResult, maybeRequestReview } = useApp();
   
   const [selectedBoard, setSelectedBoard] = useState<'NCERT' | 'ICSE'>('NCERT');
   const [selectedGrade, setSelectedGrade] = useState<number>(6);
@@ -143,6 +143,7 @@ Provide detailed explanations showing the reasoning process.`;
         completedAt: new Date(),
       };
       addQuizResult(result);
+      maybeRequestReview();
     }
   };
 
