@@ -395,7 +395,7 @@ Based on the above scenario, answer:
 Provide complete ANSWER KEY with:
 - Step-by-step solutions for all numerical problems
 - Diagram descriptions for diagram-based questions
-- Model answers for competency-based questions`;`
+- Model answers for competency-based questions`;
   }
 
   if (subjectName === 'Chemistry') {
@@ -532,7 +532,7 @@ Provide complete ANSWER KEY with:
 - Balanced equations for all reactions
 - Step-by-step numerical solutions
 - Diagram descriptions and labeling
-- Model answers for competency-based questions`;`
+- Model answers for competency-based questions`;
   }
 
   if (subjectName === 'Biology') {
@@ -687,7 +687,7 @@ Provide complete ANSWER KEY with:
 - Detailed solutions for all questions
 - Diagram descriptions and labeling answers
 - Model answers for competency-based questions
-- Explanations for diagram/picture-based questions`;`
+- Explanations for diagram/picture-based questions`;
   }
 
   if (subjectName === 'Geography') {
@@ -949,7 +949,7 @@ IMPORTANT:
 Provide complete ANSWER KEY with:
 - Step-by-step solutions for all problems
 - Diagram/figure descriptions where applicable
-- Model answers for competency-based questions`;`
+- Model answers for competency-based questions`;
   }
 
   if (subjectName === 'Computer Applications') {
