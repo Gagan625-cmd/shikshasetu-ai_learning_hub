@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
-import { ChevronLeft, Sparkles, FileText, BookText, ScrollText, Loader2, Download, Share2, Network, Volume2, VolumeX } from 'lucide-react-native';
-import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Platform, TextInput, Alert } from 'react-native';
+import { ChevronLeft, Sparkles, FileText, BookText, ScrollText, Loader2, Download, Share2, Network, Volume2, VolumeX, Image as ImageIcon } from 'lucide-react-native';
+import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Platform, TextInput, Alert, Image, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState } from 'react';
 import { useApp } from '@/contexts/app-context';
@@ -1307,6 +1307,8 @@ export default function ContentGenerator() {
   const [customTopic, setCustomTopic] = useState('');
   const [generatedContent, setGeneratedContent] = useState('');
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [generatedDiagrams, setGeneratedDiagrams] = useState<{ id: string; description: string; base64: string; mimeType: string }[]>([]);
+  const [isGeneratingDiagrams, setIsGeneratingDiagrams] = useState(false);
 
   const allSubjects = selectedBoard === 'NCERT' ? NCERT_SUBJECTS : ICSE_SUBJECTS;
   const subjects = allSubjects.filter((s) => s.grade === selectedGrade);
@@ -1327,6 +1329,81 @@ export default function ContentGenerator() {
 
   const isMultiChapterMode = selectedBoard === 'ICSE' && contentType === 'questionpaper';
 
+  const generateDiagram = async (description: string, subjectName: string): Promise<{ base64: string; mimeType: string } | null> => {
+    try {
+      console.log('Generating diagram for:', description);
+      const prompt = `Create a clear, educational diagram for a ${subjectName} exam question paper. The diagram should be:
+- Clean, black and white line drawing style suitable for printing
+- Clearly labeled with letters (A, B, C, D, E) for parts to identify
+- Professional educational illustration quality
+- Simple enough for students to understand
+- Include measurement lines or arrows where appropriate
+
+Diagram to create: ${description}
+
+Style: Technical educational diagram, black lines on white background, clear labels, no colors, suitable for exam paper printing.`;
+
+      const response = await fetch('https://toolkit.rork.com/images/generate/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          prompt,
+          size: '1024x1024',
+        }),
+      });
+
+      if (!response.ok) {
+        console.error('Failed to generate diagram:', response.status);
+        return null;
+      }
+
+      const data = await response.json();
+      return {
+        base64: data.image.base64Data,
+        mimeType: data.image.mimeType,
+      };
+    } catch (error) {
+      console.error('Error generating diagram:', error);
+      return null;
+    }
+  };
+
+  const getDiagramDescriptions = (subjectName: string, chapterInfo: string): string[] => {
+    if (subjectName.toLowerCase().includes('physics')) {
+      return [
+        `A ray diagram showing refraction of light through a glass prism. Show incident ray entering the prism, refracted ray inside the prism, and emergent ray exiting. Label: A (incident ray), B (refracted ray), C (emergent ray), D (angle of incidence), E (angle of emergence). Include normal lines at both surfaces.`,
+        `A circuit diagram showing three resistors - R1 and R2 in parallel combination, connected in series with R3. Include an ammeter (A) in the main circuit, a voltmeter (V) across the parallel combination, and a battery with EMF marked. Label all components clearly with standard circuit symbols.`
+      ];
+    } else if (subjectName.toLowerCase().includes('chemistry')) {
+      return [
+        `Laboratory apparatus setup for preparation of hydrogen chloride gas. Show: A (round bottom flask containing sodium chloride), B (thistle funnel for adding concentrated sulfuric acid), C (delivery tube), D (gas jar for collection by upward displacement of air), E (stand and clamp). Include labels for all parts.`,
+        `Diagram showing electrolysis of acidified water. Show: A (electrolytic cell/beaker), B (anode - positive electrode), C (cathode - negative electrode), D (oxygen gas collected at anode), E (hydrogen gas collected at cathode). Label the electrodes and gases with their volumes ratio 1:2.`
+      ];
+    } else if (subjectName.toLowerCase().includes('biology')) {
+      return [
+        `Cross-section diagram of human eye. Show and label: A (Cornea - transparent front layer), B (Iris - colored muscular diaphragm), C (Pupil - central opening), D (Lens - biconvex transparent body), E (Retina - innermost light-sensitive layer), F (Optic nerve). Include ciliary muscles and suspensory ligaments.`,
+        `Diagram of human heart showing internal structure. Label: A (Right atrium), B (Left atrium), C (Right ventricle), D (Left ventricle), E (Aorta), F (Pulmonary artery), G (Superior vena cava). Show the septum, valves (tricuspid, bicuspid), and direction of blood flow with arrows.`
+      ];
+    } else if (subjectName.toLowerCase().includes('geography')) {
+      return [
+        `Diagram showing water cycle. Label: A (Evaporation from ocean), B (Condensation forming clouds), C (Precipitation as rain), D (Surface runoff to rivers), E (Groundwater seepage). Show arrows indicating the cyclical movement of water.`,
+        `Cross-section diagram of soil profile showing different horizons. Label: A (O Horizon - organic matter/humus), B (A Horizon - topsoil), C (B Horizon - subsoil), D (C Horizon - weathered rock), E (R Horizon - bedrock). Show plant roots extending into different layers.`
+      ];
+    } else if (subjectName.toLowerCase().includes('math')) {
+      return [
+        `Geometric diagram showing a circle with center O. Draw: A (chord AB), B (tangent PT touching at point P), C (radius OP perpendicular to tangent), D (angle APB inscribed in the circle = 50°), E (arc AB). Label all points clearly with measurements.`,
+        `Coordinate geometry diagram on a graph. Show: X and Y axes with scale marked (-6 to 6). Plot points A(2,3), B(5,7), C(-3,4). Draw line segment AB and mark its midpoint M. Show the perpendicular distance from C to line AB.`
+      ];
+    } else {
+      return [
+        `Educational diagram relevant to ${subjectName} showing a key concept from ${chapterInfo}. Include clear labels A, B, C, D, E for different parts. Make it suitable for an exam question where students identify and explain parts.`,
+        `Second educational diagram for ${subjectName} illustrating another important concept. Include measurement indicators and labeled parts (A through E). Design for exam use where students analyze and answer questions about the diagram.`
+      ];
+    }
+  };
+
   const generateMutation = useMutation({
     mutationFn: async () => {
       let chapterInfo = '';
@@ -1342,6 +1419,9 @@ export default function ContentGenerator() {
       }
       
       const subjectName = subjects.find((s) => s.id === selectedSubject)?.name || 'General Topic';
+      
+      // Reset diagrams
+      setGeneratedDiagrams([]);
       
       let prompt = '';
       if (contentType === 'notes') {
@@ -1610,6 +1690,35 @@ IMPORTANT REQUIREMENTS:
       }
       
       const result = await generateText({ messages: [{ role: 'user', content: prompt }] });
+      
+      // Generate diagrams for question papers
+      if (contentType === 'questionpaper') {
+        setIsGeneratingDiagrams(true);
+        try {
+          const diagramDescriptions = getDiagramDescriptions(subjectName, chapterInfo);
+          const diagramPromises = diagramDescriptions.slice(0, 2).map(async (desc, index) => {
+            const diagramResult = await generateDiagram(desc, subjectName);
+            if (diagramResult) {
+              return {
+                id: `diagram-${index + 1}`,
+                description: desc,
+                base64: diagramResult.base64,
+                mimeType: diagramResult.mimeType,
+              };
+            }
+            return null;
+          });
+          
+          const diagrams = (await Promise.all(diagramPromises)).filter((d): d is { id: string; description: string; base64: string; mimeType: string } => d !== null);
+          setGeneratedDiagrams(diagrams);
+          console.log(`Generated ${diagrams.length} diagrams for question paper`);
+        } catch (error) {
+          console.error('Error generating diagrams:', error);
+        } finally {
+          setIsGeneratingDiagrams(false);
+        }
+      }
+      
       return result;
     },
     onSuccess: (data) => {
@@ -1663,6 +1772,26 @@ IMPORTANT REQUIREMENTS:
         .replace(/\n• (.*?)\n/g, '<li>$1</li>\n')
         .replace(/\n\n/g, '<br/><br/>');
 
+      // Generate diagram HTML section for question papers
+      let diagramsHtml = '';
+      if (contentType === 'questionpaper' && generatedDiagrams.length > 0) {
+        diagramsHtml = `
+          <div class="diagrams-section">
+            <h2>📊 DIAGRAM REFERENCE SECTION</h2>
+            <p class="diagram-note">The following diagrams are referenced in questions throughout this paper. Use these diagrams to answer the related questions.</p>
+            <div class="diagrams-grid">
+              ${generatedDiagrams.map((diagram, index) => `
+                <div class="diagram-card">
+                  <h3>Figure ${index + 1}</h3>
+                  <img src="data:${diagram.mimeType};base64,${diagram.base64}" alt="Diagram ${index + 1}" class="diagram-image" />
+                  <p class="diagram-caption">Study this diagram carefully and identify the labeled parts (A, B, C, D, E) to answer related questions.</p>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      }
+
       const html = `
         <!DOCTYPE html>
         <html>
@@ -1687,6 +1816,14 @@ IMPORTANT REQUIREMENTS:
               .meta { color: #64748b; margin-top: 10px; font-size: 14px; }
               .math { background: #f1f5f9; padding: 12px 16px; margin: 12px 0; border-radius: 6px; font-family: 'Courier New', monospace; font-size: 15px; overflow-x: auto; border-left: 3px solid #3b82f6; display: block; }
               .math-inline { background: #f1f5f9; padding: 2px 6px; border-radius: 3px; font-family: 'Courier New', monospace; font-size: 14px; }
+              .diagrams-section { margin: 30px 0; padding: 20px; background: #f8fafc; border-radius: 12px; border: 2px solid #e2e8f0; page-break-before: always; }
+              .diagrams-section h2 { color: #1e40af; margin-bottom: 10px; }
+              .diagram-note { color: #64748b; font-style: italic; margin-bottom: 20px; font-size: 14px; }
+              .diagrams-grid { display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; }
+              .diagram-card { flex: 1; min-width: 300px; max-width: 450px; background: white; border-radius: 8px; padding: 15px; border: 1px solid #e2e8f0; text-align: center; }
+              .diagram-card h3 { color: #3b82f6; margin-bottom: 10px; font-size: 16px; }
+              .diagram-image { max-width: 100%; height: auto; max-height: 350px; border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 10px; }
+              .diagram-caption { font-size: 12px; color: #64748b; font-style: italic; }
             </style>
           </head>
           <body>
@@ -1697,6 +1834,7 @@ IMPORTANT REQUIREMENTS:
                 <p><strong>Generated by:</strong> ShikshaSetu AI | <strong>Date:</strong> ${new Date().toLocaleDateString()}</p>
               </div>
             </div>
+            ${diagramsHtml}
             <div class="content">${formattedContent}</div>
           </body>
         </html>
@@ -2246,6 +2384,45 @@ IMPORTANT REQUIREMENTS:
                 <Text style={styles.actionButtonText}>Copy</Text>
               </TouchableOpacity>
             </View>
+
+            {/* Diagram Section for Question Papers */}
+            {contentType === 'questionpaper' && (isGeneratingDiagrams || generatedDiagrams.length > 0) && (
+              <View style={styles.diagramsSection}>
+                <View style={styles.diagramsHeader}>
+                  <ImageIcon size={20} color="#3b82f6" />
+                  <Text style={styles.diagramsTitle}>Question Paper Diagrams</Text>
+                </View>
+                {isGeneratingDiagrams ? (
+                  <View style={styles.diagramsLoading}>
+                    <ActivityIndicator size="large" color="#3b82f6" />
+                    <Text style={styles.diagramsLoadingText}>Generating educational diagrams...</Text>
+                    <Text style={styles.diagramsLoadingSubtext}>This may take a moment</Text>
+                  </View>
+                ) : (
+                  <>
+                    <Text style={styles.diagramsNote}>
+                      These diagrams are included in your question paper PDF. Students will answer questions based on these figures.
+                    </Text>
+                    <View style={styles.diagramsGrid}>
+                      {generatedDiagrams.map((diagram, index) => (
+                        <View key={diagram.id} style={styles.diagramCard}>
+                          <Text style={styles.diagramLabel}>Figure {index + 1}</Text>
+                          <Image
+                            source={{ uri: `data:${diagram.mimeType};base64,${diagram.base64}` }}
+                            style={styles.diagramImage}
+                            resizeMode="contain"
+                          />
+                          <Text style={styles.diagramCaption} numberOfLines={3}>
+                            Identify parts A, B, C, D, E in the diagram
+                          </Text>
+                        </View>
+                      ))}
+                    </View>
+                  </>
+                )}
+              </View>
+            )}
+
             <View style={styles.resultCard}>
               <Text style={styles.resultTitle}>Generated Content</Text>
               <Text style={styles.resultContent}>{cleanMarkdown(generatedContent)}</Text>
@@ -2629,5 +2806,92 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#475569',
     lineHeight: 24,
+  },
+  diagramsSection: {
+    marginTop: 16,
+    padding: 16,
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: '#3b82f6',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#3b82f6',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.15,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 4,
+      },
+      web: {
+        boxShadow: '0 2px 8px rgba(59, 130, 246, 0.15)',
+      },
+    }),
+  },
+  diagramsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  diagramsTitle: {
+    fontSize: 16,
+    fontWeight: '700' as const,
+    color: '#1e40af',
+  },
+  diagramsNote: {
+    fontSize: 13,
+    color: '#64748b',
+    fontStyle: 'italic' as const,
+    marginBottom: 16,
+    lineHeight: 18,
+  },
+  diagramsLoading: {
+    alignItems: 'center',
+    paddingVertical: 30,
+  },
+  diagramsLoadingText: {
+    fontSize: 15,
+    fontWeight: '600' as const,
+    color: '#3b82f6',
+    marginTop: 12,
+  },
+  diagramsLoadingSubtext: {
+    fontSize: 13,
+    color: '#94a3b8',
+    marginTop: 4,
+  },
+  diagramsGrid: {
+    gap: 16,
+  },
+  diagramCard: {
+    backgroundColor: '#f8fafc',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  diagramLabel: {
+    fontSize: 14,
+    fontWeight: '700' as const,
+    color: '#3b82f6',
+    marginBottom: 8,
+    textAlign: 'center' as const,
+  },
+  diagramImage: {
+    width: '100%',
+    height: 250,
+    borderRadius: 8,
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  diagramCaption: {
+    fontSize: 12,
+    color: '#64748b',
+    fontStyle: 'italic' as const,
+    marginTop: 8,
+    textAlign: 'center' as const,
   },
 });
