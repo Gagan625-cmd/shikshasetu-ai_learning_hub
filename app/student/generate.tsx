@@ -31,6 +31,30 @@ IMPORTANT - Generate in ${language} language following the OFFICIAL ICSE BOARD E
 CRITICAL - For all formulas:
 - Use plain text with Unicode (×, ÷, ², ³, √, π, Δ, θ) - NO LaTeX syntax
 
+═══════════════════════════════════════════════════════════════
+                    SPECIAL REQUIREMENTS
+═══════════════════════════════════════════════════════════════
+
+📊 DIAGRAM-BASED QUESTIONS (Include in question paper):
+- Include diagram-based questions where students must interpret, label, or draw diagrams
+- For diagram questions, provide detailed text descriptions in [DIAGRAM: ...] format
+- Example: "[DIAGRAM: A ray diagram showing refraction of light through a glass prism with incident ray, emergent ray, and angles marked as A, B, C]"
+- Ask students to identify parts, explain processes shown, or draw similar diagrams
+
+🖼️ PICTURE/FIGURE-BASED QUESTIONS:
+- Include questions based on pictures, graphs, charts, or experimental setups
+- Describe the picture/figure in detail within [FIGURE: ...] format
+- Example: "[FIGURE: A bar graph showing population growth from 1950-2020 with values marked]"
+- Ask students to analyze, interpret data, or draw conclusions
+
+🎯 COMPETENCY-BASED QUESTIONS (20% of total marks):
+- Include application-based questions testing real-world problem solving
+- Include case study/scenario-based questions
+- Include questions requiring analysis, evaluation, and critical thinking
+- Include questions connecting concepts to daily life situations
+- Mark these questions with [COMPETENCY-BASED] tag
+- These should test higher-order thinking skills (HOTs)
+
 `;
 
   if (subjectName === 'English Language') {
@@ -268,20 +292,23 @@ Select the correct answers to the questions from the given options.
 (Do not copy the questions, write the correct answer only).
 
 [Generate 15 MCQs numbered (i) to (xv) covering:
-- Direct conceptual MCQs
-- Numerical-based MCQs
-- Assertion-Reason questions:
+- Direct conceptual MCQs (5 questions)
+- Numerical-based MCQs (3 questions)
+- Assertion-Reason questions (3 questions):
   Assertion (A): [statement]
   Reason (R): [statement]
   (a) Both A and R are true and R is the correct explanation of A.
   (b) Both A and R are true but R is not the correct explanation of A.
   (c) A is true but R is false.
   (d) A is false but R is true.
-- Diagram-based identification questions]
+- Diagram-based identification questions (2 questions) - Include [DIAGRAM: detailed description]
+- COMPETENCY-BASED MCQs (2 questions) - Real-world application scenarios]
 
 (i) [MCQ - conceptual]
 (ii) [MCQ - numerical]
 (iii) [Assertion-Reason]
+(iv) [DIAGRAM-BASED MCQ with figure description]
+(v) [COMPETENCY-BASED - application scenario]
 ... continue to (xv)
 
 **Question 2** [25 marks]
@@ -293,24 +320,26 @@ Select the correct answers to the questions from the given options.
 (d) [Physics term 4]
 (e) [Physics term 5]
 
-(ii) State and explain: [5 marks]
-(a) [Law/Principle 1]
-(b) [Law/Principle 2]
-(c) [Law/Principle 3]
-(d) [Law/Principle 4]
-(e) [Law/Principle 5]
+(ii) Study the diagram and answer: [5 marks]
+[DIAGRAM: Provide detailed description of a physics apparatus/setup/ray diagram with parts labeled A, B, C, D, E]
+(a) Identify the parts labeled A, B, C [2]
+(b) State the function of part D [1]
+(c) What principle does this demonstrate? [2]
 
 (iii) Numerical Problems (Show all steps): [5 marks]
-(a) [Numerical problem with formula application]
-(b) [Numerical problem]
+(a) [Numerical problem with formula application] [2]
+(b) [Numerical problem] [3]
 
 (iv) Draw a neat labelled diagram of: [5 marks]
-(a) [Diagram 1 - apparatus/concept]
-(b) [Diagram 2 - apparatus/concept]
+(a) [Diagram 1 - apparatus/concept with at least 5 labels]
+(b) [Diagram 2 - apparatus/concept with at least 5 labels]
 
-(v) Differentiate between: [5 marks]
-(a) [Concept 1] and [Concept 2]
-(b) [Concept 3] and [Concept 4]
+(v) [COMPETENCY-BASED] Case Study: [5 marks]
+[Provide a real-world scenario/case study related to the chapter]
+Read the above case and answer:
+(a) [Application question] [2]
+(b) [Analysis question] [2]
+(c) [Conclusion/evaluation question] [1]
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
                          SECTION B (40 Marks)
@@ -319,43 +348,54 @@ Select the correct answers to the questions from the given options.
 
 **Question 3** [10 marks]
 (i) [Conceptual question] [2]
-(ii) [Derivation or explanation] [2]
+(ii) [DIAGRAM-BASED] Study the figure below and answer:
+    [DIAGRAM: Detailed description of experimental setup/circuit/ray diagram]
+    (a) What does the diagram represent? [1]
+    (b) Explain the process shown [2]
 (iii) [Numerical problem - show all steps] [3]
-(iv) [Diagram-based question or application] [3]
+(iv) [COMPETENCY-BASED] Application question relating concept to daily life [2]
 
 **Question 4** [10 marks]
 (i) [Conceptual question] [2]
-(ii) [Derivation or explanation] [2]
+(ii) Draw a neat labelled diagram showing [specific concept] [3]
 (iii) [Numerical problem - show all steps] [3]
-(iv) [Diagram-based question or application] [3]
+(iv) [COMPETENCY-BASED] Why is this concept important in [real-world application]? Explain with example. [2]
 
 **Question 5** [10 marks]
 (i) [Conceptual question] [2]
-(ii) [Derivation or explanation] [2]
+(ii) [FIGURE-BASED] Observe the graph/chart below:
+    [FIGURE: Description of a graph showing relationship between two physical quantities with axes labeled and values]
+    (a) What does the graph show? [1]
+    (b) Calculate the slope/value from the graph [2]
 (iii) [Numerical problem - show all steps] [3]
-(iv) [Diagram-based question or application] [3]
+(iv) [Derivation or explanation] [2]
 
 **Question 6** [10 marks]
 (i) [Conceptual question] [2]
 (ii) [Derivation or explanation] [2]
 (iii) [Numerical problem - show all steps] [3]
-(iv) [Diagram-based question or application] [3]
+(iv) [DIAGRAM-BASED] Draw and explain [specific diagram with labels] [3]
 
-**Question 7** [10 marks]
-(i) [Conceptual question] [2]
-(ii) [Derivation or explanation] [2]
-(iii) [Numerical problem - show all steps] [3]
-(iv) [Diagram-based question or application] [3]
+**Question 7** [10 marks] [COMPETENCY-BASED QUESTION]
+[Provide a detailed real-world scenario/case study - 3-4 lines]
+Based on the above scenario, answer:
+(i) [Identify the physics concept involved] [2]
+(ii) [Apply the relevant formula/principle] [3]
+(iii) [Analyze and explain the outcome] [3]
+(iv) [Suggest improvements/alternatives] [2]
 
 **Question 8** [10 marks]
 (i) [Conceptual question] [2]
 (ii) [Derivation or explanation] [2]
 (iii) [Numerical problem - show all steps] [3]
-(iv) [Diagram-based question or application] [3]
+(iv) [DIAGRAM-BASED] Draw a neat labelled diagram of [apparatus/concept] and explain its working [3]
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Provide complete ANSWER KEY with step-by-step solutions for all numerical problems.`;
+Provide complete ANSWER KEY with:
+- Step-by-step solutions for all numerical problems
+- Diagram descriptions for diagram-based questions
+- Model answers for competency-based questions`;`
   }
 
   if (subjectName === 'Chemistry') {
@@ -384,18 +424,21 @@ Select the correct answers to the questions from the given options.
 (Do not copy the questions, write the correct answer only).
 
 [Generate 15 MCQs numbered (i) to (xv) covering:
-- Periodic table and properties
-- Chemical bonding
-- Acids, bases, and salts
-- Mole concept calculations
-- Electrolysis
-- Organic chemistry
-- Assertion-Reason questions]
+- Periodic table and properties (3 questions)
+- Chemical bonding (2 questions)
+- Acids, bases, and salts (2 questions)
+- Mole concept calculations (2 questions)
+- DIAGRAM-BASED MCQs (2 questions) - with [DIAGRAM: description of apparatus/setup]
+- Assertion-Reason questions (2 questions)
+- COMPETENCY-BASED MCQs (2 questions) - real-world chemistry applications]
 
 (i) [MCQ - periodic properties]
 (ii) [MCQ - chemical bonding]
-(iii) [Assertion-Reason]
-(iv) [MCQ - numerical/mole concept]
+(iii) [DIAGRAM-BASED MCQ]
+    [DIAGRAM: Description of laboratory apparatus - e.g., "An electrolysis setup with electrodes A and B dipped in solution, connected to battery"]
+(iv) [Assertion-Reason]
+(v) [MCQ - numerical/mole concept]
+(vi) [COMPETENCY-BASED - real-world chemistry scenario]
 ... continue to (xv)
 
 **Question 2** [25 marks]
@@ -407,12 +450,14 @@ Select the correct answers to the questions from the given options.
 (d) [Laboratory test identification]
 (e) [Compound based on property]
 
-(ii) Write balanced chemical equations for: [5 marks]
-(a) [Reaction 1]
-(b) [Reaction 2]
-(c) [Reaction 3]
-(d) [Reaction 4]
-(e) [Reaction 5]
+(ii) [DIAGRAM-BASED] Study the laboratory setup below and answer: [5 marks]
+[DIAGRAM: Detailed description of laboratory apparatus for gas preparation/electrolysis/titration with parts labeled A, B, C, D, E - e.g., "A laboratory setup for preparation of HCl gas showing: flask (A) containing NaCl, funnel (B) for adding acid, delivery tube (C), gas jar (D) with water, and stand (E)"]
+
+(a) Identify the apparatus labeled A and B [1]
+(b) What is collected at D? [1]
+(c) Write the equation for the reaction [1]
+(d) Why is the gas collected by downward delivery? [1]
+(e) State one precaution to be taken [1]
 
 (iii) Give reasons for the following: [5 marks]
 (a) [Chemical reasoning 1]
@@ -421,13 +466,18 @@ Select the correct answers to the questions from the given options.
 (d) [Chemical reasoning 4]
 (e) [Chemical reasoning 5]
 
-(iv) Match the following: [5 marks]
-Column A                    Column B
-[5 items to match]
+(iv) [COMPETENCY-BASED] Real-World Chemistry Application: [5 marks]
+[Provide a real-life scenario involving chemistry - e.g., industrial process, environmental issue, household chemistry]
+
+Based on the above:
+(a) Identify the chemical process involved [1]
+(b) Write the relevant chemical equation [2]
+(c) What are the environmental/health implications? [1]
+(d) Suggest an alternative or improvement [1]
 
 (v) Numerical Problems (Mole Concept/Stoichiometry): [5 marks]
-(a) [Numerical problem - show steps]
-(b) [Numerical problem - show steps]
+(a) [Numerical problem - show steps] [2]
+(b) [Numerical problem - show steps] [3]
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
                          SECTION B (40 Marks)
@@ -438,41 +488,51 @@ Column A                    Column B
 (i) [Conceptual/definition] [2]
 (ii) [Write equations/explain process] [2]
 (iii) [Numerical problem - mole concept/stoichiometry] [3]
-(iv) [Laboratory preparation/diagram] [3]
+(iv) [DIAGRAM-BASED] Draw a neat labelled diagram for laboratory preparation of [gas/compound] [3]
 
 **Question 4** [10 marks]
 (i) [Conceptual/definition] [2]
-(ii) [Write equations/explain process] [2]
+(ii) [FIGURE-BASED] Study the periodic table portion below:
+    [FIGURE: Description of a section of periodic table with elements marked A, B, C, D]
+    (a) Identify the elements [1]
+    (b) Arrange them in order of [property] [1]
 (iii) [Numerical problem] [3]
-(iv) [Compare/differentiate/diagram] [3]
+(iv) [Compare/differentiate] [3]
 
 **Question 5** [10 marks]
 (i) [Conceptual/definition] [2]
 (ii) [Write equations/explain process] [2]
 (iii) [Numerical problem] [3]
-(iv) [Laboratory test/diagram] [3]
+(iv) [COMPETENCY-BASED] How is this concept used in industry/daily life? Give example. [3]
 
-**Question 6** [10 marks]
-(i) [Conceptual/definition] [2]
-(ii) [Write equations/explain process] [2]
-(iii) [Numerical problem] [3]
-(iv) [Application-based/diagram] [3]
+**Question 6** [10 marks] [COMPETENCY-BASED QUESTION]
+[Provide a detailed real-world scenario involving chemical processes - industrial, environmental, or everyday chemistry]
+
+Based on the above:
+(i) Identify the chemical reaction/process [2]
+(ii) Write balanced chemical equations [3]
+(iii) Explain the chemistry behind the process [3]
+(iv) Discuss environmental impact and alternatives [2]
 
 **Question 7** [10 marks]
 (i) [Conceptual/definition] [2]
 (ii) [Write equations/explain process] [2]
 (iii) [Numerical problem] [3]
-(iv) [Organic chemistry/IUPAC naming] [3]
+(iv) [DIAGRAM-BASED] Draw the structural formula of [organic compound] and explain [3]
 
 **Question 8** [10 marks]
 (i) [Conceptual/definition] [2]
 (ii) [Write equations/explain process] [2]
 (iii) [Numerical problem] [3]
-(iv) [Electrolysis/diagram] [3]
+(iv) [DIAGRAM-BASED] Draw a neat labelled diagram of electrolysis of [substance] showing electrodes, products, and reactions [3]
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Provide complete ANSWER KEY with balanced equations and step-by-step numerical solutions.`;
+Provide complete ANSWER KEY with:
+- Balanced equations for all reactions
+- Step-by-step numerical solutions
+- Diagram descriptions and labeling
+- Model answers for competency-based questions`;`
   }
 
   if (subjectName === 'Biology') {
@@ -500,20 +560,25 @@ Select the correct answers to the questions from the given options.
 (Do not copy the questions, write the correct answer only).
 
 [Generate 15 MCQs numbered (i) to (xv) with 4 options each. Include:
-- Direct MCQs on biological concepts
-- Assertion-Reason questions:
+- Direct MCQs on biological concepts (5 questions)
+- Assertion-Reason questions (3 questions):
   Assertion (A): [statement]
   Reason (R): [statement]
   (a) (A) is true and (R) is false.
   (b) (A) is false and (R) is true.
   (c) Both (A) and (R) are true.
   (d) Both (A) and (R) are false.
-- Diagram/image-based identification questions
-- Match the following type questions]
+- DIAGRAM-BASED MCQs (3 questions) - with [DIAGRAM: detailed description of biological structure/process]
+- PICTURE-BASED identification questions (2 questions) - with [PICTURE: description of photograph/image]
+- COMPETENCY-BASED MCQs (2 questions) - real-world health/environment scenarios]
 
 (i) [MCQ - direct]
 (ii) [Assertion-Reason]
-(iii) [MCQ - diagram based]
+(iii) [DIAGRAM-BASED MCQ]
+    [DIAGRAM: Detailed description of a biological diagram - e.g., cross-section of heart with chambers, valves labeled A, B, C, D]
+(iv) [PICTURE-BASED MCQ]
+    [PICTURE: Description of a photograph - e.g., microscopic image of a cell/tissue/organism]
+(v) [COMPETENCY-BASED - health/environment scenario]
 ... continue to (xv)
 
 **Question 2** [25 marks]
@@ -525,14 +590,15 @@ Select the correct answers to the questions from the given options.
 (d) [Disease/disorder]
 (e) [Scientific term]
 
-(ii) Given below is a diagram. Study it and fill in the blanks: [5 marks]
-[Describe a diagram - human organ/plant structure/cell]
+(ii) Study the diagram given below and answer the questions: [5 marks]
+[DIAGRAM: Detailed description of a human organ/plant structure/cell with parts labeled as (a), (b), (c), (d), (e) - e.g., "A diagram of the human eye showing parts: (a) outer curved transparent layer, (b) colored muscular diaphragm, (c) black opening in center, (d) biconvex transparent structure behind (c), (e) innermost layer with photoreceptors"]
+
 The diagram shows __________.
-(a) Label part A: __________
-(b) Label part B: __________
-(c) Label part C: __________
-(d) Function of part A: __________
-(e) Function of part B: __________
+(a) Identify the part labeled (a): __________
+(b) Identify the part labeled (b): __________
+(c) Identify the part labeled (c): __________
+(d) State the function of part (d): __________
+(e) State the function of part (e): __________
 
 (iii) Arrange the terms in each group in the correct order. Write them in a logical sequence beginning with the term that is underlined: [5 marks]
 (a) [Biological sequence - e.g., digestion pathway]
@@ -548,9 +614,14 @@ The diagram shows __________.
 (d) [Description of disease symptom]
 (e) [Description of cellular component]
 
-(v) Match the items in Column A with Column B: [5 marks]
-Column A                    Column B
-[5 biological terms]        [5 corresponding functions/locations]
+(v) [COMPETENCY-BASED] Case Study - Health Scenario: [5 marks]
+[Provide a real-life health/environmental case study - 3-4 sentences describing a patient's condition, environmental issue, or biological phenomenon]
+
+Based on the above case, answer:
+(a) Identify the condition/problem described. [1]
+(b) What biological process/system is affected? [1]
+(c) Suggest TWO preventive measures or treatments. [2]
+(d) How does this relate to concepts studied in class? [1]
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
                          SECTION B (40 Marks)
@@ -559,35 +630,46 @@ Column A                    Column B
 
 **Question 3** [10 marks]
 (i) [Definition - 1 mark]
-(ii) [Brief explanation with parts (a) and (b)] [2 marks]
+(ii) [DIAGRAM-BASED] Study the figure below:
+    [DIAGRAM: Detailed description of biological diagram with labeled parts]
+    (a) Identify the structure shown [1]
+    (b) Label parts A and B [1]
 (iii) [Differentiate/Compare OR Give reasons] [2 marks]
 (iv) [Application-based with parts (a) and (b)] [2 marks]
-(v) [Draw a neat, labelled diagram OR detailed explanation] [3 marks]
+(v) Draw a neat, labelled diagram of [specific biological structure with at least 5 labels] [3 marks]
 
 **Question 4** [10 marks]
 (i) [Definition] [1]
 (ii) [Explanation with two parts] [2]
 (iii) [Differentiate/Reasons] [2]
-(iv) [Application-based] [2]
-(v) [Diagram/Detailed explanation] [3]
+(iv) [FIGURE-BASED] Observe the graph/chart below:
+    [FIGURE: Description of a graph - e.g., "A graph showing enzyme activity vs temperature with peak at 37°C"]
+    (a) What does the graph show? [1]
+    (b) Explain the trend observed [1]
+(v) [COMPETENCY-BASED] How is this concept applied in daily life/medicine? [3]
 
 **Question 5** [10 marks]
 (i) [Definition] [1]
 (ii) [Explanation with two parts] [2]
 (iii) [Differentiate/Reasons] [2]
 (iv) [Application-based] [2]
-(v) [Diagram/Detailed explanation] [3]
+(v) Draw a neat, labelled diagram showing [biological process/structure] [3]
 
-**Question 6** [10 marks]
-(i) [Definition] [1]
-(ii) [Explanation with two parts] [2]
-(iii) [Differentiate/Reasons] [2]
-(iv) [Application-based] [2]
-(v) [Diagram/Detailed explanation] [3]
+**Question 6** [10 marks] [COMPETENCY-BASED QUESTION]
+[Provide a detailed real-world scenario related to health, environment, or biotechnology - 4-5 lines]
+
+Based on the above scenario:
+(i) Identify the biological concept involved [2]
+(ii) Explain the underlying biological process [3]
+(iii) What are the implications for human health/environment? [3]
+(iv) Suggest two measures to address this issue [2]
 
 **Question 7** [10 marks]
 (i) [Definition] [1]
-(ii) [Explanation with two parts] [2]
+(ii) [PICTURE-BASED] Observe the following:
+    [PICTURE: Description of a photograph/microscopic image - e.g., "A microscopic image showing elongated cells with dark nuclei arranged in bundles"]
+    (a) Identify the tissue/structure shown [1]
+    (b) Where is this found in the body? [1]
 (iii) [Differentiate/Reasons] [2]
 (iv) [Application-based] [2]
 (v) [Diagram/Detailed explanation] [3]
@@ -597,11 +679,15 @@ Column A                    Column B
 (ii) [Explanation with two parts] [2]
 (iii) [Differentiate/Reasons] [2]
 (iv) [Application-based] [2]
-(v) [Diagram/Detailed explanation] [3]
+(v) Draw a neat, labelled diagram of [biological structure] and explain its function [3]
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Provide complete ANSWER KEY with detailed solutions at the end.`;
+Provide complete ANSWER KEY with:
+- Detailed solutions for all questions
+- Diagram descriptions and labeling answers
+- Model answers for competency-based questions
+- Explanations for diagram/picture-based questions`;`
   }
 
   if (subjectName === 'Geography') {
@@ -767,36 +853,44 @@ Select the correct answers to the questions from the given options.
 (Do not copy the questions, write the correct answer only).
 
 [Generate 15 MCQs numbered (i) to (xv) covering:
-- Algebraic concepts
-- Geometry theorems
-- Mensuration formulas
-- Trigonometry
-- Statistics/Probability
-- Commercial mathematics
-- Coordinate geometry]
+- Algebraic concepts (2 questions)
+- Geometry theorems (2 questions)
+- Mensuration formulas (2 questions)
+- Trigonometry (2 questions)
+- Statistics/Probability (2 questions)
+- FIGURE-BASED MCQs (2 questions) - with [FIGURE: description of geometric figure/graph]
+- COMPETENCY-BASED MCQs (3 questions) - real-world application problems]
 
 (i) [MCQ - algebra]
 (ii) [MCQ - geometry]
-(iii) [MCQ - trigonometry]
-(iv) [MCQ - statistics]
-(v) [MCQ - commercial maths]
+(iii) [FIGURE-BASED MCQ]
+    [FIGURE: Description of geometric figure - e.g., "A circle with center O, chord AB, and tangent PT at point P. Angle APB = 40°"]
+(iv) [MCQ - trigonometry]
+(v) [COMPETENCY-BASED - real-world math application]
+(vi) [FIGURE-BASED MCQ]
+    [FIGURE: Description of graph - e.g., "A coordinate plane showing line l passing through points (2, 3) and (4, 7)"]
 ... continue to (xv)
 
 **Question 2** [10 marks]
 
 (i) [Short numerical - algebra/equations] [2]
-(ii) [Short numerical - geometry/mensuration] [2]
+(ii) [FIGURE-BASED] In the figure below, find the value of x:
+    [FIGURE: Geometric figure with angles/sides marked] [2]
 (iii) [Short numerical - trigonometry] [2]
 (iv) [Short numerical - statistics] [2]
-(v) [Short numerical - coordinate geometry] [2]
+(v) [COMPETENCY-BASED] A shopkeeper... [real-world problem] [2]
 
 **Question 3** [15 marks]
 
 (i) Solve: [Equation/Problem] [3]
-(ii) Prove/Find: [Geometry problem] [3]
+(ii) [FIGURE-BASED] In the given figure:
+    [FIGURE: Detailed description of circle/triangle with measurements]
+    Prove/Find: [Geometry problem] [3]
 (iii) Calculate: [Mensuration problem] [3]
-(iv) [Commercial mathematics - GST/Banking/Shares] [3]
-(v) [Statistics/Probability problem] [3]
+(iv) [COMPETENCY-BASED - GST/Banking/Shares real scenario] [3]
+(v) [GRAPH-BASED] Study the graph below:
+    [FIGURE: Description of histogram/ogive/frequency polygon with data]
+    Answer the following... [3]
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
                          SECTION B (40 Marks)
@@ -805,31 +899,45 @@ Select the correct answers to the questions from the given options.
 
 **Question 4** [10 marks]
 (a) [Algebra problem - equations/matrices/AP-GP] [5]
-(b) [Related problem with step-by-step solution] [5]
+(b) [COMPETENCY-BASED] A real-world application problem involving algebra [5]
 
 **Question 5** [10 marks]
-(a) [Geometry theorem/proof - circles/triangles] [5]
-(b) [Construction/application problem] [5]
+(a) [FIGURE-BASED] In the given figure:
+    [FIGURE: Detailed description of circle theorem figure with all measurements]
+    Prove/Calculate: [Geometry theorem/proof] [5]
+(b) [Construction] Using ruler and compass, construct... [5]
 
 **Question 6** [10 marks]
-(a) [Mensuration - surface area/volume] [5]
-(b) [Related mensuration problem] [5]
+(a) [FIGURE-BASED] A solid figure described as:
+    [FIGURE: Description of 3D solid - e.g., "A cone of height 12 cm mounted on a hemisphere of radius 5 cm"]
+    Calculate surface area/volume [5]
+(b) [Related mensuration problem with diagram description] [5]
 
-**Question 7** [10 marks]
-(a) [Trigonometry - heights and distances] [5]
-(b) [Trigonometric identities/equations] [5]
+**Question 7** [10 marks] [COMPETENCY-BASED QUESTION]
+[Provide a real-world scenario involving heights and distances - e.g., building height, tower shadow, navigation]
+
+(a) Draw a rough diagram representing the situation [2]
+(b) Apply trigonometry to solve the problem [5]
+(c) What if the angle changes to...? Recalculate. [3]
 
 **Question 8** [10 marks]
-(a) [Statistics - mean/median/mode/histogram/ogive] [5]
-(b) [Probability problem] [5]
+(a) [GRAPH-BASED] Using the data below, draw an ogive/histogram:
+    [DATA TABLE with class intervals and frequencies]
+    From the graph, find median/mode [5]
+(b) [Probability problem with real-world context] [5]
 
 **Question 9** [10 marks]
-(a) [Coordinate geometry - equation of line/section formula] [5]
-(b) [Reflection/graphical representation] [5]
+(a) [FIGURE-BASED] On the coordinate plane below:
+    [FIGURE: Description of coordinate plane with points/lines marked]
+    Find equation of line/coordinates [5]
+(b) [Reflection/graphical representation problem] [5]
 
-**Question 10** [10 marks]
-(a) [Commercial mathematics - compound interest/shares] [5]
-(b) [GST/Banking calculations] [5]
+**Question 10** [10 marks] [COMPETENCY-BASED QUESTION]
+[Provide a detailed real-world financial scenario involving investments, loans, or GST]
+
+(a) Calculate the required values step by step [5]
+(b) If conditions change to..., how does it affect the outcome? [3]
+(c) What would you advise in this situation? [2]
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -838,7 +946,10 @@ IMPORTANT:
 - Draw diagrams wherever required
 - Use proper units in answers
 
-Provide complete ANSWER KEY with step-by-step solutions for all problems.`;
+Provide complete ANSWER KEY with:
+- Step-by-step solutions for all problems
+- Diagram/figure descriptions where applicable
+- Model answers for competency-based questions`;`
   }
 
   if (subjectName === 'Computer Applications') {
@@ -1312,28 +1423,153 @@ Generate in ${selectedLanguage} language following official CBSE board exam form
 CRITICAL - For all formulas:
 - Use plain text with Unicode (×, ÷, ², ³, √, π) - NO LaTeX
 
-Question Paper Structure:
+═══════════════════════════════════════════════════════════════
+                    SPECIAL REQUIREMENTS
+═══════════════════════════════════════════════════════════════
 
-**SECTION A - Multiple Choice Questions (1 mark each)**
-[10 MCQs]
+📊 DIAGRAM-BASED QUESTIONS:
+- Include questions where students interpret, label, or draw diagrams
+- Provide detailed text descriptions in [DIAGRAM: ...] format
+- Example: "[DIAGRAM: A circuit with resistors R1, R2 in series, ammeter A, and battery of EMF 12V]"
 
-**SECTION B - Very Short Answer Questions (2 marks each)**
-[5-6 questions requiring 2-3 sentence answers]
+🖼️ PICTURE/FIGURE-BASED QUESTIONS:
+- Include questions based on graphs, charts, or experimental setups
+- Describe in [FIGURE: ...] format
+- Example: "[FIGURE: A bar graph showing monthly rainfall data from January to December]"
 
-**SECTION C - Short Answer Questions (3 marks each)**
-[4-5 questions requiring detailed explanations]
+🎯 COMPETENCY-BASED QUESTIONS (20% of total marks = 16 marks):
+- Include application-based questions testing real-world problem solving
+- Include case study/scenario-based questions
+- Include questions requiring analysis, evaluation, and critical thinking
+- Mark these with [COMPETENCY-BASED] tag
+- These should test higher-order thinking skills (HOTs)
 
-**SECTION D - Long Answer Questions (5 marks each)**
-[3-4 questions requiring comprehensive answers with diagrams/derivations]
+═══════════════════════════════════════════════════════════════
+                    CBSE BOARD EXAMINATION
+                        CLASS ${selectedGrade}
+                    ${subjectName.toUpperCase()}
+═══════════════════════════════════════════════════════════════
 
-IMPORTANT:
-- Total marks: 80
-- Time: 3 hours
-- Follow official CBSE marking scheme
-- Include questions of varying difficulty
-- Cover all key concepts from the topic
-- Add instruction note at the beginning
-- Provide answer key at the end with detailed solutions`;
+Time: 3 Hours                                Maximum Marks: 80
+
+GENERAL INSTRUCTIONS:
+• This question paper contains five sections - A, B, C, D, and E.
+• All questions are compulsory.
+• Section A has 16 MCQs carrying 1 mark each.
+• Section B has 5 questions carrying 2 marks each.
+• Section C has 7 questions carrying 3 marks each.
+• Section D has 2 case-based questions carrying 4 marks each.
+• Section E has 3 questions carrying 5 marks each.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                    SECTION A (16 Marks)
+                Multiple Choice Questions (1 mark each)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[Generate 16 MCQs numbered 1-16 including:
+- Direct conceptual MCQs (8 questions)
+- Assertion-Reason questions (2 questions)
+- DIAGRAM-BASED MCQs (3 questions) with [DIAGRAM: description]
+- COMPETENCY-BASED MCQs (3 questions) - real-world scenarios]
+
+1. [MCQ - conceptual]
+2. [MCQ - conceptual]
+3. [DIAGRAM-BASED MCQ]
+   [DIAGRAM: Detailed description of relevant figure]
+4. [Assertion-Reason]
+   Assertion (A): [statement]
+   Reason (R): [statement]
+5. [COMPETENCY-BASED - application scenario]
+... continue to 16
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                    SECTION B (10 Marks)
+              Very Short Answer Questions (2 marks each)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+17. [Definition/concept question] [2]
+18. [DIAGRAM-BASED] Study the figure and answer:
+    [DIAGRAM: Description of figure with parts labeled]
+    Identify/Explain... [2]
+19. [Short calculation/reasoning] [2]
+20. [COMPETENCY-BASED] In daily life... [application question] [2]
+21. [Differentiate/Compare briefly] [2]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                    SECTION C (21 Marks)
+                Short Answer Questions (3 marks each)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+22. [Conceptual explanation] [3]
+23. [DIAGRAM-BASED] Draw a neat labelled diagram of [concept] [3]
+24. [Numerical problem with steps] [3]
+25. [FIGURE-BASED] Observe the graph/chart below:
+    [FIGURE: Description of graph with data points]
+    (a) What does it show? (b) Interpret the trend [3]
+26. [COMPETENCY-BASED] A real-world scenario... Explain the concept involved. [3]
+27. [Derivation/Proof] [3]
+28. [Application-based problem] [3]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                    SECTION D (8 Marks)
+                Case-Based Questions (4 marks each)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+29. [COMPETENCY-BASED CASE STUDY 1]
+Read the following passage and answer the questions:
+
+[Provide a 5-6 line real-world scenario/case study with picture description]
+[PICTURE: Description of relevant image/diagram related to the case]
+
+(a) [Identification question] [1]
+(b) [Explanation question] [1]
+(c) [Application question] [1]
+(d) [Analysis/Evaluation question] [1]
+
+30. [COMPETENCY-BASED CASE STUDY 2]
+Study the following data/scenario:
+
+[Provide another real-world scenario with data/figure]
+[FIGURE: Description of chart/graph/experimental setup]
+
+(a) [Data interpretation question] [1]
+(b) [Concept identification] [1]
+(c) [Reasoning question] [1]
+(d) [Suggestion/Conclusion] [1]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                    SECTION E (15 Marks)
+                Long Answer Questions (5 marks each)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+31. [DIAGRAM-BASED]
+(a) Draw a neat labelled diagram of [concept/apparatus] [2]
+(b) Explain the working/process [2]
+(c) State one application [1]
+OR
+[Alternative question of same type]
+
+32. [Numerical/Derivation]
+(a) Derive/Prove [formula/theorem] [3]
+(b) Solve: [Numerical problem using the concept] [2]
+OR
+[Alternative question]
+
+33. [COMPETENCY-BASED EXTENDED RESPONSE]
+[Provide a comprehensive real-world problem/scenario]
+(a) Identify the concepts involved [1]
+(b) Apply relevant principles to solve [2]
+(c) What would happen if conditions change? Analyze. [2]
+OR
+[Alternative question]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Provide complete ANSWER KEY with:
+- Correct options for MCQs
+- Step-by-step solutions for numericals
+- Model answers for case studies
+- Diagram descriptions for diagram-based questions`;
         }
       } else {
         prompt = `Generate a colorful and comprehensive mind map for ${selectedBoard} Grade ${selectedGrade} ${subjectName}.

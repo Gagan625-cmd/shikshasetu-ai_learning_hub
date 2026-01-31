@@ -133,6 +133,29 @@ CRITICAL - For all formulas:
 - Use plain text with Unicode (×, ÷, ², ³, √, π, Δ, θ) - NO LaTeX syntax
 
 ══════════════════════════════════════════════════════════════
+                    SPECIAL REQUIREMENTS
+══════════════════════════════════════════════════════════════
+
+📊 DIAGRAM-BASED QUESTIONS (Include in question paper):
+- Include diagram-based questions where students must interpret, label, or draw diagrams
+- For diagram questions, provide detailed text descriptions in [DIAGRAM: ...] format
+- Example: "[DIAGRAM: A ray diagram showing refraction through a prism with angles marked]"
+- Ask students to identify parts, explain processes, or draw similar diagrams
+
+🖼️ PICTURE/FIGURE-BASED QUESTIONS:
+- Include questions based on pictures, graphs, charts, or experimental setups
+- Describe the picture/figure in detail within [FIGURE: ...] format
+- Example: "[FIGURE: A bar graph showing population data with values marked]"
+- Ask students to analyze, interpret data, or draw conclusions
+
+🎯 COMPETENCY-BASED QUESTIONS (20% of total marks = 16 marks):
+- Include application-based questions testing real-world problem solving
+- Include case study/scenario-based questions
+- Include questions requiring analysis, evaluation, and critical thinking
+- Mark these questions with [COMPETENCY-BASED] tag
+- These should test higher-order thinking skills (HOTs)
+
+══════════════════════════════════════════════════════════════
                     ICSE BOARD EXAMINATION
                         CLASS ${selectedGrade}
                     SUBJECT: ${subjectName.toUpperCase()}
@@ -142,8 +165,7 @@ Time: 2 Hours                                Maximum Marks: 80
 
 GENERAL INSTRUCTIONS:
 • Answers to this paper must be written on the paper provided separately.
-• You will NOT be allowed to write during the first 15 minutes. This time is to be spent in reading the question paper.
-• The time given at the head of this paper is the time allowed for writing the answers.
+• You will NOT be allowed to write during the first 15 minutes.
 • Attempt ALL questions from Section A and any FOUR questions from Section B.
 • The intended marks for questions or parts of questions are given in brackets [ ].
 
@@ -152,15 +174,45 @@ GENERAL INSTRUCTIONS:
                     (Attempt ALL questions)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-**Question 1** [20 marks]
-(a) to (j) - Short answer questions (2 marks each)
+**Question 1** [15 marks]
+Select the correct answers from the given options.
 
-[Generate 10 short objective/fill-in-the-blank/one-word answer/MCQ questions covering ALL selected chapters proportionally]
+[Generate 15 MCQs including:
+- Direct conceptual MCQs (6 questions)
+- Assertion-Reason questions (3 questions)
+- DIAGRAM-BASED MCQs (3 questions) with [DIAGRAM: description]
+- COMPETENCY-BASED MCQs (3 questions) - real-world scenarios]
 
-**Question 2** [20 marks]
-(a) to (j) - Short structured questions (2 marks each)
+(i) [MCQ - conceptual]
+(ii) [DIAGRAM-BASED MCQ]
+    [DIAGRAM: Detailed description of figure with parts labeled]
+(iii) [Assertion-Reason]
+(iv) [COMPETENCY-BASED - application scenario]
+... continue to (xv)
 
-[Generate 10 questions requiring brief explanations, definitions, reasons, or short calculations from ALL selected chapters]
+**Question 2** [25 marks]
+
+(i) Name the following: [5 marks]
+(a) to (e) [5 identification questions]
+
+(ii) [DIAGRAM-BASED] Study the diagram and answer: [5 marks]
+[DIAGRAM: Detailed description of apparatus/structure with parts A, B, C, D, E]
+(a) Identify part A [1]
+(b) State function of B [1]
+(c) What process occurs at C? [1]
+(d) Label parts D and E [2]
+
+(iii) Give reasons/Differentiate: [5 marks]
+(a) to (e) [5 reasoning questions]
+
+(iv) [COMPETENCY-BASED] Case Study: [5 marks]
+[Provide a real-world scenario - 3-4 lines]
+Based on the above:
+(a) Identify the concept [1]
+(b) Explain the process [2]
+(c) Suggest a solution/application [2]
+
+(v) Match the following OR Fill in blanks: [5 marks]
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
                          SECTION B (40 Marks)
@@ -168,31 +220,46 @@ GENERAL INSTRUCTIONS:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 **Question 3** [10 marks]
-[Long answer question with parts (a), (b), (c) - covering first chapter topic]
+(i) [Definition/Concept] [2]
+(ii) [DIAGRAM-BASED] Draw and label [specific diagram] [3]
+(iii) [Numerical/Explanation] [3]
+(iv) [Application question] [2]
 
 **Question 4** [10 marks]
-[Long answer question with parts (a), (b), (c) - covering second chapter topic]
+(i) [Definition/Concept] [2]
+(ii) [FIGURE-BASED] Study the graph/chart:
+    [FIGURE: Description of data visualization]
+    Interpret and answer [3]
+(iii) [Explanation/Derivation] [3]
+(iv) [COMPETENCY-BASED] Real-world application [2]
 
 **Question 5** [10 marks]
-[Long answer question with parts (a), (b), (c) - covering third chapter topic]
+(i) [Definition/Concept] [2]
+(ii) [Differentiate/Compare] [2]
+(iii) [Numerical problem with steps] [3]
+(iv) [DIAGRAM-BASED] Draw neat labelled diagram [3]
 
-**Question 6** [10 marks]
-[Long answer question with parts (a), (b), (c) - covering fourth chapter topic or application-based]
+**Question 6** [10 marks] [COMPETENCY-BASED QUESTION]
+[Detailed real-world scenario - 4-5 lines]
+(i) Identify concepts involved [2]
+(ii) Apply principles to solve [3]
+(iii) Analyze outcomes [3]
+(iv) Suggest alternatives [2]
 
 **Question 7** [10 marks]
-[Long answer question with parts (a), (b), (c) - numerical problems/diagram-based/practical applications]
+(i) [Definition/Concept] [2]
+(ii) [DIAGRAM-BASED] Explain with diagram [3]
+(iii) [Numerical/Derivation] [3]
+(iv) [Application] [2]
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 IMPORTANT REQUIREMENTS:
 1. Questions MUST cover ALL selected chapters proportionally
-2. Follow ICSE marking scheme strictly with marks in brackets []
-3. Include internal choices in Section B (OR option)
+2. Include 20% competency-based questions (16 marks)
+3. Include at least 5-6 diagram/figure-based questions
 4. Mix difficulty: Easy (30%), Medium (50%), Hard (20%)
-5. Include diagram-based questions where relevant [mark with "Draw a neat labeled diagram"]
-6. For Science subjects: Include numerical problems with proper steps
-7. For Mathematics: Show all working steps expected
-8. Provide complete ANSWER KEY with detailed solutions at the end`;
+5. Provide complete ANSWER KEY with detailed solutions`;
           } else {
             prompt = `Generate a comprehensive NCERT/CBSE board format question paper for Grade ${selectedGrade} ${subjectName}.
 Topic: ${chapterInfo}
@@ -203,28 +270,85 @@ Generate in ${selectedLanguage} language following official CBSE board exam form
 CRITICAL - For all formulas:
 - Use plain text with Unicode (×, ÷, ², ³, √, π) - NO LaTeX
 
-Question Paper Structure:
+══════════════════════════════════════════════════════════════
+                    SPECIAL REQUIREMENTS
+══════════════════════════════════════════════════════════════
 
-**SECTION A - Multiple Choice Questions (1 mark each)**
-[10 MCQs]
+📊 DIAGRAM-BASED QUESTIONS:
+- Include questions where students interpret, label, or draw diagrams
+- Provide detailed descriptions in [DIAGRAM: ...] format
 
-**SECTION B - Very Short Answer Questions (2 marks each)**
-[5-6 questions requiring 2-3 sentence answers]
+🖼️ PICTURE/FIGURE-BASED QUESTIONS:
+- Include questions based on graphs, charts, experimental setups
+- Describe in [FIGURE: ...] format
 
-**SECTION C - Short Answer Questions (3 marks each)**
-[4-5 questions requiring detailed explanations]
+🎯 COMPETENCY-BASED QUESTIONS (20% = 16 marks):
+- Application-based real-world problem solving
+- Case study/scenario-based questions
+- Analysis, evaluation, critical thinking
+- Mark with [COMPETENCY-BASED] tag
 
-**SECTION D - Long Answer Questions (5 marks each)**
-[3-4 questions requiring comprehensive answers with diagrams/derivations]
+══════════════════════════════════════════════════════════════
+                    CBSE BOARD EXAMINATION
+                        CLASS ${selectedGrade}
+                    ${subjectName.toUpperCase()}
+══════════════════════════════════════════════════════════════
 
-IMPORTANT:
-- Total marks: 80
-- Time: 3 hours
-- Follow official CBSE marking scheme
-- Include questions of varying difficulty
-- Cover all key concepts from the topic
-- Add instruction note at the beginning
-- Provide answer key at the end with detailed solutions`;
+Time: 3 Hours                                Maximum Marks: 80
+
+GENERAL INSTRUCTIONS:
+• Section A: 16 MCQs (1 mark each)
+• Section B: 5 Very Short Answer (2 marks each)
+• Section C: 7 Short Answer (3 marks each)
+• Section D: 2 Case-Based (4 marks each)
+• Section E: 3 Long Answer (5 marks each)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                    SECTION A (16 Marks)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[16 MCQs including:
+- Conceptual (8)
+- Assertion-Reason (2)
+- DIAGRAM-BASED (3) with [DIAGRAM: description]
+- COMPETENCY-BASED (3)]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                    SECTION B (10 Marks)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[5 questions - 2 marks each, include 1 DIAGRAM-BASED, 1 COMPETENCY-BASED]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                    SECTION C (21 Marks)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[7 questions - 3 marks each, include 2 DIAGRAM-BASED, 1 FIGURE-BASED, 1 COMPETENCY-BASED]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                    SECTION D (8 Marks)
+              COMPETENCY-BASED CASE STUDIES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[2 Case Studies - 4 marks each]
+[COMPETENCY-BASED] Case 1:
+[Real-world scenario with PICTURE/FIGURE description]
+(a) to (d) sub-questions
+
+[COMPETENCY-BASED] Case 2:
+[Another scenario with data/figure]
+(a) to (d) sub-questions
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                    SECTION E (15 Marks)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[3 Long Answer - 5 marks each with OR options]
+[Include DIAGRAM-BASED and COMPETENCY-BASED questions]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Provide complete ANSWER KEY with detailed solutions`;
           }
           break;
       }
