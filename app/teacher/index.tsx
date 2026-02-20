@@ -20,7 +20,7 @@ export default function TeacherDashboard() {
   const handleLogout = async () => {
     await signOut();
     await resetApp();
-    router.replace('/auth');
+    router.replace('/auth' as any);
   };
 
   const features = [

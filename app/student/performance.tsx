@@ -610,7 +610,7 @@ export default function StudentPerformance() {
             </Text>
             <TouchableOpacity 
               style={styles.getStartedButton}
-              onPress={() => router.push('/student/quiz')}
+              onPress={() => router.push('/student/quiz' as any)}
             >
               <Text style={styles.getStartedButtonText}>Take Your First Quiz</Text>
             </TouchableOpacity>

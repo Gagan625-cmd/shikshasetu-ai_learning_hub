@@ -497,7 +497,7 @@ Start now by greeting briefly in ${languageName} and then immediately use askQue
 
             <TouchableOpacity
               style={styles.upgradeButton}
-              onPress={() => router.push('/paywall')}
+              onPress={() => router.push('/paywall' as any)}
             >
               <Text style={styles.upgradeButtonText}>Upgrade to Premium</Text>
             </TouchableOpacity>

@@ -68,7 +68,7 @@ export default function StudentDashboard() {
   const handleLogout = useCallback(async () => {
     await signOut();
     await resetApp();
-    router.replace('/auth');
+    router.replace('/auth' as any);
   }, [signOut, resetApp, router]);
 
   const chatMutation = useMutation({

@@ -153,7 +153,7 @@ Respond with encouraging, motivational, and practical advice in 2-3 sentences. B
 
             <TouchableOpacity
               style={styles.upgradeButton}
-              onPress={() => router.push('/paywall')}
+              onPress={() => router.push('/paywall' as any)}
             >
               <Text style={styles.upgradeButtonText}>Upgrade to Premium</Text>
             </TouchableOpacity>

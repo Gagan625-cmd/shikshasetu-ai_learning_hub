@@ -73,7 +73,7 @@ export default function ExamScanner() {
 
             <TouchableOpacity
               style={styles.upgradeButton}
-              onPress={() => router.push('/paywall')}
+              onPress={() => router.push('/paywall' as any)}
             >
               <Text style={styles.upgradeButtonText}>Upgrade to Premium</Text>
             </TouchableOpacity>
