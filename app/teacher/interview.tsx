@@ -4,7 +4,7 @@ import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Platform, TextInp
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import { Audio } from 'expo-av';
+import { useAudioRecorder, RecordingPresets, AudioModule, setAudioModeAsync } from 'expo-audio';
 import { useApp } from '@/contexts/app-context';
 import { useRorkAgent, createRorkTool } from '@rork-ai/toolkit-sdk';
 import { z } from 'zod';
@@ -40,7 +40,7 @@ export default function TeacherInterview() {
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [isProcessingVoice, setIsProcessingVoice] = useState(false);
   
-  const voiceRecordingRef = useRef<Audio.Recording | null>(null);
+  const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const isMountedRef = useRef(true);
   const isRecordingInProgressRef = useRef(false);
   
@@ -174,9 +174,9 @@ export default function TeacherInterview() {
     const initAudio = async () => {
       if (Platform.OS !== 'web') {
         try {
-          await Audio.setAudioModeAsync({
-            allowsRecordingIOS: false,
-            playsInSilentModeIOS: true,
+          await setAudioModeAsync({
+            allowsRecording: false,
+            playsInSilentMode: true,
           });
         } catch (err) {
           console.log('Audio init error:', err);
@@ -190,16 +190,13 @@ export default function TeacherInterview() {
       isRecordingInProgressRef.current = false;
       
       const cleanup = async () => {
-        if (voiceRecordingRef.current) {
-          try {
-            const status = await voiceRecordingRef.current.getStatusAsync();
-            if (status.isRecording) {
-              await voiceRecordingRef.current.stopAndUnloadAsync();
-            }
-          } catch (err) {
-            console.log('Cleanup error:', err);
+        try {
+          const status = audioRecorder.getStatus();
+          if (status.isRecording) {
+            await audioRecorder.stop();
           }
-          voiceRecordingRef.current = null;
+        } catch (err) {
+          console.log('Cleanup error:', err);
         }
       };
       cleanup();
@@ -211,7 +208,7 @@ export default function TeacherInterview() {
       await requestCameraPermission();
       
       if (Platform.OS !== 'web') {
-        const audioStatus = await Audio.requestPermissionsAsync();
+        const audioStatus = await AudioModule.requestRecordingPermissionsAsync();
         setHasAudioPermission(audioStatus.granted);
       } else {
         setHasAudioPermission(true);
@@ -277,7 +274,7 @@ Start now by greeting briefly in ${languageName} and then immediately use askQue
       return;
     }
     
-    if (isRecordingInProgressRef.current || voiceRecordingRef.current) {
+    if (isRecordingInProgressRef.current) {
       console.log('Recording already in progress');
       return;
     }
@@ -288,9 +285,9 @@ Start now by greeting briefly in ${languageName} and then immediately use askQue
     try {
       console.log('Starting voice recording...');
       
-      const permissionResult = await Audio.getPermissionsAsync();
+      const permissionResult = await AudioModule.getRecordingPermissionsAsync();
       if (!permissionResult.granted) {
-        const newPermission = await Audio.requestPermissionsAsync();
+        const newPermission = await AudioModule.requestRecordingPermissionsAsync();
         if (!newPermission.granted) {
           console.log('Audio permission denied');
           isRecordingInProgressRef.current = false;
@@ -299,27 +296,24 @@ Start now by greeting briefly in ${languageName} and then immediately use askQue
         }
       }
       
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        playsInSilentModeIOS: true,
+      await setAudioModeAsync({
+        allowsRecording: true,
+        playsInSilentMode: true,
       });
       
-      const { recording: newRecording } = await Audio.Recording.createAsync(
-        Audio.RecordingOptionsPresets.HIGH_QUALITY
-      );
+      await audioRecorder.prepareToRecordAsync();
+      audioRecorder.record();
       
       if (!isMountedRef.current) {
-        await newRecording.stopAndUnloadAsync();
+        await audioRecorder.stop();
         isRecordingInProgressRef.current = false;
         return;
       }
       
-      voiceRecordingRef.current = newRecording;
       setIsVoiceRecording(true);
       console.log('Voice recording started successfully');
     } catch (err) {
       console.error('Failed to start voice recording:', err);
-      voiceRecordingRef.current = null;
       setIsVoiceRecording(false);
     } finally {
       if (isMountedRef.current) {
@@ -329,9 +323,9 @@ Start now by greeting briefly in ${languageName} and then immediately use askQue
   };
 
   const stopVoiceRecordingAndTranscribe = async () => {
-    const recordingToStop = voiceRecordingRef.current;
+    const recorderStatus = audioRecorder.getStatus();
     
-    if (!recordingToStop) {
+    if (!recorderStatus.isRecording) {
       setIsVoiceRecording(false);
       isRecordingInProgressRef.current = false;
       return;
@@ -339,35 +333,22 @@ Start now by greeting briefly in ${languageName} and then immediately use askQue
 
     setIsVoiceRecording(false);
     setIsTranscribing(true);
-    voiceRecordingRef.current = null;
     
     try {
       console.log('Stopping voice recording...');
       
-      let status;
-      try {
-        status = await recordingToStop.getStatusAsync();
-      } catch (err) {
-        console.log('Could not get recording status:', err);
-        isRecordingInProgressRef.current = false;
-        if (isMountedRef.current) setIsTranscribing(false);
-        return;
-      }
-      
-      if (status.isRecording) {
-        await recordingToStop.stopAndUnloadAsync();
-      }
+      await audioRecorder.stop();
       
       try {
-        await Audio.setAudioModeAsync({
-          allowsRecordingIOS: false,
-          playsInSilentModeIOS: true,
+        await setAudioModeAsync({
+          allowsRecording: false,
+          playsInSilentMode: true,
         });
       } catch (err) {
         console.log('Audio mode reset error:', err);
       }
       
-      const uri = recordingToStop.getURI();
+      const uri = audioRecorder.uri;
       console.log('Recording URI:', uri);
       
       if (uri && isMountedRef.current) {

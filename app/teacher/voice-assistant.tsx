@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, Modal, Animated, Platform, ScrollView, Alert } from 'react-native';
-import { Audio } from 'expo-av';
+import { useAudioRecorder, RecordingPresets, AudioModule, setAudioModeAsync } from 'expo-audio';
 import { Mic, X, Sparkles, Smile, Loader2, FileText, Save } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -17,7 +17,7 @@ type EmotionalState = 'neutral' | 'happy' | 'stressed' | 'confused' | 'excited';
 
 export default function VoiceAssistant({ visible, onClose }: VoiceAssistantProps) {
   const [isRecording, setIsRecording] = useState(false);
-  const [recording, setRecording] = useState<Audio.Recording | null>(null);
+  const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const [transcript, setTranscript] = useState('');
   const [generatedContent, setGeneratedContent] = useState('');
   const [emotionalState, setEmotionalState] = useState<EmotionalState>('neutral');
@@ -58,25 +58,20 @@ export default function VoiceAssistant({ visible, onClose }: VoiceAssistantProps
         return;
       }
 
-      const { status } = await Audio.requestPermissionsAsync();
-      if (status !== 'granted') {
+      const { granted } = await AudioModule.requestRecordingPermissionsAsync();
+      if (!granted) {
         Alert.alert('Permission Required', 'Please grant microphone permission to use voice features.');
         return;
       }
 
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        playsInSilentModeIOS: true,
-        staysActiveInBackground: false,
-        shouldDuckAndroid: true,
-        playThroughEarpieceAndroid: false,
+      await setAudioModeAsync({
+        allowsRecording: true,
+        playsInSilentMode: true,
       });
 
-      const { recording: newRecording } = await Audio.Recording.createAsync(
-        Audio.RecordingOptionsPresets.HIGH_QUALITY
-      );
+      await audioRecorder.prepareToRecordAsync();
+      audioRecorder.record();
 
-      setRecording(newRecording);
       setIsRecording(true);
       console.log('Recording started successfully');
     } catch (error) {
@@ -87,20 +82,17 @@ export default function VoiceAssistant({ visible, onClose }: VoiceAssistantProps
 
   const stopRecording = async () => {
     try {
-      if (!recording) return;
-
       if (Platform.OS !== 'web') {
         await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       }
 
       setIsRecording(false);
-      await recording.stopAndUnloadAsync();
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: false,
+      await audioRecorder.stop();
+      await setAudioModeAsync({
+        allowsRecording: false,
       });
 
-      const uri = recording.getURI();
-      setRecording(null);
+      const uri = audioRecorder.uri;
 
       await processVoice(uri);
     } catch (error) {
