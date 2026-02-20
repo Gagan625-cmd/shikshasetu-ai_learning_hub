@@ -26,6 +26,8 @@ interface ComicPanel {
   action: string;
   mood: 'happy' | 'excited' | 'thinking' | 'surprised' | 'teaching';
   position: 'left' | 'right' | 'center';
+  keyPoint?: string;
+  funFact?: string;
 }
 
 const BOARDS = [
@@ -101,25 +103,38 @@ export default function ComicLearnScreen() {
       const chapter = chapters.find(c => c.id === selectedChapter);
       if (!chapter) throw new Error('Chapter not found');
 
-      const prompt = `Create a FUN and ENGAGING comic-style explanation for students learning "${chapter.title}" (${selectedSubjectName}, Grade ${selectedGrade}).
+      const prompt = `Create a DETAILED, FUN, and DEEPLY EDUCATIONAL comic-style explanation for students learning "${chapter.title}" (${selectedSubjectName}, Grade ${selectedGrade}).
 
-Generate EXACTLY 6 comic panels in JSON format. Each panel should have funny dialogue, visual humor, and make learning FUN!
+Generate EXACTLY 10 comic panels in JSON format. This should be a COMPLETE LESSON told as an entertaining comic story with real depth.
 
-Characters to use (pick 2-3 for the story):
-- Professor Wisdom (wise owl who explains concepts) 🦉
-- Curious Cat (asks questions students would ask) 🐱
-- Brainy Bot (robot who loves facts and numbers) 🤖
-- Wonder Kid (enthusiastic student who gets excited) 👧
-- Science Owl (loves experiments and discoveries) 🦉
-- Math Monkey (playful and loves solving puzzles) 🐵
+Characters to use (pick 3-4 for a rich story):
+- Professor Wisdom (wise owl who explains concepts with analogies) 🦉
+- Curious Cat (asks exactly the questions students wonder about) 🐱
+- Brainy Bot (robot who loves facts, formulas, and real-world data) 🤖
+- Wonder Kid (enthusiastic student who connects concepts to daily life) 👧
+- Science Owl (loves experiments and "what if" scenarios) 🦉
+- Math Monkey (playful, solves puzzles step-by-step) 🐵
+- History Hero (brings historical context and stories) 🦸
+
+STORY STRUCTURE (follow this arc):
+- Panels 1-2: Hook & Introduction - Start with a funny real-world scenario that connects to the topic. Make students curious!
+- Panels 3-5: Core Concepts - Explain the main ideas using vivid analogies, step-by-step breakdowns, and funny situations. Each panel should teach ONE key concept clearly.
+- Panels 6-7: Deep Dive & Examples - Show worked examples, real-world applications, or experiments. Use specific numbers, formulas, or facts.
+- Panel 8: Common Mistakes - A character makes a hilarious mistake that students commonly make. Another character corrects them in a funny way.
+- Panel 9: Fun Fact & Connection - Share a mind-blowing fun fact or connect the topic to something unexpected in daily life.
+- Panel 10: Summary & Memory Trick - End with a catchy mnemonic, rhyme, or summary that helps students remember everything.
 
 Rules:
-1. Make it FUNNY with puns, jokes, and silly situations
-2. Explain the core concept clearly but entertainingly
-3. Use simple language suitable for Grade ${selectedGrade}
-4. Include visual gags and actions in the "action" field
-5. Mix teaching with humor - learning should be FUN!
-6. End with a memorable summary or fun fact
+1. Make it GENUINELY FUNNY with puns, jokes, wordplay, and silly situations
+2. Each panel MUST teach something specific - no filler panels
+3. Use simple language suitable for Grade ${selectedGrade} but don't dumb down the content
+4. Include vivid visual gags and actions in the "action" field (describe what we'd SEE in a real comic)
+5. Add a "keyPoint" field with the core takeaway of each panel (1 sentence)
+6. Add a "funFact" field for panels that have interesting trivia (optional, use for 3-4 panels)
+7. Use real examples, actual formulas, specific facts - not vague statements
+8. Characters should have distinct personalities that show in their dialogue
+9. Include at least 2 real-world analogies that make abstract concepts concrete
+10. End with something memorable that students will actually remember
 
 Return ONLY valid JSON array with this structure:
 [
@@ -127,10 +142,12 @@ Return ONLY valid JSON array with this structure:
     "id": 1,
     "character": "Character Name",
     "characterEmoji": "emoji",
-    "dialogue": "Funny dialogue with concept explanation",
-    "action": "Visual description of what's happening",
+    "dialogue": "Detailed, funny dialogue with thorough concept explanation (2-4 sentences)",
+    "action": "Vivid visual description of the comic scene (what would an artist draw?)",
     "mood": "happy|excited|thinking|surprised|teaching",
-    "position": "left|right|center"
+    "position": "left|right|center",
+    "keyPoint": "The one key takeaway from this panel",
+    "funFact": "Optional interesting trivia related to this panel"
   }
 ]
 
@@ -139,7 +156,7 @@ Description: ${chapter.description}
 Subject: ${selectedSubjectName}
 Grade: ${selectedGrade}
 
-Make it hilarious and educational! Students should laugh while learning!`;
+Make it the BEST comic lesson ever - students should laugh, learn deeply, and remember everything!`;
 
       const response = await generateText({ messages: [{ role: 'user', content: prompt }] });
       
@@ -259,6 +276,20 @@ Make it hilarious and educational! Students should laugh while learning!`;
           <View style={styles.actionContainer}>
             <Text style={styles.actionText}>✨ {panel.action}</Text>
           </View>
+
+          {panel.keyPoint ? (
+            <View style={styles.keyPointContainer}>
+              <Text style={styles.keyPointLabel}>💡 Key Point</Text>
+              <Text style={styles.keyPointText}>{panel.keyPoint}</Text>
+            </View>
+          ) : null}
+
+          {panel.funFact ? (
+            <View style={styles.funFactContainer}>
+              <Text style={styles.funFactLabel}>🤯 Fun Fact</Text>
+              <Text style={styles.funFactText}>{panel.funFact}</Text>
+            </View>
+          ) : null}
         </LinearGradient>
       </Animated.View>
     );
@@ -459,10 +490,21 @@ Make it hilarious and educational! Students should laugh while learning!`;
               {comicPanels.map((panel, index) => renderComicPanel(panel, index))}
             </View>
 
+            <View style={styles.summaryCard}>
+              <Text style={styles.summaryTitle}>📝 Quick Recap</Text>
+              {comicPanels.filter(p => p.keyPoint).map((panel, idx) => (
+                <View key={`recap-${idx}`} style={styles.summaryItem}>
+                  <Text style={styles.summaryBullet}>•</Text>
+                  <Text style={styles.summaryText}>{panel.keyPoint}</Text>
+                </View>
+              ))}
+            </View>
+
             <View style={styles.endCard}>
               <Text style={styles.endEmoji}>🎉</Text>
               <Text style={styles.endTitle}>The End!</Text>
               <Text style={styles.endSubtitle}>Now you know about {selectedChapterTitle}!</Text>
+              <Text style={styles.endPanelCount}>📖 {comicPanels.length} panels of fun learning</Text>
               <TouchableOpacity 
                 style={styles.regenerateButton}
                 onPress={handleGenerateComic}
@@ -844,8 +886,52 @@ const styles = StyleSheet.create({
   actionText: {
     fontSize: 13,
     color: '#64748b',
-    fontStyle: 'italic',
-    textAlign: 'center',
+    fontStyle: 'italic' as const,
+    textAlign: 'center' as const,
+  },
+  keyPointContainer: {
+    marginTop: 12,
+    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+    borderRadius: 12,
+    padding: 12,
+    borderLeftWidth: 3,
+    borderLeftColor: '#6366f1',
+  },
+  keyPointLabel: {
+    fontSize: 11,
+    fontWeight: '800' as const,
+    color: '#6366f1',
+    textTransform: 'uppercase' as const,
+    letterSpacing: 1,
+    marginBottom: 4,
+  },
+  keyPointText: {
+    fontSize: 13,
+    color: '#1e293b',
+    fontWeight: '600' as const,
+    lineHeight: 18,
+  },
+  funFactContainer: {
+    marginTop: 8,
+    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    borderRadius: 12,
+    padding: 12,
+    borderLeftWidth: 3,
+    borderLeftColor: '#f59e0b',
+  },
+  funFactLabel: {
+    fontSize: 11,
+    fontWeight: '800' as const,
+    color: '#d97706',
+    textTransform: 'uppercase' as const,
+    letterSpacing: 1,
+    marginBottom: 4,
+  },
+  funFactText: {
+    fontSize: 12,
+    color: '#78350f',
+    fontStyle: 'italic' as const,
+    lineHeight: 17,
   },
   endCard: {
     backgroundColor: '#1e1e2e',
@@ -867,8 +953,46 @@ const styles = StyleSheet.create({
   endSubtitle: {
     fontSize: 15,
     color: '#a5b4fc',
-    textAlign: 'center',
+    textAlign: 'center' as const,
+    marginBottom: 8,
+  },
+  endPanelCount: {
+    fontSize: 13,
+    color: '#818cf8',
     marginBottom: 20,
+  },
+  summaryCard: {
+    backgroundColor: '#eff6ff',
+    borderRadius: 20,
+    padding: 20,
+    marginTop: 24,
+    borderWidth: 2,
+    borderColor: '#bfdbfe',
+  },
+  summaryTitle: {
+    fontSize: 18,
+    fontWeight: '800' as const,
+    color: '#1e40af',
+    marginBottom: 12,
+  },
+  summaryItem: {
+    flexDirection: 'row' as const,
+    alignItems: 'flex-start' as const,
+    marginBottom: 8,
+    gap: 8,
+  },
+  summaryBullet: {
+    fontSize: 16,
+    color: '#3b82f6',
+    fontWeight: '700' as const,
+    lineHeight: 20,
+  },
+  summaryText: {
+    fontSize: 14,
+    color: '#1e293b',
+    flex: 1,
+    lineHeight: 20,
+    fontWeight: '500' as const,
   },
   regenerateButton: {
     flexDirection: 'row',

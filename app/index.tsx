@@ -9,17 +9,26 @@ import { useEffect, useState } from 'react';
 
 export default function WelcomeScreen() {
   const router = useRouter();
-  const { selectRole } = useApp();
+  const { selectRole, userRole, isLoading: appIsLoading } = useApp();
   const { user, isLoading } = useAuth();
   const insets = useSafeAreaInsets();
   const [fadeAnim] = useState(new Animated.Value(0));
   const [slideAnim] = useState(new Animated.Value(50));
 
   useEffect(() => {
-    if (isLoading) return;
+    if (isLoading || appIsLoading) return;
     
     if (!user) {
-      router.replace('/auth');
+      router.replace('/auth' as any);
+      return;
+    }
+
+    if (userRole) {
+      if (userRole === 'student') {
+        router.replace('/student/' as any);
+      } else {
+        router.replace('/teacher/' as any);
+      }
       return;
     }
 
@@ -35,9 +44,9 @@ export default function WelcomeScreen() {
         useNativeDriver: true,
       }),
     ]).start();
-  }, [user, isLoading, router, fadeAnim, slideAnim]);
+  }, [user, isLoading, appIsLoading, userRole, router, fadeAnim, slideAnim]);
 
-  if (isLoading || !user) {
+  if (isLoading || appIsLoading || !user) {
     return (
       <LinearGradient colors={['#1e3c72', '#2a5298', '#7e22ce']} style={{ flex: 1 }} />
     );
