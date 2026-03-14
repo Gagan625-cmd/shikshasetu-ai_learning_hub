@@ -1,71 +1,64 @@
 import { useRouter } from 'expo-router';
-import { X, Check, Sparkles, ExternalLink, RefreshCw } from 'lucide-react-native';
-import { StyleSheet, Text, View, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Linking, Platform } from 'react-native';
+import { X, Check, Sparkles } from 'lucide-react-native';
+import { StyleSheet, Text, View, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSubscription } from '@/contexts/subscription-context';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useCallback, useEffect, useRef } from 'react';
-import * as WebBrowser from 'expo-web-browser';
 
 export default function PaywallScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { isPremium, isLoading, getPaymentLink, startPolling, stopPolling, refreshPremium, isPolling } = useSubscription();
-  const hasOpenedPayment = useRef(false);
+  const { offerings, isPremium, purchase, isPurchasing, restore, isRestoring, isLoading } = useSubscription();
 
-  useEffect(() => {
-    if (isPremium && hasOpenedPayment.current) {
-      Alert.alert('Success', 'Premium unlocked! Enjoy all features.', [
-        { text: 'OK', onPress: () => router.back() }
-      ]);
-    }
-  }, [isPremium, router]);
-
-  useEffect(() => {
-    return () => {
-      stopPolling();
-    };
-  }, [stopPolling]);
-
-  const handlePayment = useCallback(async () => {
-    const paymentLink = getPaymentLink();
-    if (!paymentLink) {
-      Alert.alert('Setup Required', 'Payment is not configured yet. Please contact support.');
+  const handlePurchase = async () => {
+    const currentOffering = offerings?.current;
+    if (!currentOffering?.availablePackages || currentOffering.availablePackages.length === 0) {
+      Alert.alert('Error', 'No packages available');
       return;
     }
 
-    hasOpenedPayment.current = true;
-    startPolling();
-
+    const packageToPurchase = currentOffering.availablePackages[0];
     try {
-      if (Platform.OS === 'web') {
-        await Linking.openURL(paymentLink);
-      } else {
-        await WebBrowser.openBrowserAsync(paymentLink, {
-          dismissButtonStyle: 'close',
-          presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
-        });
-      }
-
-      console.log('Browser closed, checking premium status...');
-      refreshPremium();
-    } catch (error) {
-      console.log('Error opening payment link:', error);
-      try {
-        await Linking.openURL(paymentLink);
-      } catch (linkError) {
-        Alert.alert('Error', 'Could not open payment page. Please try again.');
-        stopPolling();
+      purchase(packageToPurchase, {
+        onSuccess: () => {
+          Alert.alert('Success', 'Premium unlocked!', [
+            { text: 'OK', onPress: () => router.back() }
+          ]);
+        },
+        onError: (error: any) => {
+          if (error?.userCancelled) {
+            return;
+          }
+          Alert.alert('Error', error?.message || 'Purchase failed');
+        },
+      });
+    } catch (err: any) {
+      if (!err?.userCancelled) {
+        Alert.alert('Error', 'Purchase failed');
       }
     }
-  }, [getPaymentLink, startPolling, stopPolling, refreshPremium]);
+  };
 
-  const handleCheckStatus = useCallback(() => {
-    console.log('Manually checking premium status...');
-    refreshPremium();
-    startPolling();
-    Alert.alert('Checking...', 'Verifying your payment status. This may take a moment.');
-  }, [refreshPremium, startPolling]);
+  const handleRestore = async () => {
+    try {
+      restore(undefined, {
+        onSuccess: (customerInfo) => {
+          if (customerInfo?.entitlements.active['premium']) {
+            Alert.alert('Success', 'Purchases restored!', [
+              { text: 'OK', onPress: () => router.back() }
+            ]);
+          } else {
+            Alert.alert('Info', 'No purchases to restore');
+          }
+        },
+        onError: () => {
+          Alert.alert('Error', 'Failed to restore purchases');
+        },
+      });
+    } catch {
+      Alert.alert('Error', 'Failed to restore purchases');
+    }
+  };
 
   if (isPremium) {
     return (
@@ -96,6 +89,10 @@ export default function PaywallScreen() {
     );
   }
 
+  const currentOffering = offerings?.current;
+  const packageToPurchase = currentOffering?.availablePackages?.[0];
+  const product = packageToPurchase?.product;
+
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <LinearGradient colors={['#7e22ce', '#9333ea', '#a855f7']} style={styles.gradient}>
@@ -113,9 +110,8 @@ export default function PaywallScreen() {
           </View>
 
           <View style={styles.priceCard}>
-            <Text style={styles.priceLabel}>One-time Payment</Text>
-            <Text style={styles.priceAmount}>Premium Access</Text>
-            <Text style={styles.pricePeriod}>Lifetime access to all features</Text>
+            <Text style={styles.priceAmount}>{product?.priceString || '$4.99'}</Text>
+            <Text style={styles.pricePeriod}>per month</Text>
           </View>
 
           <View style={styles.featuresContainer}>
@@ -158,33 +154,34 @@ export default function PaywallScreen() {
           </View>
 
           <TouchableOpacity
-            style={styles.subscribeButton}
-            onPress={handlePayment}
+            style={[styles.subscribeButton, (isPurchasing || isRestoring) && styles.disabledButton]}
+            onPress={handlePurchase}
+            disabled={isPurchasing || isRestoring}
             activeOpacity={0.8}
           >
             <LinearGradient colors={['#fbbf24', '#f59e0b']} style={styles.buttonGradient}>
-              <ExternalLink size={20} color="#ffffff" style={{ marginRight: 8 }} />
-              <Text style={styles.subscribeButtonText}>Pay with Stripe</Text>
+              {isPurchasing ? (
+                <ActivityIndicator size="small" color="#ffffff" />
+              ) : (
+                <Text style={styles.subscribeButtonText}>Subscribe Now</Text>
+              )}
             </LinearGradient>
           </TouchableOpacity>
 
-          {isPolling && (
-            <View style={styles.pollingContainer}>
-              <ActivityIndicator size="small" color="#fbbf24" />
-              <Text style={styles.pollingText}>Verifying your payment...</Text>
-            </View>
-          )}
-
           <TouchableOpacity
             style={styles.restoreButton}
-            onPress={handleCheckStatus}
+            onPress={handleRestore}
+            disabled={isPurchasing || isRestoring}
           >
-            <RefreshCw size={16} color="#ffffff" style={{ marginRight: 6 }} />
-            <Text style={styles.restoreButtonText}>Already paid? Check status</Text>
+            {isRestoring ? (
+              <ActivityIndicator size="small" color="#ffffff" />
+            ) : (
+              <Text style={styles.restoreButtonText}>Restore Purchases</Text>
+            )}
           </TouchableOpacity>
 
           <Text style={styles.disclaimer}>
-            You will be redirected to Stripe's secure checkout. After payment, your premium features will be activated automatically.
+            Subscription automatically renews unless cancelled at least 24 hours before the end of the current period.
           </Text>
         </ScrollView>
       </LinearGradient>
@@ -251,24 +248,16 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 8,
   },
-  priceLabel: {
-    fontSize: 14,
-    fontWeight: '600' as const,
-    color: '#7e22ce',
-    textTransform: 'uppercase' as const,
-    letterSpacing: 1,
-    marginBottom: 8,
-  },
   priceAmount: {
-    fontSize: 32,
+    fontSize: 48,
     fontWeight: '800' as const,
-    color: '#1e293b',
+    color: '#7e22ce',
     marginBottom: 4,
   },
   pricePeriod: {
     fontSize: 16,
     color: '#64748b',
-    fontWeight: '500' as const,
+    fontWeight: '600' as const,
   },
   featuresContainer: {
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
@@ -315,33 +304,19 @@ const styles = StyleSheet.create({
   buttonGradient: {
     paddingVertical: 18,
     alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'center',
   },
   subscribeButtonText: {
     fontSize: 18,
     fontWeight: '700' as const,
     color: '#ffffff',
   },
-  pollingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    marginBottom: 8,
-  },
-  pollingText: {
-    fontSize: 14,
-    color: '#fbbf24',
-    fontWeight: '600' as const,
-    marginLeft: 8,
+  disabledButton: {
+    opacity: 0.6,
   },
   restoreButton: {
     paddingVertical: 16,
     alignItems: 'center',
     marginBottom: 24,
-    flexDirection: 'row',
-    justifyContent: 'center',
   },
   restoreButtonText: {
     fontSize: 16,
