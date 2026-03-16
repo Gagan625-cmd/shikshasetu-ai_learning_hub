@@ -110,7 +110,13 @@ export default function TeacherContentGenerator() {
           prompt = `Create a concise teaching summary for Grade ${selectedGrade} ${subjectName}.\nTopic: ${chapterInfo}\n\nIMPORTANT - For formulas:\n- Use plain text with Unicode (×, ÷, ², ³, √) - NO LaTeX\n\nSummarize in ${selectedLanguage} language covering all important points in bullet format with teaching notes.`;
           break;
         case 'worksheet':
-          prompt = `Generate practice worksheet for students studying ${selectedBoard} Grade ${selectedGrade} ${subjectName}.\nTopic: ${chapterInfo}\n\nIMPORTANT - For formulas:\n- Use plain text with Unicode (×, ÷, ², ³, √) - NO LaTeX\n- Example: Calculate using A = πr²\n\nCreate 10 practice questions in ${selectedLanguage} language with varying difficulty levels. Include MCQs, short answers, and word problems with answer key.`;
+          prompt = `Generate practice worksheet for students studying ${selectedBoard} Grade ${selectedGrade} ${subjectName}.\nTopic: ${chapterInfo}\n\nIMPORTANT - For formulas:\n- Use plain text with Unicode (×, ÷, ², ³, √) - NO LaTeX\n- Example: Calculate using A = πr²\n\nCreate 10 practice questions in ${selectedLanguage} language with varying difficulty levels. Include MCQs, short answers, and word problems.
+
+CRITICAL RULE: DO NOT include answers, solutions, or correct options alongside or below any question. ALL answers must ONLY appear in a separate "ANSWER KEY" section at the very end of the worksheet.
+
+ANSWER KEY
+
+Provide all answers here at the end.`;
           break;
         case 'mindmap':
           prompt = `Generate a colorful and comprehensive mind map for teaching ${selectedBoard} Grade ${selectedGrade} ${subjectName}.\nTopic: ${chapterInfo}\n\nIMPORTANT MIND MAP FORMAT:\nCreate a hierarchical, structured mind map in ${selectedLanguage} language.\n\nCRITICAL - For formulas:\n- Use plain text with Unicode (×, ÷, ², ³, √) - NO LaTeX\n\nUse this format:\n🎯 **CENTRAL TOPIC: ${chapterInfo}**\n\n📌 **Branch 1: [Main Concept Name]**\n  ├─ Key Point 1\n  ├─ Key Point 2\n  └─ Key Point 3\n\n📌 **Branch 2: [Main Concept Name]**\n  ├─ Key Point 1\n  ├─ Key Point 2\n  └─ Key Point 3\n\nIMPORTANT REQUIREMENTS:\n- Use colorful emojis (🔴🔵🟢🟡🟣🔶💡⭐✨📚🎓💎) to make it vibrant\n- Create 5-7 main branches\n- Each branch should have 3-5 sub-points\n- Keep points concise and clear\n- Use **bold** for main concepts\n- Make it visually organized and easy to follow\n- Include teaching tips, key formulas, and examples where relevant`;
@@ -260,7 +266,11 @@ IMPORTANT REQUIREMENTS:
 2. Include 20% competency-based questions (16 marks)
 3. Include at least 5-6 diagram/figure-based questions
 4. Mix difficulty: Easy (30%), Medium (50%), Hard (20%)
-5. Provide complete ANSWER KEY with detailed solutions`;
+5. CRITICAL RULE: DO NOT include answers, solutions, or correct options alongside or below any question. ALL answers must ONLY appear in a separate "ANSWER KEY" section at the very end.
+
+ANSWER KEY
+
+Provide complete detailed solutions here at the end.`;
           } else {
             prompt = `Generate a comprehensive NCERT/CBSE board format question paper for Grade ${selectedGrade} ${subjectName}.
 Topic: ${chapterInfo}
@@ -349,7 +359,11 @@ GENERAL INSTRUCTIONS:
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Provide complete ANSWER KEY with detailed solutions`;
+CRITICAL RULE: DO NOT include answers, solutions, or correct options alongside or below any question. ALL answers must ONLY appear in a separate "ANSWER KEY" section at the very end.
+
+ANSWER KEY
+
+Provide complete detailed solutions here at the end.`;
           }
           break;
       }

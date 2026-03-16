@@ -144,7 +144,11 @@ Read the passage given below and answer the questions that follow:
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Provide complete ANSWER KEY with model answers at the end.`;
+CRITICAL RULE: DO NOT include answers, solutions, or correct options alongside or below any question. ALL answers must ONLY appear in a separate "ANSWER KEY" section at the very end.
+
+ANSWER KEY
+
+Provide complete model answers here at the end.`;
   }
 
   if (subjectName === 'English Literature') {
@@ -252,7 +256,11 @@ Read the extract given below and answer the questions that follow:
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Provide complete ANSWER KEY with detailed answers at the end.`;
+CRITICAL RULE: DO NOT include answers, solutions, or correct options alongside or below any question. ALL answers must ONLY appear in a separate "ANSWER KEY" section at the very end.
+
+ANSWER KEY
+
+Provide complete detailed answers here at the end.`;
   }
 
   if (subjectName === 'Physics') {
@@ -381,7 +389,11 @@ Based on the above scenario, answer:
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Provide complete ANSWER KEY with:
+CRITICAL RULE: DO NOT include answers, solutions, or correct options alongside or below any question. ALL answers must ONLY appear in a separate "ANSWER KEY" section at the very end.
+
+ANSWER KEY
+
+Provide here:
 - Step-by-step solutions for all numerical problems
 - Diagram descriptions for diagram-based questions
 - Model answers for competency-based questions`;
@@ -517,7 +529,11 @@ Based on the above:
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Provide complete ANSWER KEY with:
+CRITICAL RULE: DO NOT include answers, solutions, or correct options alongside or below any question. ALL answers must ONLY appear in a separate "ANSWER KEY" section at the very end.
+
+ANSWER KEY
+
+Provide here:
 - Balanced equations for all reactions
 - Step-by-step numerical solutions
 - Diagram descriptions and labeling
@@ -672,7 +688,11 @@ Based on the above scenario:
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Provide complete ANSWER KEY with:
+CRITICAL RULE: DO NOT include answers, solutions, or correct options alongside or below any question. ALL answers must ONLY appear in a separate "ANSWER KEY" section at the very end.
+
+ANSWER KEY
+
+Provide here:
 - Detailed solutions for all questions
 - Diagram descriptions and labeling answers
 - Model answers for competency-based questions
@@ -812,7 +832,11 @@ On the outline map of India provided:
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Provide complete ANSWER KEY with detailed solutions at the end.`;
+CRITICAL RULE: DO NOT include answers, solutions, or correct options alongside or below any question. ALL answers must ONLY appear in a separate "ANSWER KEY" section at the very end.
+
+ANSWER KEY
+
+Provide complete detailed solutions here at the end.`;
   }
 
   if (subjectName === 'Mathematics') {
@@ -935,7 +959,11 @@ IMPORTANT:
 - Draw diagrams wherever required
 - Use proper units in answers
 
-Provide complete ANSWER KEY with:
+CRITICAL RULE: DO NOT include answers, solutions, or correct options alongside or below any question. ALL answers must ONLY appear in a separate "ANSWER KEY" section at the very end.
+
+ANSWER KEY
+
+Provide here:
 - Step-by-step solutions for all problems
 - Diagram/figure descriptions where applicable
 - Model answers for competency-based questions`;
@@ -1089,7 +1117,11 @@ Design a class [ClassName] with:
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Provide complete ANSWER KEY with:
+CRITICAL RULE: DO NOT include answers, solutions, or correct options alongside or below any question. ALL answers must ONLY appear in a separate "ANSWER KEY" section at the very end.
+
+ANSWER KEY
+
+Provide here:
 - MCQ answers
 - Complete Java programs with proper comments
 - Sample outputs for each program`;
@@ -1216,7 +1248,11 @@ With reference to the United Nations:
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Provide complete ANSWER KEY with detailed answers at the end.`;
+CRITICAL RULE: DO NOT include answers, solutions, or correct options alongside or below any question. ALL answers must ONLY appear in a separate "ANSWER KEY" section at the very end.
+
+ANSWER KEY
+
+Provide complete detailed answers here at the end.`;
   }
 
   return baseHeader + `══════════════════════════════════════════════════════════════
@@ -1279,7 +1315,11 @@ Select the correct answers to the questions from the given options.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Provide complete ANSWER KEY with detailed solutions at the end.`;
+CRITICAL RULE: DO NOT include answers, solutions, or correct options alongside or below any question. ALL answers must ONLY appear in a separate "ANSWER KEY" section at the very end.
+
+ANSWER KEY
+
+Provide complete detailed solutions here at the end.`;
 };
 
 export default function ContentGenerator() {
@@ -1398,10 +1438,16 @@ IMPORTANT FORMATTING:
 - Example: Calculate area using A = πr² where r = 5 cm
 
 Create 15 questions in ${selectedLanguage} language:
-- 5 MCQs
-- 5 Short Answer Questions
-- 5 Long Answer/Problem Solving Questions
-Vary difficulty levels and include application-based questions.`;
+- 5 MCQs (with options a, b, c, d - DO NOT write the correct answer next to the question)
+- 5 Short Answer Questions (DO NOT write the answer below the question)
+- 5 Long Answer/Problem Solving Questions (DO NOT write the solution below the question)
+Vary difficulty levels and include application-based questions.
+
+CRITICAL RULE: DO NOT include answers, solutions, or correct options alongside or below any question. ALL answers must ONLY appear in a separate "ANSWER KEY" section at the very end of the worksheet.
+
+ANSWER KEY
+
+Provide all answers here at the end.`;
       } else if (contentType === 'questionpaper') {
         if (selectedBoard === 'ICSE') {
           const chaptersForPaper = isMultiChapterMode && selectedChaptersData.length > 0 
@@ -1543,7 +1589,11 @@ OR
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Provide complete ANSWER KEY with:
+CRITICAL RULE: DO NOT include answers, solutions, or correct options alongside or below any question. ALL answers must ONLY appear in a separate "ANSWER KEY" section at the very end.
+
+ANSWER KEY
+
+Provide here:
 - Correct options for MCQs
 - Step-by-step solutions for numericals
 - Model answers for case studies`;
