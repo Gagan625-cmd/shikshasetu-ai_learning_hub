@@ -1,5 +1,5 @@
 import createContextHook from '@nkzw/create-context-hook';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Purchases, { PurchasesPackage } from 'react-native-purchases';
 import { Platform } from 'react-native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -17,8 +17,16 @@ function getRCToken() {
 }
 
 const apiKey = getRCToken();
-if (apiKey) {
-  Purchases.configure({ apiKey });
+let rcConfigured = false;
+try {
+  if (apiKey) {
+    Purchases.configure({ apiKey });
+    rcConfigured = true;
+  } else {
+    console.log('[RevenueCat] No API key found, purchases disabled');
+  }
+} catch (e) {
+  console.log('[RevenueCat] Configuration error:', e);
 }
 
 const PREMIUM_EMAILS = ['gagandeepn49@gmail.com', 'ak.atharva2011@gmail.com'];
@@ -27,9 +35,10 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const [isInitialized, setIsInitialized] = useState(false);
+  const [hasXPRewardOverride, setHasXPRewardOverride] = useState(false);
 
   useEffect(() => {
-    if (apiKey) {
+    if (rcConfigured) {
       setIsInitialized(true);
     }
   }, []);
@@ -38,22 +47,34 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
     queryKey: ['customerInfo', isInitialized],
     queryFn: async () => {
       if (!isInitialized) return null;
-      const info = await Purchases.getCustomerInfo();
-      return info;
+      try {
+        const info = await Purchases.getCustomerInfo();
+        return info;
+      } catch (e) {
+        console.log('[RevenueCat] Error fetching customer info:', e);
+        return null;
+      }
     },
     enabled: isInitialized,
     staleTime: 1000 * 60 * 5,
+    retry: 1,
   });
 
   const offeringsQuery = useQuery({
     queryKey: ['offerings', isInitialized],
     queryFn: async () => {
       if (!isInitialized) return null;
-      const offerings = await Purchases.getOfferings();
-      return offerings;
+      try {
+        const offerings = await Purchases.getOfferings();
+        return offerings;
+      } catch (e) {
+        console.log('[RevenueCat] Error fetching offerings:', e);
+        return null;
+      }
     },
     enabled: isInitialized,
     staleTime: 1000 * 60 * 10,
+    retry: 1,
   });
 
   const purchaseMutation = useMutation({
@@ -77,9 +98,9 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
   });
 
   const hasPremiumEmail = user?.email && PREMIUM_EMAILS.includes(user.email.toLowerCase());
-  const isPremium = hasPremiumEmail || customerInfoQuery.data?.entitlements.active['premium'] !== undefined;
+  const isPremium = hasPremiumEmail || hasXPRewardOverride || customerInfoQuery.data?.entitlements.active['premium'] !== undefined;
 
-  return {
+  return useMemo(() => ({
     isInitialized,
     customerInfo: customerInfoQuery.data,
     offerings: offeringsQuery.data,
@@ -91,5 +112,6 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
     isRestoring: restoreMutation.isPending,
     purchaseError: purchaseMutation.error,
     restoreError: restoreMutation.error,
-  };
+    setHasXPRewardOverride,
+  }), [isInitialized, customerInfoQuery.data, offeringsQuery.data, isPremium, customerInfoQuery.isLoading, offeringsQuery.isLoading, purchaseMutation.mutate, purchaseMutation.isPending, restoreMutation.mutate, restoreMutation.isPending, purchaseMutation.error, restoreMutation.error, setHasXPRewardOverride]);
 });

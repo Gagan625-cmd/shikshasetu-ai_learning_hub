@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { ChevronLeft, Award, TrendingUp, BookOpen, CheckCircle, Clock, FileText, Flame, Target, AlertTriangle, Star, Calendar, BarChart3, Brain, Zap } from 'lucide-react-native';
+import { ChevronLeft, Award, TrendingUp, BookOpen, CheckCircle, Clock, FileText, Flame, Target, AlertTriangle, Star, Calendar, BarChart3, Brain, Zap, Trophy, Gift } from 'lucide-react-native';
 import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useApp } from '@/contexts/app-context';
@@ -327,6 +327,32 @@ export default function StudentPerformance() {
               </Text>
             </TouchableOpacity>
           ))}
+        </View>
+
+        <View style={styles.xpCard}>
+          <View style={styles.xpCardHeader}>
+            <View style={styles.xpIconCircle}>
+              <Trophy size={28} color="#fbbf24" />
+            </View>
+            <View style={styles.xpCardInfo}>
+              <Text style={styles.xpCardTitle}>Experience Points</Text>
+              <Text style={styles.xpCardValue}>{userProgress.totalXP} XP</Text>
+            </View>
+          </View>
+          <View style={styles.xpProgressOuter}>
+            <View style={[styles.xpProgressInner, { width: `${Math.min((userProgress.totalXP / 10000) * 100, 100)}%` }]} />
+          </View>
+          <View style={styles.xpCardFooter}>
+            <Text style={styles.xpCardFooterText}>
+              {userProgress.totalXP >= 10000 ? 'Premium reward unlocked!' : `${10000 - userProgress.totalXP} XP to free Premium month`}
+            </Text>
+            {userProgress.xpReward && new Date(userProgress.xpReward.expiresAt) > new Date() && (
+              <View style={styles.xpRewardActive}>
+                <Gift size={14} color="#10b981" />
+                <Text style={styles.xpRewardActiveText}>Premium Active</Text>
+              </View>
+            )}
+          </View>
         </View>
 
         {userProgress.currentStreak > 0 && (
@@ -1184,5 +1210,90 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700' as const,
     color: '#ffffff',
+  },
+  xpCard: {
+    backgroundColor: '#1e293b',
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 20,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#fbbf24',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 12,
+      },
+      android: {
+        elevation: 6,
+      },
+      web: {
+        boxShadow: '0 4px 16px rgba(251, 191, 36, 0.15)',
+      },
+    }),
+  },
+  xpCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    marginBottom: 16,
+  },
+  xpIconCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 16,
+    backgroundColor: 'rgba(251, 191, 36, 0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  xpCardInfo: {
+    flex: 1,
+  },
+  xpCardTitle: {
+    fontSize: 13,
+    fontWeight: '600' as const,
+    color: '#94a3b8',
+    marginBottom: 2,
+  },
+  xpCardValue: {
+    fontSize: 28,
+    fontWeight: '800' as const,
+    color: '#fbbf24',
+  },
+  xpProgressOuter: {
+    height: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 4,
+    overflow: 'hidden',
+    marginBottom: 12,
+  },
+  xpProgressInner: {
+    height: '100%',
+    backgroundColor: '#fbbf24',
+    borderRadius: 4,
+  },
+  xpCardFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  xpCardFooterText: {
+    fontSize: 12,
+    color: '#94a3b8',
+    fontWeight: '500' as const,
+    flex: 1,
+  },
+  xpRewardActive: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+  xpRewardActiveText: {
+    fontSize: 11,
+    fontWeight: '700' as const,
+    color: '#10b981',
   },
 });

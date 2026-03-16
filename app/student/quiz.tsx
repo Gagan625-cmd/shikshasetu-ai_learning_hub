@@ -25,7 +25,7 @@ const QuizSchema = z.object({
 export default function QuizGenerator() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { selectedLanguage, addQuizResult, maybeRequestReview } = useApp();
+  const { selectedLanguage, addQuizResult, maybeRequestReview, addXP, userProgress } = useApp();
   
   const [selectedBoard, setSelectedBoard] = useState<'NCERT' | 'ICSE'>('NCERT');
   const [selectedGrade, setSelectedGrade] = useState<number>(6);
@@ -132,10 +132,11 @@ Provide detailed explanations showing the reasoning process.`;
     
     if (quiz && selectedChapterData) {
       const score = calculateScore();
+      const subjectName = subjects.find((s) => s.id === selectedSubject)?.name || '';
       const result = {
         id: Date.now().toString(),
         board: selectedBoard,
-        subject: subjects.find((s) => s.id === selectedSubject)?.name || '',
+        subject: subjectName,
         chapter: selectedChapterData.title,
         grade: selectedGrade,
         score,
@@ -143,7 +144,8 @@ Provide detailed explanations showing the reasoning process.`;
         completedAt: new Date(),
       };
       addQuizResult(result);
-      maybeRequestReview();
+      addXP(1, `Quiz: ${subjectName} - ${selectedChapterData.title}`);
+      void maybeRequestReview();
     }
   };
 
@@ -392,6 +394,10 @@ Provide detailed explanations showing the reasoning process.`;
                 <Text style={styles.resultsPercentage}>
                   {Math.round((calculateScore() / quiz.questions.length) * 100)}%
                 </Text>
+                <View style={styles.xpEarnedBadge}>
+                  <Text style={styles.xpEarnedText}>+1 XP Earned!</Text>
+                  <Text style={styles.xpTotalText}>Total: {userProgress.totalXP} XP</Text>
+                </View>
                 <TouchableOpacity
                   style={styles.retakeButton}
                   onPress={() => {
@@ -755,6 +761,27 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700' as const,
     color: '#ffffff',
+  },
+  xpEarnedBadge: {
+    backgroundColor: '#fef3c7',
+    borderRadius: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    marginBottom: 16,
+    alignItems: 'center' as const,
+    borderWidth: 1,
+    borderColor: '#fde68a',
+  },
+  xpEarnedText: {
+    fontSize: 18,
+    fontWeight: '700' as const,
+    color: '#d97706',
+  },
+  xpTotalText: {
+    fontSize: 13,
+    fontWeight: '600' as const,
+    color: '#92400e',
+    marginTop: 2,
   },
   boardButtons: {
     flexDirection: 'row',

@@ -3,7 +3,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Platform } from 'react-native';
 import * as StoreReview from 'expo-store-review';
-import { UserRole, Language, UserProgress, QuizResult, ContentActivity, TeacherActivity, ExamActivity, TeacherUpload } from '@/types';
+import { UserRole, Language, UserProgress, QuizResult, ContentActivity, TeacherActivity, ExamActivity, TeacherUpload, XPEntry } from '@/types';
+
+const XP_REWARD_THRESHOLD = 10000;
+const XP_REWARD_DURATION_DAYS = 30;
 
 const REVIEW_STORAGE_KEY = 'storeReviewData';
 const MIN_ACTIONS_FOR_REVIEW = 3;
@@ -22,6 +25,9 @@ export const [AppProvider, useApp] = createContextHook(() => {
     totalStudyTime: 0,
     lastActiveDate: new Date().toISOString().split('T')[0],
     currentStreak: 0,
+    totalXP: 0,
+    xpHistory: [],
+    xpReward: null,
   });
 
   const saveProgress = useCallback(async (progress: UserProgress) => {
@@ -41,11 +47,11 @@ export const [AppProvider, useApp] = createContextHook(() => {
         return prev;
       } else if (lastActive === yesterday) {
         const updated = { ...prev, currentStreak: prev.currentStreak + 1, lastActiveDate: today };
-        saveProgress(updated);
+        void saveProgress(updated);
         return updated;
       } else {
         const updated = { ...prev, currentStreak: 1, lastActiveDate: today };
-        saveProgress(updated);
+        void saveProgress(updated);
         return updated;
       }
     });
@@ -61,7 +67,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
       if (language) setSelectedLanguage(language as Language);
       if (progress) {
         const parsed = JSON.parse(progress);
-        const normalizedProgress = {
+        const normalizedProgress: UserProgress = {
           quizzesCompleted: parsed.quizzesCompleted || [],
           contentActivities: parsed.contentActivities || [],
           teacherActivities: parsed.teacherActivities || [],
@@ -70,6 +76,9 @@ export const [AppProvider, useApp] = createContextHook(() => {
           totalStudyTime: parsed.totalStudyTime || 0,
           lastActiveDate: parsed.lastActiveDate || new Date().toISOString().split('T')[0],
           currentStreak: parsed.currentStreak || 0,
+          totalXP: parsed.totalXP || 0,
+          xpHistory: parsed.xpHistory || [],
+          xpReward: parsed.xpReward || null,
         };
         setUserProgress(normalizedProgress);
         updateStreak(normalizedProgress.lastActiveDate);
@@ -82,7 +91,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
   }, [updateStreak]);
 
   useEffect(() => {
-    loadSettings();
+    void loadSettings();
   }, [loadSettings]);
 
   const selectRole = useCallback(async (role: UserRole) => {
@@ -100,13 +109,50 @@ export const [AppProvider, useApp] = createContextHook(() => {
     await AsyncStorage.removeItem('userRole');
   }, []);
 
+  const addXP = useCallback((amount: number, reason: string) => {
+    setUserProgress(prev => {
+      const entry: XPEntry = {
+        id: Date.now().toString(),
+        amount,
+        reason,
+        earnedAt: new Date(),
+      };
+      const newTotalXP = prev.totalXP + amount;
+      let xpReward = prev.xpReward;
+
+      if (xpReward && new Date(xpReward.expiresAt) < new Date()) {
+        xpReward = null;
+      }
+
+      if (!xpReward && newTotalXP >= XP_REWARD_THRESHOLD) {
+        const now = new Date();
+        const expires = new Date(now.getTime() + XP_REWARD_DURATION_DAYS * 24 * 60 * 60 * 1000);
+        xpReward = {
+          active: true,
+          activatedAt: now.toISOString(),
+          expiresAt: expires.toISOString(),
+        };
+        console.log('XP Reward activated! Free premium for 30 days.');
+      }
+
+      const updated = {
+        ...prev,
+        totalXP: newTotalXP,
+        xpHistory: [...prev.xpHistory, entry],
+        xpReward,
+      };
+      void saveProgress(updated);
+      return updated;
+    });
+  }, [saveProgress]);
+
   const addQuizResult = useCallback((result: QuizResult) => {
     setUserProgress(prev => {
       const updated = {
         ...prev,
         quizzesCompleted: [...prev.quizzesCompleted, result],
       };
-      saveProgress(updated);
+      void saveProgress(updated);
       updateStreak(prev.lastActiveDate);
       return updated;
     });
@@ -118,7 +164,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
         ...prev,
         contentActivities: [...prev.contentActivities, activity],
       };
-      saveProgress(updated);
+      void saveProgress(updated);
       updateStreak(prev.lastActiveDate);
       return updated;
     });
@@ -130,7 +176,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
         ...prev,
         totalStudyTime: prev.totalStudyTime + minutes,
       };
-      saveProgress(updated);
+      void saveProgress(updated);
       return updated;
     });
   }, [saveProgress]);
@@ -141,7 +187,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
         ...prev,
         teacherActivities: [...prev.teacherActivities, activity],
       };
-      saveProgress(updated);
+      void saveProgress(updated);
       updateStreak(prev.lastActiveDate);
       return updated;
     });
@@ -153,7 +199,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
         ...prev,
         examActivities: [...prev.examActivities, activity],
       };
-      saveProgress(updated);
+      void saveProgress(updated);
       updateStreak(prev.lastActiveDate);
       return updated;
     });
@@ -165,7 +211,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
         ...prev,
         teacherUploads: [...prev.teacherUploads, upload],
       };
-      saveProgress(updated);
+      void saveProgress(updated);
       return updated;
     });
   }, [saveProgress]);
@@ -204,6 +250,11 @@ export const [AppProvider, useApp] = createContextHook(() => {
     }
   }, []);
 
+  const hasXPReward = useMemo(() => {
+    if (!userProgress.xpReward) return false;
+    return userProgress.xpReward.active && new Date(userProgress.xpReward.expiresAt) > new Date();
+  }, [userProgress.xpReward]);
+
   return useMemo(() => ({
     userRole,
     selectedLanguage,
@@ -219,5 +270,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
     addExamActivity,
     addTeacherUpload,
     maybeRequestReview,
-  }), [userRole, selectedLanguage, isLoading, userProgress, selectRole, changeLanguage, resetApp, addQuizResult, addContentActivity, addStudyTime, addTeacherActivity, addExamActivity, addTeacherUpload, maybeRequestReview]);
+    addXP,
+    hasXPReward,
+  }), [userRole, selectedLanguage, isLoading, userProgress, selectRole, changeLanguage, resetApp, addQuizResult, addContentActivity, addStudyTime, addTeacherActivity, addExamActivity, addTeacherUpload, maybeRequestReview, addXP, hasXPReward]);
 });

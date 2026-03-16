@@ -1,17 +1,28 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import React, { useEffect } from "react";
+import React, { useEffect, ReactNode } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { AppProvider } from "@/contexts/app-context";
+import { AppProvider, useApp } from "@/contexts/app-context";
 import { AuthProvider } from "@/contexts/auth-context";
-import { SubscriptionProvider } from "@/contexts/subscription-context";
+import { SubscriptionProvider, useSubscription } from "@/contexts/subscription-context";
 import { trpc, trpcClient } from "@/lib/trpc";
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
-SplashScreen.preventAutoHideAsync();
+void SplashScreen.preventAutoHideAsync();
 
 const queryClient = new QueryClient();
+
+function XPRewardBridge({ children }: { children: ReactNode }) {
+  const { hasXPReward } = useApp();
+  const { setHasXPRewardOverride } = useSubscription();
+
+  useEffect(() => {
+    setHasXPRewardOverride(hasXPReward);
+  }, [hasXPReward, setHasXPRewardOverride]);
+
+  return <>{children}</>;
+}
 
 function RootLayoutNav() {
   return (
@@ -27,7 +38,7 @@ function RootLayoutNav() {
 
 export default function RootLayout() {
   useEffect(() => {
-    SplashScreen.hideAsync();
+    void SplashScreen.hideAsync();
   }, []);
 
   return (
@@ -36,9 +47,11 @@ export default function RootLayout() {
         <AuthProvider>
           <SubscriptionProvider>
             <AppProvider>
-              <GestureHandlerRootView style={{ flex: 1 }}>
-                <RootLayoutNav />
-              </GestureHandlerRootView>
+              <XPRewardBridge>
+                <GestureHandlerRootView style={{ flex: 1 }}>
+                  <RootLayoutNav />
+                </GestureHandlerRootView>
+              </XPRewardBridge>
             </AppProvider>
           </SubscriptionProvider>
         </AuthProvider>

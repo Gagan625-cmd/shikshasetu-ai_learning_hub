@@ -1,11 +1,11 @@
 import { useRouter } from 'expo-router';
-import { BookOpen, BrainCircuit, MessageSquare, Settings, FileText, LogOut, TrendingUp, MessageCircle, Info, ScanText, Target, Video, Bell, Link2, Palette } from 'lucide-react-native';
-import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Platform, Modal, TextInput, Alert, FlatList } from 'react-native';
+import { BookOpen, BrainCircuit, MessageSquare, Settings, FileText, LogOut, TrendingUp, MessageCircle, Info, ScanText, Target, Video, Bell, Link2, Palette, Zap, Star, Crown, Shield, Award } from 'lucide-react-native';
+import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Platform, Modal, TextInput, Alert, Animated } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useApp } from '@/contexts/app-context';
 import { useAuth } from '@/contexts/auth-context';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useState, useCallback, useMemo, memo } from 'react';
+import { useState, useCallback, useMemo, memo, useEffect, useRef } from 'react';
 import { LANGUAGES } from '@/constants/ncert-data';
 import { useMutation } from '@tanstack/react-query';
 import { generateText } from '@rork-ai/toolkit-sdk';
@@ -55,15 +55,54 @@ const UploadCard = memo(({ upload, onPress }: { upload: any; onPress: () => void
 
 UploadCard.displayName = 'UploadCard';
 
+function getLevel(xp: number): { level: number; title: string; icon: typeof Star; color: string; nextLevelXP: number; currentLevelXP: number } {
+  if (xp >= 10000) return { level: 10, title: 'Legend', icon: Crown, color: '#fbbf24', nextLevelXP: 10000, currentLevelXP: 10000 };
+  if (xp >= 7500) return { level: 9, title: 'Master', icon: Crown, color: '#f59e0b', nextLevelXP: 10000, currentLevelXP: 7500 };
+  if (xp >= 5000) return { level: 8, title: 'Expert', icon: Award, color: '#8b5cf6', nextLevelXP: 7500, currentLevelXP: 5000 };
+  if (xp >= 3500) return { level: 7, title: 'Scholar', icon: Award, color: '#6366f1', nextLevelXP: 5000, currentLevelXP: 3500 };
+  if (xp >= 2000) return { level: 6, title: 'Achiever', icon: Shield, color: '#3b82f6', nextLevelXP: 3500, currentLevelXP: 2000 };
+  if (xp >= 1000) return { level: 5, title: 'Warrior', icon: Shield, color: '#0ea5e9', nextLevelXP: 2000, currentLevelXP: 1000 };
+  if (xp >= 500) return { level: 4, title: 'Explorer', icon: Star, color: '#14b8a6', nextLevelXP: 1000, currentLevelXP: 500 };
+  if (xp >= 200) return { level: 3, title: 'Learner', icon: Star, color: '#10b981', nextLevelXP: 500, currentLevelXP: 200 };
+  if (xp >= 50) return { level: 2, title: 'Starter', icon: Star, color: '#22c55e', nextLevelXP: 200, currentLevelXP: 50 };
+  return { level: 1, title: 'Novice', icon: Star, color: '#84cc16', nextLevelXP: 50, currentLevelXP: 0 };
+}
+
 export default function StudentDashboard() {
   const router = useRouter();
-  const { resetApp, selectedLanguage, changeLanguage, userProgress } = useApp();
+  const { resetApp, selectedLanguage, changeLanguage, userProgress, hasXPReward } = useApp();
   const { signOut } = useAuth();
   const insets = useSafeAreaInsets();
   const [showSettings, setShowSettings] = useState(false);
   const [showChatbot, setShowChatbot] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
+  const progressAnim = useRef(new Animated.Value(0)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+
+  const levelInfo = useMemo(() => getLevel(userProgress.totalXP), [userProgress.totalXP]);
+  const levelProgress = useMemo(() => {
+    const range = levelInfo.nextLevelXP - levelInfo.currentLevelXP;
+    if (range === 0) return 1;
+    return (userProgress.totalXP - levelInfo.currentLevelXP) / range;
+  }, [userProgress.totalXP, levelInfo]);
+
+  useEffect(() => {
+    Animated.timing(progressAnim, {
+      toValue: levelProgress,
+      duration: 1200,
+      useNativeDriver: false,
+    }).start();
+  }, [levelProgress, progressAnim]);
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 1.08, duration: 1500, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1, duration: 1500, useNativeDriver: true }),
+      ])
+    ).start();
+  }, [pulseAnim]);
 
   const handleLogout = useCallback(async () => {
     await signOut();
@@ -223,13 +262,18 @@ export default function StudentDashboard() {
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <LinearGradient
-        colors={['#1e3c72', '#2a5298']}
+        colors={['#0f172a', '#1e3a5f']}
         style={styles.header}
       >
         <View style={styles.headerContent}>
-          <View>
-            <Text style={styles.greeting}>Welcome, Student!</Text>
-            <Text style={styles.subtitle}>Let&apos;s learn something new today</Text>
+          <View style={styles.headerLeft}>
+            <View style={styles.logoCircle}>
+              <Zap size={22} color="#fbbf24" strokeWidth={2.5} />
+            </View>
+            <View>
+              <Text style={styles.greeting}>ShikshaSetu</Text>
+              <Text style={styles.subtitle}>Let&apos;s learn something new today</Text>
+            </View>
           </View>
           <TouchableOpacity
             style={styles.settingsButton}
@@ -237,6 +281,48 @@ export default function StudentDashboard() {
           >
             <Settings size={24} color="#ffffff" />
           </TouchableOpacity>
+        </View>
+
+        <View style={styles.xpBar}>
+          <View style={styles.levelRow}>
+            <Animated.View style={[styles.levelIconOuter, { transform: [{ scale: pulseAnim }] }]}>
+              <LinearGradient
+                colors={[levelInfo.color, levelInfo.color + 'CC']}
+                style={styles.levelIconGradient}
+              >
+                <Text style={styles.levelNumber}>{levelInfo.level}</Text>
+              </LinearGradient>
+            </Animated.View>
+            <View style={styles.levelTextCol}>
+              <View style={styles.levelTitleRow}>
+                <Text style={styles.levelTitle}>{levelInfo.title}</Text>
+                {hasXPReward && (
+                  <View style={styles.xpRewardBadge}>
+                    <Crown size={10} color="#fbbf24" />
+                    <Text style={styles.xpRewardText}>Premium</Text>
+                  </View>
+                )}
+              </View>
+              <Text style={styles.xpValue}>{userProgress.totalXP.toLocaleString()} XP</Text>
+            </View>
+            <View style={styles.streakMini}>
+              <Text style={styles.streakEmoji}>🔥</Text>
+              <Text style={styles.streakMiniText}>{userProgress.currentStreak}</Text>
+            </View>
+          </View>
+          <View style={styles.xpProgressContainer}>
+            <View style={styles.xpProgressBg}>
+              <Animated.View style={[styles.xpProgressFill, { width: progressAnim.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }) }]} />
+            </View>
+            <View style={styles.xpProgressLabels}>
+              <Text style={styles.xpGoalText}>
+                {levelInfo.level < 10 ? `${levelInfo.nextLevelXP - userProgress.totalXP} XP to Level ${levelInfo.level + 1}` : '🏆 Max Level!'}
+              </Text>
+              <Text style={styles.xpGoalText}>
+                {userProgress.totalXP >= 10000 ? '✨ Free Premium!' : `${Math.max(10000 - userProgress.totalXP, 0)} to Premium`}
+              </Text>
+            </View>
+          </View>
         </View>
 
         {showSettings && (
@@ -287,36 +373,24 @@ export default function StudentDashboard() {
               <Bell size={20} color="#f59e0b" />
               <Text style={styles.uploadsSectionTitle}>New from your Teacher!</Text>
             </View>
-            <FlatList
+            <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
               style={styles.uploadsScroll}
-              data={recentUploads}
-              keyExtractor={(item) => item.id}
-              renderItem={({ item }) => (
-                <UploadCard upload={item} onPress={() => handleUploadPress(item)} />
-              )}
-              removeClippedSubviews={true}
-              maxToRenderPerBatch={3}
-              windowSize={5}
-              initialNumToRender={3}
-            />
+            >
+              {recentUploads.map((item) => (
+                <UploadCard key={item.id} upload={item} onPress={() => handleUploadPress(item)} />
+              ))}
+            </ScrollView>
           </View>
         )}
 
         <Text style={styles.sectionTitle}>Features</Text>
-        <FlatList
-          data={features}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <FeatureCard feature={item} onPress={() => handleFeaturePress(item.route)} />
-          )}
-          scrollEnabled={false}
-          removeClippedSubviews={true}
-          maxToRenderPerBatch={5}
-          windowSize={10}
-          initialNumToRender={10}
-        />
+        <View style={styles.featuresList}>
+          {features.map((item) => (
+            <FeatureCard key={item.id} feature={item} onPress={() => handleFeaturePress(item.route)} />
+          ))}
+        </View>
 
         <View style={styles.infoCard}>
           <Text style={styles.infoTitle}>✨ Offline & Online</Text>
@@ -416,7 +490,8 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: 20,
-    paddingVertical: 24,
+    paddingTop: 16,
+    paddingBottom: 20,
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,
   },
@@ -425,15 +500,129 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  logoCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: 'rgba(251, 191, 36, 0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(251, 191, 36, 0.3)',
+  },
   greeting: {
-    fontSize: 28,
+    fontSize: 22,
     fontWeight: '700' as const,
     color: '#ffffff',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   subtitle: {
+    fontSize: 13,
+    color: '#94a3b8',
+  },
+  xpBar: {
+    marginTop: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderRadius: 14,
+    padding: 14,
+  },
+  levelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 12,
+  },
+  levelIconOuter: {
+    width: 48,
+    height: 48,
+  },
+  levelIconGradient: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  levelNumber: {
+    fontSize: 22,
+    fontWeight: '800' as const,
+    color: '#ffffff',
+  },
+  levelTextCol: {
+    flex: 1,
+  },
+  levelTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  levelTitle: {
     fontSize: 15,
-    color: '#bfdbfe',
+    fontWeight: '700' as const,
+    color: '#ffffff',
+  },
+  xpValue: {
+    fontSize: 12,
+    fontWeight: '600' as const,
+    color: '#94a3b8',
+    marginTop: 2,
+  },
+  xpRewardBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: 'rgba(251, 191, 36, 0.2)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  xpRewardText: {
+    fontSize: 10,
+    fontWeight: '700' as const,
+    color: '#fbbf24',
+  },
+  streakMini: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  streakEmoji: {
+    fontSize: 18,
+  },
+  streakMiniText: {
+    fontSize: 13,
+    fontWeight: '700' as const,
+    color: '#fb923c',
+  },
+  xpProgressContainer: {
+    gap: 6,
+  },
+  xpProgressBg: {
+    height: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  xpProgressFill: {
+    height: '100%',
+    backgroundColor: '#fbbf24',
+    borderRadius: 3,
+  },
+  xpProgressLabels: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  xpGoalText: {
+    fontSize: 11,
+    color: '#94a3b8',
+    fontWeight: '500' as const,
   },
   settingsButton: {
     width: 44,
@@ -502,6 +691,9 @@ const styles = StyleSheet.create({
     fontWeight: '700' as const,
     color: '#1e293b',
     marginBottom: 16,
+  },
+  featuresList: {
+    gap: 16,
   },
   grid: {
     gap: 16,

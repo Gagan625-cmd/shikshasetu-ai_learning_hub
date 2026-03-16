@@ -133,6 +133,19 @@ export interface ExamActivity {
   scannedAt: Date;
 }
 
+export interface XPEntry {
+  id: string;
+  amount: number;
+  reason: string;
+  earnedAt: Date;
+}
+
+export interface XPReward {
+  active: boolean;
+  activatedAt: string;
+  expiresAt: string;
+}
+
 export interface UserProgress {
   quizzesCompleted: QuizResult[];
   contentActivities: ContentActivity[];
@@ -142,4 +155,7 @@ export interface UserProgress {
   totalStudyTime: number;
   lastActiveDate: string;
   currentStreak: number;
+  totalXP: number;
+  xpHistory: XPEntry[];
+  xpReward: XPReward | null;
 }
