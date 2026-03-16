@@ -40,15 +40,6 @@ export default function AboutPage() {
               <Text style={styles.founderRole}>Founder & CEO</Text>
             </View>
           </View>
-          <View style={styles.founderCard}>
-            <View style={styles.founderInitials}>
-              <Text style={styles.founderInitialsText}>AK</Text>
-            </View>
-            <View style={styles.founderInfo}>
-              <Text style={styles.founderName}>Atharva Kulkarni</Text>
-              <Text style={styles.founderRole}>Founder & CEO</Text>
-            </View>
-          </View>
         </View>
 
         <View style={styles.section}>
