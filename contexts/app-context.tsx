@@ -1,9 +1,10 @@
 import createContextHook from '@nkzw/create-context-hook';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Platform } from 'react-native';
 import * as StoreReview from 'expo-store-review';
 import { UserRole, Language, UserProgress, QuizResult, ContentActivity, TeacherActivity, ExamActivity, TeacherUpload, XPEntry, GamePlayRecord, GKQuizRecord, FunLearningState } from '@/types';
+import { useAuth } from '@/contexts/auth-context';
 
 const XP_REWARD_THRESHOLD = 10000;
 const XP_REWARD_DURATION_DAYS = 30;
@@ -14,38 +15,51 @@ const REVIEW_STORAGE_KEY = 'storeReviewData';
 const MIN_ACTIONS_FOR_REVIEW = 3;
 const MIN_DAYS_BETWEEN_REVIEWS = 30;
 
+const DEFAULT_PROGRESS: UserProgress = {
+  quizzesCompleted: [],
+  contentActivities: [],
+  teacherActivities: [],
+  examActivities: [],
+  teacherUploads: [],
+  totalStudyTime: 0,
+  lastActiveDate: new Date().toISOString().split('T')[0],
+  currentStreak: 0,
+  totalXP: 0,
+  xpHistory: [],
+  xpReward: null,
+  streakXPAwarded: [],
+  funLearning: {
+    gamePlaysToday: [],
+    gkQuizzesToday: [],
+    lastPlayDate: '',
+    pendingXPLoss: false,
+  },
+};
+
+function getUserStorageKey(userEmail: string | undefined, key: string): string {
+  const prefix = userEmail && userEmail !== 'guest@app.com' ? `user_${userEmail}` : 'guest';
+  return `${prefix}_${key}`;
+}
+
 export const [AppProvider, useApp] = createContextHook(() => {
+  const { user } = useAuth();
+  const currentUserEmail = user?.email;
+  const prevUserRef = useRef<string | undefined>(undefined);
+
   const [userRole, setUserRole] = useState<UserRole | null>(null);
   const [selectedLanguage, setSelectedLanguage] = useState<Language>('english');
   const [isLoading, setIsLoading] = useState(true);
-  const [userProgress, setUserProgress] = useState<UserProgress>({
-    quizzesCompleted: [],
-    contentActivities: [],
-    teacherActivities: [],
-    examActivities: [],
-    teacherUploads: [],
-    totalStudyTime: 0,
-    lastActiveDate: new Date().toISOString().split('T')[0],
-    currentStreak: 0,
-    totalXP: 0,
-    xpHistory: [],
-    xpReward: null,
-    streakXPAwarded: [],
-    funLearning: {
-      gamePlaysToday: [],
-      gkQuizzesToday: [],
-      lastPlayDate: '',
-      pendingXPLoss: false,
-    },
-  });
+  const [userProgress, setUserProgress] = useState<UserProgress>({ ...DEFAULT_PROGRESS });
 
   const saveProgress = useCallback(async (progress: UserProgress) => {
     try {
-      await AsyncStorage.setItem('userProgress', JSON.stringify(progress));
+      const key = getUserStorageKey(currentUserEmail, 'userProgress');
+      await AsyncStorage.setItem(key, JSON.stringify(progress));
+      console.log('Saved progress for key:', key);
     } catch (error) {
       console.log('Error saving progress:', error);
     }
-  }, []);
+  }, [currentUserEmail]);
 
   const updateStreak = useCallback((lastActive: string) => {
     const today = new Date().toISOString().split('T')[0];
@@ -106,12 +120,19 @@ export const [AppProvider, useApp] = createContextHook(() => {
 
   const loadSettings = useCallback(async () => {
     try {
-      const role = await AsyncStorage.getItem('userRole');
-      const language = await AsyncStorage.getItem('language');
-      const progress = await AsyncStorage.getItem('userProgress');
+      const roleKey = getUserStorageKey(currentUserEmail, 'userRole');
+      const langKey = getUserStorageKey(currentUserEmail, 'language');
+      const progressKey = getUserStorageKey(currentUserEmail, 'userProgress');
+      console.log('Loading settings for user:', currentUserEmail, 'keys:', roleKey, langKey, progressKey);
+
+      const role = await AsyncStorage.getItem(roleKey);
+      const language = await AsyncStorage.getItem(langKey);
+      const progress = await AsyncStorage.getItem(progressKey);
       
       if (role) setUserRole(role as UserRole);
+      else setUserRole(null);
       if (language) setSelectedLanguage(language as Language);
+      else setSelectedLanguage('english');
       if (progress) {
         const parsed = JSON.parse(progress);
         const normalizedProgress: UserProgress = {
@@ -136,32 +157,46 @@ export const [AppProvider, useApp] = createContextHook(() => {
         };
         setUserProgress(normalizedProgress);
         updateStreak(normalizedProgress.lastActiveDate);
+      } else {
+        setUserProgress({ ...DEFAULT_PROGRESS });
       }
     } catch (error) {
       console.log('Error loading settings:', error);
     } finally {
       setIsLoading(false);
     }
-  }, [updateStreak]);
+  }, [updateStreak, currentUserEmail]);
 
   useEffect(() => {
     void loadSettings();
   }, [loadSettings]);
 
+  useEffect(() => {
+    if (prevUserRef.current !== currentUserEmail) {
+      console.log('User changed from', prevUserRef.current, 'to', currentUserEmail);
+      prevUserRef.current = currentUserEmail;
+      setIsLoading(true);
+      void loadSettings();
+    }
+  }, [currentUserEmail, loadSettings]);
+
   const selectRole = useCallback(async (role: UserRole) => {
     setUserRole(role);
-    await AsyncStorage.setItem('userRole', role);
-  }, []);
+    const key = getUserStorageKey(currentUserEmail, 'userRole');
+    await AsyncStorage.setItem(key, role);
+  }, [currentUserEmail]);
 
   const changeLanguage = useCallback(async (language: Language) => {
     setSelectedLanguage(language);
-    await AsyncStorage.setItem('language', language);
-  }, []);
+    const key = getUserStorageKey(currentUserEmail, 'language');
+    await AsyncStorage.setItem(key, language);
+  }, [currentUserEmail]);
 
   const resetApp = useCallback(async () => {
     setUserRole(null);
-    await AsyncStorage.removeItem('userRole');
-  }, []);
+    const key = getUserStorageKey(currentUserEmail, 'userRole');
+    await AsyncStorage.removeItem(key);
+  }, [currentUserEmail]);
 
   const addXP = useCallback((amount: number, reason: string) => {
     setUserProgress(prev => {
