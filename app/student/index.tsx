@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { BookOpen, BrainCircuit, MessageSquare, Settings, FileText, LogOut, TrendingUp, MessageCircle, Info, ScanText, Target, Video, Bell, Link2, Palette, Zap, Star, Crown, Shield, Award, Trophy, Gamepad2, Moon, Sun, ChevronRight } from 'lucide-react-native';
+import { BookOpen, BrainCircuit, MessageSquare, Settings, FileText, LogOut, TrendingUp, MessageCircle, Info, ScanText, Target, Video, Bell, Link2, Palette, Zap, Star, Crown, Shield, Award, Trophy, Gamepad2, Moon, Sun, ChevronRight, Quote } from 'lucide-react-native';
 import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Platform, Modal, TextInput, Alert, Animated } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useApp } from '@/contexts/app-context';
@@ -15,6 +15,167 @@ interface Message {
   role: 'user' | 'assistant';
   content: string;
 }
+
+const DAILY_QUOTES = [
+  { text: "Education is the most powerful weapon which you can use to change the world.", author: "Nelson Mandela" },
+  { text: "The beautiful thing about learning is that no one can take it away from you.", author: "B.B. King" },
+  { text: "Live as if you were to die tomorrow. Learn as if you were to live forever.", author: "Mahatma Gandhi" },
+  { text: "Success is not final, failure is not fatal: it is the courage to continue that counts.", author: "Winston Churchill" },
+  { text: "The only way to do great work is to love what you do.", author: "Steve Jobs" },
+  { text: "It does not matter how slowly you go as long as you do not stop.", author: "Confucius" },
+  { text: "The mind is not a vessel to be filled, but a fire to be kindled.", author: "Plutarch" },
+  { text: "An investment in knowledge pays the best interest.", author: "Benjamin Franklin" },
+  { text: "The roots of education are bitter, but the fruit is sweet.", author: "Aristotle" },
+  { text: "You don't have to be great to start, but you have to start to be great.", author: "Zig Ziglar" },
+  { text: "The expert in anything was once a beginner.", author: "Helen Hayes" },
+  { text: "What we learn with pleasure we never forget.", author: "Alfred Mercier" },
+  { text: "In the middle of difficulty lies opportunity.", author: "Albert Einstein" },
+  { text: "The secret of getting ahead is getting started.", author: "Mark Twain" },
+  { text: "Believe you can and you're halfway there.", author: "Theodore Roosevelt" },
+  { text: "The future belongs to those who believe in the beauty of their dreams.", author: "Eleanor Roosevelt" },
+  { text: "Strive not to be a success, but rather to be of value.", author: "Albert Einstein" },
+  { text: "A person who never made a mistake never tried anything new.", author: "Albert Einstein" },
+  { text: "Intelligence plus character — that is the goal of true education.", author: "Martin Luther King Jr." },
+  { text: "The capacity to learn is a gift; the ability to learn is a skill; the willingness to learn is a choice.", author: "Brian Herbert" },
+  { text: "Hard work beats talent when talent doesn't work hard.", author: "Tim Notke" },
+  { text: "Don't let what you cannot do interfere with what you can do.", author: "John Wooden" },
+  { text: "The more that you read, the more things you will know. The more that you learn, the more places you'll go.", author: "Dr. Seuss" },
+  { text: "Tell me and I forget. Teach me and I remember. Involve me and I learn.", author: "Benjamin Franklin" },
+  { text: "Self-discipline is the bridge between goals and accomplishment.", author: "Jim Rohn" },
+  { text: "The only limit to our realization of tomorrow will be our doubts of today.", author: "Franklin D. Roosevelt" },
+  { text: "Knowledge is power. Information is liberating.", author: "Kofi Annan" },
+  { text: "Success usually comes to those who are too busy to be looking for it.", author: "Henry David Thoreau" },
+  { text: "The best time to plant a tree was 20 years ago. The second best time is now.", author: "Chinese Proverb" },
+  { text: "You are never too old to set another goal or to dream a new dream.", author: "C.S. Lewis" },
+];
+
+function getDailyQuote() {
+  const now = new Date();
+  const dayIndex = Math.floor(now.getTime() / (1000 * 60 * 60 * 24)) % DAILY_QUOTES.length;
+  return DAILY_QUOTES[dayIndex];
+}
+
+const DailyQuoteCard = memo(() => {
+  const quote = useMemo(() => getDailyQuote(), []);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(20)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
+      Animated.timing(slideAnim, { toValue: 0, duration: 600, useNativeDriver: true }),
+    ]).start();
+  }, [fadeAnim, slideAnim]);
+
+  return (
+    <Animated.View style={[quoteStyles.container, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+      <LinearGradient
+        colors={['#0f172a', '#1e293b', '#334155']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={quoteStyles.gradient}
+      >
+        <View style={quoteStyles.accentLine} />
+        <View style={quoteStyles.quoteIconWrap}>
+          <Quote size={18} color="#fbbf24" fill="#fbbf24" />
+        </View>
+        <Text style={quoteStyles.quoteText}>{quote.text}</Text>
+        <View style={quoteStyles.authorRow}>
+          <View style={quoteStyles.authorDot} />
+          <Text style={quoteStyles.authorText}>{quote.author}</Text>
+        </View>
+        <View style={quoteStyles.decorCircle1} />
+        <View style={quoteStyles.decorCircle2} />
+      </LinearGradient>
+    </Animated.View>
+  );
+});
+
+DailyQuoteCard.displayName = 'DailyQuoteCard';
+
+const quoteStyles = StyleSheet.create({
+  container: {
+    marginBottom: 20,
+    borderRadius: 20,
+    overflow: 'hidden',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#0f172a',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.3,
+        shadowRadius: 16,
+      },
+      android: {
+        elevation: 8,
+      },
+      web: {
+        boxShadow: '0 6px 24px rgba(15, 23, 42, 0.25)',
+      },
+    }),
+  },
+  gradient: {
+    padding: 22,
+    paddingLeft: 28,
+    position: 'relative' as const,
+    overflow: 'hidden',
+  },
+  accentLine: {
+    position: 'absolute' as const,
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 4,
+    backgroundColor: '#fbbf24',
+    borderTopLeftRadius: 20,
+    borderBottomLeftRadius: 20,
+  },
+  quoteIconWrap: {
+    marginBottom: 10,
+  },
+  quoteText: {
+    fontSize: 16,
+    fontWeight: '600' as const,
+    color: '#f1f5f9',
+    lineHeight: 24,
+    fontStyle: 'italic' as const,
+    marginBottom: 14,
+  },
+  authorRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 8,
+  },
+  authorDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#fbbf24',
+  },
+  authorText: {
+    fontSize: 13,
+    fontWeight: '700' as const,
+    color: '#fbbf24',
+    letterSpacing: 0.5,
+  },
+  decorCircle1: {
+    position: 'absolute' as const,
+    top: -20,
+    right: -20,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(251, 191, 36, 0.06)',
+  },
+  decorCircle2: {
+    position: 'absolute' as const,
+    bottom: -30,
+    right: 40,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: 'rgba(99, 102, 241, 0.06)',
+  },
+});
 
 const FunLearningCard = memo(({ feature, onPress }: { feature: any; onPress: () => void }) => {
   const borderAnim = useRef(new Animated.Value(0)).current;
@@ -498,6 +659,8 @@ export default function StudentDashboard() {
         showsVerticalScrollIndicator={false}
         removeClippedSubviews={true}
       >
+        <DailyQuoteCard />
+
         {userProgress.teacherUploads.length > 0 && (
           <View style={styles.uploadsSection}>
             <View style={styles.uploadsSectionHeader}>
