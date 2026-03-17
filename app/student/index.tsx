@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { BookOpen, BrainCircuit, MessageSquare, Settings, FileText, LogOut, TrendingUp, MessageCircle, Info, ScanText, Target, Video, Bell, Link2, Palette, Zap, Star, Crown, Shield, Award } from 'lucide-react-native';
+import { BookOpen, BrainCircuit, MessageSquare, Settings, FileText, LogOut, TrendingUp, MessageCircle, Info, ScanText, Target, Video, Bell, Link2, Palette, Zap, Star, Crown, Shield, Award, Trophy } from 'lucide-react-native';
 import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Platform, Modal, TextInput, Alert, Animated } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useApp } from '@/contexts/app-context';
@@ -213,6 +213,14 @@ export default function StudentDashboard() {
       icon: Palette,
       color: '#f97316',
       route: '/student/comic-learn',
+    },
+    {
+      id: 'competition',
+      title: 'Monthly Challenge',
+      description: 'Compete & win Premium rewards!',
+      icon: Trophy,
+      color: '#f59e0b',
+      route: '/student/competition',
     },
     {
       id: 'about',

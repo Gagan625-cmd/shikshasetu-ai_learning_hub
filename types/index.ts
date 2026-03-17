@@ -146,6 +146,27 @@ export interface XPReward {
   expiresAt: string;
 }
 
+export interface CompetitionEntry {
+  id: string;
+  userName: string;
+  email: string;
+  board: 'CBSE' | 'ICSE';
+  score: number;
+  totalQuestions: number;
+  accuracy: number;
+  timeTaken: number;
+  completedAt: string;
+  rank?: number;
+}
+
+export interface CompetitionState {
+  hasParticipated: boolean;
+  currentScore: number;
+  board: 'CBSE' | 'ICSE' | null;
+  completedAt: string | null;
+  monthKey: string;
+}
+
 export interface UserProgress {
   quizzesCompleted: QuizResult[];
   contentActivities: ContentActivity[];
