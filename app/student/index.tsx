@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { BookOpen, BrainCircuit, MessageSquare, Settings, FileText, LogOut, TrendingUp, MessageCircle, Info, ScanText, Target, Video, Bell, Link2, Palette, Zap, Star, Crown, Shield, Award, Trophy, Gamepad2, Moon, Sun } from 'lucide-react-native';
+import { BookOpen, BrainCircuit, MessageSquare, Settings, FileText, LogOut, TrendingUp, MessageCircle, Info, ScanText, Target, Video, Bell, Link2, Palette, Zap, Star, Crown, Shield, Award, Trophy, Gamepad2, Moon, Sun, ChevronRight } from 'lucide-react-native';
 import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Platform, Modal, TextInput, Alert, Animated } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useApp } from '@/contexts/app-context';
@@ -15,6 +15,111 @@ interface Message {
   role: 'user' | 'assistant';
   content: string;
 }
+
+const FunLearningCard = memo(({ feature, onPress }: { feature: any; onPress: () => void }) => {
+  const borderAnim = useRef(new Animated.Value(0)).current;
+  const glowAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.timing(borderAnim, { toValue: 1, duration: 3000, useNativeDriver: false })
+    ).start();
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(glowAnim, { toValue: 1, duration: 1800, useNativeDriver: false }),
+        Animated.timing(glowAnim, { toValue: 0, duration: 1800, useNativeDriver: false }),
+      ])
+    ).start();
+  }, [borderAnim, glowAnim]);
+
+  const handlePressIn = useCallback(() => {
+    Animated.spring(scaleAnim, { toValue: 0.96, useNativeDriver: true }).start();
+  }, [scaleAnim]);
+
+  const handlePressOut = useCallback(() => {
+    Animated.spring(scaleAnim, { toValue: 1, friction: 3, useNativeDriver: true }).start();
+  }, [scaleAnim]);
+
+  const animatedBorderColor = borderAnim.interpolate({
+    inputRange: [0, 0.25, 0.5, 0.75, 1],
+    outputRange: ['#f97316', '#ec4899', '#8b5cf6', '#06b6d4', '#f97316'],
+  });
+
+  const animatedShadowOpacity = glowAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.3, 0.7],
+  });
+
+  const Icon = feature.icon;
+  return (
+    <Animated.View style={[styles.funCardOuter, { transform: [{ scale: scaleAnim }] }]}>
+      <Animated.View style={[styles.funCardBorderWrap, { borderColor: animatedBorderColor, ...Platform.select({ ios: { shadowOpacity: animatedShadowOpacity as any }, android: {}, web: {} }) }]}>
+        <TouchableOpacity
+          onPress={onPress}
+          onPressIn={handlePressIn}
+          onPressOut={handlePressOut}
+          activeOpacity={1}
+          style={styles.funCardTouchable}
+        >
+          <LinearGradient
+            colors={['#1a1a2e', '#16213e', '#0f3460']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.funCardGradient}
+          >
+            <View style={styles.funCardStars}>
+              <Text style={styles.funStar1}>✦</Text>
+              <Text style={styles.funStar2}>✧</Text>
+              <Text style={styles.funStar3}>✦</Text>
+              <Text style={styles.funStar4}>✧</Text>
+            </View>
+
+            <View style={styles.funCardHeader}>
+              <View style={styles.funIconWrap}>
+                <LinearGradient
+                  colors={['#f97316', '#ec4899', '#8b5cf6']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.funIconGradient}
+                >
+                  <Icon size={30} color="#ffffff" strokeWidth={2.5} />
+                </LinearGradient>
+              </View>
+              <View style={styles.funBadge}>
+                <Zap size={12} color="#fbbf24" />
+                <Text style={styles.funBadgeText}>ENHANCED</Text>
+              </View>
+            </View>
+
+            <Text style={styles.funCardTitle}>{feature.title}</Text>
+            <Text style={styles.funCardDesc}>{feature.description}</Text>
+
+            <View style={styles.funCardFooter}>
+              <View style={styles.funGameTags}>
+                <View style={[styles.funGameTag, { backgroundColor: 'rgba(249, 115, 22, 0.25)' }]}>
+                  <Text style={[styles.funGameTagText, { color: '#fb923c' }]}>🟡 Pacman</Text>
+                </View>
+                <View style={[styles.funGameTag, { backgroundColor: 'rgba(34, 197, 94, 0.25)' }]}>
+                  <Text style={[styles.funGameTagText, { color: '#4ade80' }]}>🐦 Flappy</Text>
+                </View>
+                <View style={[styles.funGameTag, { backgroundColor: 'rgba(139, 92, 246, 0.25)' }]}>
+                  <Text style={[styles.funGameTagText, { color: '#a78bfa' }]}>🧠 GK Quiz</Text>
+                </View>
+              </View>
+              <View style={styles.funPlayBtn}>
+                <Text style={styles.funPlayText}>PLAY</Text>
+                <ChevronRight size={14} color="#ffffff" />
+              </View>
+            </View>
+          </LinearGradient>
+        </TouchableOpacity>
+      </Animated.View>
+    </Animated.View>
+  );
+});
+
+FunLearningCard.displayName = 'FunLearningCard';
 
 const FeatureCard = memo(({ feature, onPress, cardBg, textColor, subTextColor }: { feature: any; onPress: () => void; cardBg: string; textColor: string; subTextColor: string }) => {
   const Icon = feature.icon;
@@ -414,7 +519,11 @@ export default function StudentDashboard() {
         <Text style={[styles.sectionTitle, { color: colors.text }]}>Features</Text>
         <View style={styles.featuresList}>
           {features.map((item) => (
-            <FeatureCard key={item.id} feature={item} onPress={() => handleFeaturePress(item.route)} cardBg={colors.cardBg} textColor={colors.text} subTextColor={colors.textSecondary} />
+            item.id === 'fun-learning' ? (
+              <FunLearningCard key={item.id} feature={item} onPress={() => handleFeaturePress(item.route)} />
+            ) : (
+              <FeatureCard key={item.id} feature={item} onPress={() => handleFeaturePress(item.route)} cardBg={colors.cardBg} textColor={colors.text} subTextColor={colors.textSecondary} />
+            )
           ))}
         </View>
 
@@ -773,6 +882,167 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#64748b',
     lineHeight: 20,
+  },
+  funCardOuter: {
+    borderRadius: 22,
+  },
+  funCardBorderWrap: {
+    borderRadius: 22,
+    borderWidth: 2.5,
+    borderColor: '#f97316',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#f97316',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.4,
+        shadowRadius: 16,
+      },
+      android: {
+        elevation: 10,
+      },
+      web: {
+        boxShadow: '0 4px 24px rgba(249, 115, 22, 0.35)',
+      },
+    }),
+  },
+  funCardTouchable: {
+    borderRadius: 19,
+    overflow: 'hidden',
+  },
+  funCardGradient: {
+    padding: 22,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  funCardStars: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  funStar1: {
+    position: 'absolute',
+    top: 12,
+    right: 18,
+    fontSize: 14,
+    color: 'rgba(251, 191, 36, 0.5)',
+  },
+  funStar2: {
+    position: 'absolute',
+    top: 40,
+    right: 60,
+    fontSize: 10,
+    color: 'rgba(236, 72, 153, 0.4)',
+  },
+  funStar3: {
+    position: 'absolute',
+    bottom: 30,
+    left: 20,
+    fontSize: 12,
+    color: 'rgba(139, 92, 246, 0.4)',
+  },
+  funStar4: {
+    position: 'absolute',
+    bottom: 14,
+    right: 40,
+    fontSize: 8,
+    color: 'rgba(6, 182, 212, 0.5)',
+  },
+  funCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 14,
+  },
+  funIconWrap: {
+    borderRadius: 18,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#ec4899',
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.5,
+        shadowRadius: 10,
+      },
+      android: {
+        elevation: 6,
+      },
+      web: {
+        boxShadow: '0 3px 12px rgba(236, 72, 153, 0.4)',
+      },
+    }),
+  },
+  funIconGradient: {
+    width: 56,
+    height: 56,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  funBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(251, 191, 36, 0.15)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(251, 191, 36, 0.3)',
+  },
+  funBadgeText: {
+    fontSize: 10,
+    fontWeight: '800' as const,
+    color: '#fbbf24',
+    letterSpacing: 1,
+  },
+  funCardTitle: {
+    fontSize: 20,
+    fontWeight: '800' as const,
+    color: '#ffffff',
+    marginBottom: 4,
+  },
+  funCardDesc: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.6)',
+    marginBottom: 16,
+  },
+  funCardFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  funGameTags: {
+    flexDirection: 'row',
+    gap: 6,
+    flexWrap: 'wrap',
+    flex: 1,
+  },
+  funGameTag: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 10,
+  },
+  funGameTagText: {
+    fontSize: 11,
+    fontWeight: '700' as const,
+  },
+  funPlayBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  funPlayText: {
+    fontSize: 12,
+    fontWeight: '800' as const,
+    color: '#ffffff',
+    letterSpacing: 1,
   },
   infoCard: {
     marginTop: 24,
