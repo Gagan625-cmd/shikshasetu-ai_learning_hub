@@ -304,7 +304,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
     }
   }, []);
 
-  const recordGamePlay = useCallback((game: 'pacman' | 'flappy', won: boolean) => {
+  const recordGamePlay = useCallback((game: 'pacman' | 'flappy' | 'tictactoe', won: boolean) => {
     const today = new Date().toISOString().split('T')[0];
     setUserProgress(prev => {
       const record: GamePlayRecord = { date: today, game, won };
@@ -320,10 +320,11 @@ export const [AppProvider, useApp] = createContextHook(() => {
       if (!won) {
         funLearning.pendingXPLoss = true;
         newXP = Math.max(0, newXP - 1);
+        const gameNames: Record<string, string> = { pacman: 'Pacman', flappy: 'Flappy Bird', tictactoe: 'Tic-Tac-Toe' };
         newHistory = [...newHistory, {
           id: Date.now().toString(),
           amount: -1,
-          reason: `Lost ${game === 'pacman' ? 'Pacman' : 'Flappy Bird'} game`,
+          reason: `Lost ${gameNames[game] || game} game`,
           earnedAt: new Date(),
         }];
         console.log('Game lost: -1 XP');
@@ -366,7 +367,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
     });
   }, [saveProgress]);
 
-  const canPlayGame = useCallback((game: 'pacman' | 'flappy') => {
+  const canPlayGame = useCallback((game: 'pacman' | 'flappy' | 'tictactoe') => {
     const today = new Date().toISOString().split('T')[0];
     const fl = userProgress.funLearning;
     if (fl.lastPlayDate !== today) return true;

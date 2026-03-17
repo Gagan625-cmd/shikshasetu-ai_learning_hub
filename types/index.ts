@@ -169,7 +169,7 @@ export interface CompetitionState {
 
 export interface GamePlayRecord {
   date: string;
-  game: 'pacman' | 'flappy';
+  game: 'pacman' | 'flappy' | 'tictactoe';
   won: boolean;
 }
 

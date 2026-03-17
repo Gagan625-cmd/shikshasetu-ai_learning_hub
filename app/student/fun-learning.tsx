@@ -11,7 +11,7 @@ import {
   Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, Gamepad2, Bird, Brain, Lock, Trophy, Zap, ChevronRight, Star, X, Check } from 'lucide-react-native';
+import { ArrowLeft, Gamepad2, Bird, Brain, Lock, Trophy, Zap, ChevronRight, Star, X, Check, Grid3x3, GraduationCap } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useApp } from '@/contexts/app-context';
@@ -20,24 +20,24 @@ import { getRandomGKQuestions, GKQuestion } from '@/constants/gk-questions';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-type GameScreen = 'home' | 'pacman' | 'flappy' | 'gk-quiz';
+type GameScreen = 'home' | 'pacman' | 'flappy' | 'tictactoe' | 'gk-quiz';
 
 const GRID_SIZE = 15;
 const CELL_SIZE = Math.floor((SCREEN_WIDTH - 48) / GRID_SIZE);
 const PACMAN_MAZE = [
   [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-  [1,0,0,0,0,0,1,0,0,0,0,0,0,0,1],
-  [1,0,1,1,0,0,1,0,0,1,1,0,1,0,1],
-  [1,0,0,0,0,0,0,0,0,0,0,0,1,0,1],
-  [1,0,1,0,1,1,0,1,0,1,0,0,0,0,1],
-  [1,0,1,0,0,0,0,1,0,1,0,1,1,0,1],
-  [1,0,0,0,1,0,0,0,0,0,0,0,0,0,1],
-  [1,1,0,1,1,0,1,0,1,0,1,1,0,1,1],
+  [1,0,0,0,1,0,0,0,0,0,1,0,0,0,1],
+  [1,0,1,0,1,0,1,1,1,0,1,0,1,0,1],
+  [1,0,1,0,0,0,0,0,0,0,0,0,1,0,1],
+  [1,0,1,1,0,1,0,1,0,1,0,1,1,0,1],
+  [1,0,0,0,0,1,0,0,0,1,0,0,0,0,1],
+  [1,1,0,1,0,0,0,1,0,0,0,1,0,1,1],
+  [1,0,0,1,1,0,1,1,1,0,1,1,0,0,1],
+  [1,0,1,0,0,0,0,0,0,0,0,0,1,0,1],
+  [1,0,1,0,1,0,1,0,1,0,1,0,1,0,1],
+  [1,0,0,0,1,0,0,0,0,0,1,0,0,0,1],
+  [1,0,1,1,1,0,1,0,1,0,1,1,1,0,1],
   [1,0,0,0,0,0,1,0,1,0,0,0,0,0,1],
-  [1,0,1,1,0,0,0,0,0,0,0,1,1,0,1],
-  [1,0,0,0,0,1,0,1,0,1,0,0,0,0,1],
-  [1,0,1,0,0,1,0,0,0,1,0,0,1,0,1],
-  [1,0,1,0,0,0,0,1,0,0,0,0,1,0,1],
   [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
   [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
 ];
@@ -65,6 +65,8 @@ const GAME_WIDTH = SCREEN_WIDTH - 48;
 function PacmanGame({ onFinish, colors: themeColors }: { onFinish: (won: boolean) => void; colors: any }) {
   const [pacPos, setPacPos] = useState({ row: 1, col: 1 });
   const [ghostPos, setGhostPos] = useState({ row: 7, col: 7 });
+  const [ghost2Pos, setGhost2Pos] = useState({ row: 5, col: 11 });
+  const [ghost3Pos, setGhost3Pos] = useState({ row: 11, col: 3 });
   const [dots, setDots] = useState<Set<string>>(() => {
     const d = new Set<string>();
     for (let r = 0; r < GRID_SIZE; r++) {
@@ -104,33 +106,72 @@ function PacmanGame({ onFinish, colors: themeColors }: { onFinish: (won: boolean
     });
   }, [gameOver, dots, onFinish]);
 
+  const moveGhostSmart = useCallback((ghostPrev: { row: number; col: number }, target: { row: number; col: number }) => {
+    const directions = [
+      { dr: -1, dc: 0 }, { dr: 1, dc: 0 },
+      { dr: 0, dc: -1 }, { dr: 0, dc: 1 },
+    ];
+    const valid = directions.filter(d => {
+      const nr = ghostPrev.row + d.dr;
+      const nc = ghostPrev.col + d.dc;
+      return nr >= 0 && nr < GRID_SIZE && nc >= 0 && nc < GRID_SIZE && PACMAN_MAZE[nr][nc] === 0;
+    });
+    if (valid.length === 0) return ghostPrev;
+    if (Math.random() < 0.6) {
+      valid.sort((a, b) => {
+        const distA = Math.abs(ghostPrev.row + a.dr - target.row) + Math.abs(ghostPrev.col + a.dc - target.col);
+        const distB = Math.abs(ghostPrev.row + b.dr - target.row) + Math.abs(ghostPrev.col + b.dc - target.col);
+        return distA - distB;
+      });
+    }
+    const move = valid[0];
+    return { row: ghostPrev.row + move.dr, col: ghostPrev.col + move.dc };
+  }, []);
+
   useEffect(() => {
     ghostInterval.current = setInterval(() => {
       if (gameOver) return;
-      setGhostPos(prev => {
-        const directions = [
-          { dr: -1, dc: 0 }, { dr: 1, dc: 0 },
-          { dr: 0, dc: -1 }, { dr: 0, dc: 1 },
-        ];
+      setGhostPos(prev => moveGhostSmart(prev, pacPos));
+      setGhost2Pos(prev => {
+        const directions = [{ dr: -1, dc: 0 }, { dr: 1, dc: 0 }, { dr: 0, dc: -1 }, { dr: 0, dc: 1 }];
         const valid = directions.filter(d => {
-          const nr = prev.row + d.dr;
-          const nc = prev.col + d.dc;
+          const nr = prev.row + d.dr; const nc = prev.col + d.dc;
+          return nr >= 0 && nr < GRID_SIZE && nc >= 0 && nc < GRID_SIZE && PACMAN_MAZE[nr][nc] === 0;
+        });
+        if (valid.length === 0) return prev;
+        if (Math.random() < 0.45) {
+          valid.sort((a, b) => {
+            const distA = Math.abs(prev.row + a.dr - pacPos.row) + Math.abs(prev.col + a.dc - pacPos.col);
+            const distB = Math.abs(prev.row + b.dr - pacPos.row) + Math.abs(prev.col + b.dc - pacPos.col);
+            return distA - distB;
+          });
+        }
+        return { row: prev.row + valid[0].dr, col: prev.col + valid[0].dc };
+      });
+      setGhost3Pos(prev => {
+        const directions = [{ dr: -1, dc: 0 }, { dr: 1, dc: 0 }, { dr: 0, dc: -1 }, { dr: 0, dc: 1 }];
+        const valid = directions.filter(d => {
+          const nr = prev.row + d.dr; const nc = prev.col + d.dc;
           return nr >= 0 && nr < GRID_SIZE && nc >= 0 && nc < GRID_SIZE && PACMAN_MAZE[nr][nc] === 0;
         });
         if (valid.length === 0) return prev;
         const move = valid[Math.floor(Math.random() * valid.length)];
         return { row: prev.row + move.dr, col: prev.col + move.dc };
       });
-    }, 500);
+    }, 350);
     return () => { if (ghostInterval.current) clearInterval(ghostInterval.current); };
-  }, [gameOver]);
+  }, [gameOver, pacPos, moveGhostSmart]);
 
   useEffect(() => {
-    if (pacPos.row === ghostPos.row && pacPos.col === ghostPos.col && !gameOver) {
+    if (gameOver) return;
+    const hitGhost = (pacPos.row === ghostPos.row && pacPos.col === ghostPos.col) ||
+      (pacPos.row === ghost2Pos.row && pacPos.col === ghost2Pos.col) ||
+      (pacPos.row === ghost3Pos.row && pacPos.col === ghost3Pos.col);
+    if (hitGhost) {
       setGameOver(true);
       onFinish(false);
     }
-  }, [pacPos, ghostPos, gameOver, onFinish]);
+  }, [pacPos, ghostPos, ghost2Pos, ghost3Pos, gameOver, onFinish]);
 
   const mazeWidth = GRID_SIZE * CELL_SIZE;
 
@@ -181,6 +222,26 @@ function PacmanGame({ onFinish, colors: themeColors }: { onFinish: (won: boolean
             {
               left: ghostPos.col * CELL_SIZE + CELL_SIZE / 2 - 10,
               top: ghostPos.row * CELL_SIZE + CELL_SIZE / 2 - 10,
+            },
+          ]}
+        />
+        <View
+          style={[
+            pacStyles.ghost,
+            {
+              left: ghost2Pos.col * CELL_SIZE + CELL_SIZE / 2 - 10,
+              top: ghost2Pos.row * CELL_SIZE + CELL_SIZE / 2 - 10,
+              backgroundColor: '#a855f7',
+            },
+          ]}
+        />
+        <View
+          style={[
+            pacStyles.ghost,
+            {
+              left: ghost3Pos.col * CELL_SIZE + CELL_SIZE / 2 - 10,
+              top: ghost3Pos.row * CELL_SIZE + CELL_SIZE / 2 - 10,
+              backgroundColor: '#06b6d4',
             },
           ]}
         />
@@ -484,6 +545,267 @@ function GKQuiz({ onFinish, colors: themeColors }: { onFinish: (score: number, t
   );
 }
 
+type CellValue = 'X' | 'O' | null;
+const WISDOM_QUOTES = [
+  "Hmm, interesting move... but can you outthink me?",
+  "A wise choice, but wisdom comes from experience!",
+  "The student challenges the master... let's see!",
+  "Every move teaches something. What will you learn?",
+  "Patience is the companion of wisdom, young one.",
+  "Knowledge speaks, but wisdom listens... to the board!",
+  "You play well, but the Professor has seen many games.",
+  "Think carefully... the wise move is not always obvious.",
+];
+
+function getWisdomQuote(): string {
+  return WISDOM_QUOTES[Math.floor(Math.random() * WISDOM_QUOTES.length)];
+}
+
+function checkWinner(board: CellValue[]): CellValue {
+  const lines = [
+    [0, 1, 2], [3, 4, 5], [6, 7, 8],
+    [0, 3, 6], [1, 4, 7], [2, 5, 8],
+    [0, 4, 8], [2, 4, 6],
+  ];
+  for (const [a, b, c] of lines) {
+    if (board[a] && board[a] === board[b] && board[a] === board[c]) {
+      return board[a];
+    }
+  }
+  return null;
+}
+
+function isBoardFull(board: CellValue[]): boolean {
+  return board.every(cell => cell !== null);
+}
+
+function minimax(board: CellValue[], isMaximizing: boolean, depth: number): number {
+  const winner = checkWinner(board);
+  if (winner === 'O') return 10 - depth;
+  if (winner === 'X') return depth - 10;
+  if (isBoardFull(board)) return 0;
+
+  if (isMaximizing) {
+    let best = -Infinity;
+    for (let i = 0; i < 9; i++) {
+      if (!board[i]) {
+        board[i] = 'O';
+        best = Math.max(best, minimax(board, false, depth + 1));
+        board[i] = null;
+      }
+    }
+    return best;
+  } else {
+    let best = Infinity;
+    for (let i = 0; i < 9; i++) {
+      if (!board[i]) {
+        board[i] = 'X';
+        best = Math.min(best, minimax(board, true, depth + 1));
+        board[i] = null;
+      }
+    }
+    return best;
+  }
+}
+
+function getBestMove(board: CellValue[]): number {
+  if (Math.random() < 0.15) {
+    const empty = board.map((v, i) => v === null ? i : -1).filter(i => i !== -1);
+    if (empty.length > 0) return empty[Math.floor(Math.random() * empty.length)];
+  }
+  let bestScore = -Infinity;
+  let bestMove = -1;
+  for (let i = 0; i < 9; i++) {
+    if (!board[i]) {
+      board[i] = 'O';
+      const score = minimax(board, false, 0);
+      board[i] = null;
+      if (score > bestScore) {
+        bestScore = score;
+        bestMove = i;
+      }
+    }
+  }
+  return bestMove;
+}
+
+function TicTacToeGame({ onFinish, colors: themeColors }: { onFinish: (won: boolean) => void; colors: any }) {
+  const [board, setBoard] = useState<CellValue[]>(Array(9).fill(null));
+  const [isPlayerTurn, setIsPlayerTurn] = useState(true);
+  const [gameOver, setGameOver] = useState(false);
+  const [result, setResult] = useState<'win' | 'lose' | 'draw' | null>(null);
+  const [professorQuote, setProfessorQuote] = useState("I am the Wisdom Professor. Let's play!");
+  const [winLine, setWinLine] = useState<number[] | null>(null);
+  const scaleAnims = useRef(Array(9).fill(null).map(() => new Animated.Value(0))).current;
+  const professorPulse = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(professorPulse, { toValue: 1.05, duration: 1500, useNativeDriver: true }),
+        Animated.timing(professorPulse, { toValue: 1, duration: 1500, useNativeDriver: true }),
+      ])
+    ).start();
+  }, [professorPulse]);
+
+  const animateCell = useCallback((index: number) => {
+    scaleAnims[index].setValue(0);
+    Animated.spring(scaleAnims[index], { toValue: 1, friction: 3, tension: 100, useNativeDriver: true }).start();
+  }, [scaleAnims]);
+
+  const findWinLine = useCallback((b: CellValue[]): number[] | null => {
+    const lines = [
+      [0, 1, 2], [3, 4, 5], [6, 7, 8],
+      [0, 3, 6], [1, 4, 7], [2, 5, 8],
+      [0, 4, 8], [2, 4, 6],
+    ];
+    for (const line of lines) {
+      const [a, b2, c] = line;
+      if (b[a] && b[a] === b[b2] && b[a] === b[c]) return line;
+    }
+    return null;
+  }, []);
+
+  const handleCellPress = useCallback((index: number) => {
+    if (board[index] || !isPlayerTurn || gameOver) return;
+
+    const newBoard = [...board];
+    newBoard[index] = 'X';
+    setBoard(newBoard);
+    animateCell(index);
+
+    const winner = checkWinner(newBoard);
+    if (winner === 'X') {
+      setGameOver(true);
+      setResult('win');
+      setWinLine(findWinLine(newBoard));
+      setProfessorQuote("Impressive! You bested the Professor this time!");
+      onFinish(true);
+      return;
+    }
+    if (isBoardFull(newBoard)) {
+      setGameOver(true);
+      setResult('draw');
+      setProfessorQuote("A draw! You matched the Professor's wisdom!");
+      onFinish(false);
+      return;
+    }
+
+    setIsPlayerTurn(false);
+    setProfessorQuote(getWisdomQuote());
+
+    setTimeout(() => {
+      const aiMove = getBestMove([...newBoard]);
+      if (aiMove >= 0) {
+        newBoard[aiMove] = 'O';
+        setBoard([...newBoard]);
+        animateCell(aiMove);
+
+        const aiWinner = checkWinner(newBoard);
+        if (aiWinner === 'O') {
+          setGameOver(true);
+          setResult('lose');
+          setWinLine(findWinLine(newBoard));
+          setProfessorQuote("The Professor wins! Wisdom prevails!");
+          onFinish(false);
+          return;
+        }
+        if (isBoardFull(newBoard)) {
+          setGameOver(true);
+          setResult('draw');
+          setProfessorQuote("A draw! You matched the Professor's wisdom!");
+          onFinish(false);
+          return;
+        }
+        setProfessorQuote("Your turn, young scholar...");
+      }
+      setIsPlayerTurn(true);
+    }, 600);
+  }, [board, isPlayerTurn, gameOver, onFinish, animateCell, findWinLine]);
+
+  const cellSize = Math.floor((SCREEN_WIDTH - 80) / 3);
+
+  return (
+    <View style={tttStyles.container}>
+      <Animated.View style={[tttStyles.professorCard, { transform: [{ scale: professorPulse }] }]}>
+        <LinearGradient
+          colors={['#1e3a5f', '#0f2744']}
+          style={tttStyles.professorGradient}
+        >
+          <View style={tttStyles.professorAvatarWrap}>
+            <Text style={tttStyles.professorEmoji}>🧙‍♂️</Text>
+          </View>
+          <View style={tttStyles.professorTextWrap}>
+            <Text style={tttStyles.professorName}>Wisdom Professor</Text>
+            <Text style={tttStyles.professorSpeech}>{professorQuote}</Text>
+          </View>
+        </LinearGradient>
+      </Animated.View>
+
+      <View style={tttStyles.statusRow}>
+        <View style={[tttStyles.turnIndicator, { backgroundColor: isPlayerTurn ? '#10b981' : '#ef4444' }]}>
+          <Text style={tttStyles.turnText}>
+            {gameOver
+              ? result === 'win' ? '🎉 You Win!' : result === 'draw' ? '🤝 Draw!' : '😔 Professor Wins!'
+              : isPlayerTurn ? '🎯 Your Turn (X)' : '🧠 Professor Thinking...'}
+          </Text>
+        </View>
+      </View>
+
+      <View style={[tttStyles.board, { width: cellSize * 3 + 12, height: cellSize * 3 + 12 }]}>
+        {board.map((cell, index) => {
+          const row = Math.floor(index / 3);
+          const col = index % 3;
+          const isWinCell = winLine?.includes(index);
+          return (
+            <TouchableOpacity
+              key={index}
+              style={[
+                tttStyles.cell,
+                {
+                  width: cellSize,
+                  height: cellSize,
+                  borderRightWidth: col < 2 ? 3 : 0,
+                  borderBottomWidth: row < 2 ? 3 : 0,
+                  borderColor: '#334155',
+                  backgroundColor: isWinCell ? 'rgba(16, 185, 129, 0.15)' : 'transparent',
+                },
+              ]}
+              onPress={() => handleCellPress(index)}
+              activeOpacity={0.7}
+              disabled={gameOver || !isPlayerTurn || !!cell}
+            >
+              {cell && (
+                <Animated.View style={{ transform: [{ scale: scaleAnims[index] }] }}>
+                  <Text style={[
+                    tttStyles.cellText,
+                    { color: cell === 'X' ? '#3b82f6' : '#ef4444' },
+                    isWinCell && { textShadowColor: cell === 'X' ? '#3b82f6' : '#ef4444', textShadowRadius: 10 },
+                  ]}>
+                    {cell}
+                  </Text>
+                </Animated.View>
+              )}
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      <View style={tttStyles.legendRow}>
+        <View style={tttStyles.legendItem}>
+          <Text style={[tttStyles.legendSymbol, { color: '#3b82f6' }]}>X</Text>
+          <Text style={[tttStyles.legendLabel, { color: themeColors.textSecondary }]}>You</Text>
+        </View>
+        <Text style={[tttStyles.legendVs, { color: themeColors.textTertiary }]}>vs</Text>
+        <View style={tttStyles.legendItem}>
+          <Text style={[tttStyles.legendSymbol, { color: '#ef4444' }]}>O</Text>
+          <Text style={[tttStyles.legendLabel, { color: themeColors.textSecondary }]}>Professor</Text>
+        </View>
+      </View>
+    </View>
+  );
+}
+
 export default function FunLearning() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -495,6 +817,7 @@ export default function FunLearning() {
   const hasPendingLoss = userProgress.funLearning.pendingXPLoss;
   const pacmanPlayed = !canPlayGame('pacman');
   const flappyPlayed = !canPlayGame('flappy');
+  const tictactoePlayed = !canPlayGame('tictactoe');
 
   const switchScreen = useCallback((to: GameScreen) => {
     Animated.timing(fadeAnim, { toValue: 0, duration: 150, useNativeDriver: true }).start(() => {
@@ -519,6 +842,28 @@ export default function FunLearning() {
     } else {
       setTimeout(() => {
         Alert.alert('Congratulations!', 'You completed Pacman! No XP lost.', [
+          { text: 'OK', onPress: () => switchScreen('home') },
+        ]);
+      }, 500);
+    }
+  }, [recordGamePlay, switchScreen]);
+
+  const handleTicTacToeFinish = useCallback((won: boolean) => {
+    recordGamePlay('tictactoe', won);
+    if (!won) {
+      setTimeout(() => {
+        Alert.alert(
+          'The Professor Wins!',
+          'You lost 1 XP. Take the GK Quiz (score 3+) to earn it back!',
+          [
+            { text: 'Take Quiz', onPress: () => switchScreen('gk-quiz') },
+            { text: 'Later', style: 'cancel', onPress: () => switchScreen('home') },
+          ]
+        );
+      }, 500);
+    } else {
+      setTimeout(() => {
+        Alert.alert('Brilliant!', 'You defeated the Wisdom Professor! No XP lost.', [
           { text: 'OK', onPress: () => switchScreen('home') },
         ]);
       }, 500);
@@ -616,7 +961,7 @@ export default function FunLearning() {
         <View style={homeStyles.gameCardContent}>
           <Text style={[homeStyles.gameCardTitle, { color: colors.text }]}>Pacman</Text>
           <Text style={[homeStyles.gameCardDesc, { color: colors.textSecondary }]}>
-            Eat all dots, avoid the ghost!
+            Eat all dots, avoid 3 ghosts!
           </Text>
         </View>
         {pacmanPlayed ? (
@@ -659,6 +1004,44 @@ export default function FunLearning() {
           </View>
         ) : (
           <ChevronRight size={24} color={colors.textTertiary} />
+        )}
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={[homeStyles.gameCard, { backgroundColor: colors.cardBg, borderColor: colors.border, borderWidth: 2, borderLeftWidth: 4, borderLeftColor: '#1e3a5f' }]}
+        onPress={() => {
+          if (tictactoePlayed) {
+            Alert.alert('Already Played', 'You already played Tic-Tac-Toe today. Come back tomorrow!');
+            return;
+          }
+          switchScreen('tictactoe');
+        }}
+        activeOpacity={0.8}
+      >
+        <LinearGradient
+          colors={['#1e3a5f', '#0f2744']}
+          style={homeStyles.gameIconBg}
+        >
+          <Grid3x3 size={28} color="#fff" strokeWidth={2.5} />
+        </LinearGradient>
+        <View style={homeStyles.gameCardContent}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Text style={[homeStyles.gameCardTitle, { color: colors.text }]}>Tic-Tac-Toe</Text>
+            <View style={{ backgroundColor: '#f59e0b', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+              <Text style={{ fontSize: 9, fontWeight: '800' as const, color: '#fff' }}>NEW</Text>
+            </View>
+          </View>
+          <Text style={[homeStyles.gameCardDesc, { color: colors.textSecondary }]}>
+            Challenge the Wisdom Professor!
+          </Text>
+        </View>
+        {tictactoePlayed ? (
+          <View style={homeStyles.playedBadge}>
+            <Lock size={14} color="#94a3b8" />
+            <Text style={homeStyles.playedText}>Played</Text>
+          </View>
+        ) : (
+          <GraduationCap size={24} color="#1e3a5f" />
         )}
       </TouchableOpacity>
 
@@ -735,7 +1118,7 @@ export default function FunLearning() {
           <ArrowLeft size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={[styles.navTitle, { color: colors.text }]}>
-          {screen === 'home' ? 'Fun with Learning' : screen === 'pacman' ? 'Pacman' : screen === 'flappy' ? 'Flappy Bird' : 'GK Quiz'}
+          {screen === 'home' ? 'Fun with Learning' : screen === 'pacman' ? 'Pacman' : screen === 'flappy' ? 'Flappy Bird' : screen === 'tictactoe' ? 'Tic-Tac-Toe' : 'GK Quiz'}
         </Text>
         <View style={{ width: 40 }} />
       </View>
@@ -750,6 +1133,11 @@ export default function FunLearning() {
         {screen === 'flappy' && (
           <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 20 }}>
             <FlappyBirdGame onFinish={handleFlappyFinish} colors={colors} />
+          </ScrollView>
+        )}
+        {screen === 'tictactoe' && (
+          <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 20 }}>
+            <TicTacToeGame onFinish={handleTicTacToeFinish} colors={colors} />
           </ScrollView>
         )}
         {screen === 'gk-quiz' && (
@@ -1083,6 +1471,102 @@ const flappyStyles = StyleSheet.create({
     position: 'absolute',
     backgroundColor: '#22c55e',
     borderRadius: 4,
+  },
+});
+
+const tttStyles = StyleSheet.create({
+  container: {
+    alignItems: 'center',
+    gap: 16,
+  },
+  professorCard: {
+    width: '100%',
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginBottom: 4,
+  },
+  professorGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    gap: 14,
+  },
+  professorAvatarWrap: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  professorEmoji: {
+    fontSize: 28,
+  },
+  professorTextWrap: {
+    flex: 1,
+  },
+  professorName: {
+    fontSize: 15,
+    fontWeight: '800' as const,
+    color: '#fbbf24',
+    marginBottom: 4,
+  },
+  professorSpeech: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.85)',
+    lineHeight: 18,
+    fontStyle: 'italic',
+  },
+  statusRow: {
+    width: '100%',
+    alignItems: 'center',
+  },
+  turnIndicator: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 12,
+  },
+  turnText: {
+    fontSize: 15,
+    fontWeight: '700' as const,
+    color: '#fff',
+  },
+  board: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    borderRadius: 12,
+    backgroundColor: '#1e293b',
+    padding: 6,
+  },
+  cell: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cellText: {
+    fontSize: 40,
+    fontWeight: '900' as const,
+  },
+  legendRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  legendSymbol: {
+    fontSize: 20,
+    fontWeight: '900' as const,
+  },
+  legendLabel: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+  },
+  legendVs: {
+    fontSize: 13,
+    fontWeight: '600' as const,
   },
 });
 
