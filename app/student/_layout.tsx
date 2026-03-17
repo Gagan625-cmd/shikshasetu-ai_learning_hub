@@ -13,6 +13,7 @@ export default function StudentLayout() {
       <Stack.Screen name="study-os" />
       <Stack.Screen name="useful-link" />
       <Stack.Screen name="competition" />
+      <Stack.Screen name="fun-learning" />
     </Stack>
   );
 }

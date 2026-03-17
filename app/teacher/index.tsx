@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { BookOpen, BrainCircuit, Settings, FileText, LogOut, Video, Upload, TrendingUp, Info, Link2, Mic } from 'lucide-react-native';
+import { BookOpen, BrainCircuit, Settings, FileText, LogOut, Video, Upload, TrendingUp, Info, Link2, Mic, Moon, Sun } from 'lucide-react-native';
 import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useApp } from '@/contexts/app-context';
@@ -8,11 +8,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState } from 'react';
 import { LANGUAGES } from '@/constants/ncert-data';
 import VoiceAssistant from './voice-assistant';
+import { useTheme } from '@/contexts/theme-context';
 
 export default function TeacherDashboard() {
   const router = useRouter();
   const { resetApp, selectedLanguage, changeLanguage } = useApp();
   const { signOut } = useAuth();
+  const { colors, isDark, toggleDarkMode } = useTheme();
   const insets = useSafeAreaInsets();
   const [showSettings, setShowSettings] = useState(false);
   const [showVoiceAssistant, setShowVoiceAssistant] = useState(false);
@@ -99,9 +101,9 @@ export default function TeacherDashboard() {
   ];
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
       <LinearGradient
-        colors={['#92400e', '#b45309']}
+        colors={colors.headerGradientTeacher}
         style={styles.header}
       >
         <View style={styles.headerContent}>
@@ -109,12 +111,20 @@ export default function TeacherDashboard() {
             <Text style={styles.greeting}>Welcome, Teacher!</Text>
             <Text style={styles.subtitle}>Empower your students with AI</Text>
           </View>
-          <TouchableOpacity
-            style={styles.settingsButton}
-            onPress={() => setShowSettings(!showSettings)}
-          >
-            <Settings size={24} color="#ffffff" />
-          </TouchableOpacity>
+          <View style={styles.headerActions}>
+            <TouchableOpacity
+              style={styles.darkModeButton}
+              onPress={toggleDarkMode}
+            >
+              {isDark ? <Sun size={20} color="#fbbf24" /> : <Moon size={20} color="#fed7aa" />}
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.settingsButton}
+              onPress={() => setShowSettings(!showSettings)}
+            >
+              <Settings size={24} color="#ffffff" />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {showSettings && (
@@ -158,30 +168,30 @@ export default function TeacherDashboard() {
         contentContainerStyle={[styles.contentContainer, { paddingBottom: insets.bottom + 20 }]}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.sectionTitle}>Teacher Tools</Text>
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>Teacher Tools</Text>
         <View style={styles.grid}>
           {features.map((feature) => {
             const Icon = feature.icon;
             return (
               <TouchableOpacity
                 key={feature.id}
-                style={styles.featureCard}
+                style={[styles.featureCard, { backgroundColor: colors.cardBg }]}
                 onPress={() => router.push(feature.route as any)}
                 activeOpacity={0.8}
               >
                 <View style={[styles.iconCircle, { backgroundColor: feature.color + '20' }]}>
                   <Icon size={32} color={feature.color} strokeWidth={2} />
                 </View>
-                <Text style={styles.featureTitle}>{feature.title}</Text>
-                <Text style={styles.featureDescription}>{feature.description}</Text>
+                <Text style={[styles.featureTitle, { color: colors.text }]}>{feature.title}</Text>
+                <Text style={[styles.featureDescription, { color: colors.textSecondary }]}>{feature.description}</Text>
               </TouchableOpacity>
             );
           })}
         </View>
 
-        <View style={styles.infoCard}>
-          <Text style={styles.infoTitle}>🎓 AI Teaching Assistant</Text>
-          <Text style={styles.infoText}>
+        <View style={[styles.infoCard, { backgroundColor: isDark ? colors.infoBg : '#fff7ed', borderLeftColor: colors.infoBorder }]}>
+          <Text style={[styles.infoTitle, { color: isDark ? colors.infoTitle : '#92400e' }]}>🎓 AI Teaching Assistant</Text>
+          <Text style={[styles.infoText, { color: isDark ? colors.infoText : '#92400e' }]}>
             Use AI to create personalized learning materials, generate quizzes, and assess student understanding through advanced interviews.
           </Text>
         </View>
@@ -211,7 +221,19 @@ export default function TeacherDashboard() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  darkModeButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   header: {
     paddingHorizontal: 20,

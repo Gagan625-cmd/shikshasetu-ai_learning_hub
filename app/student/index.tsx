@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { BookOpen, BrainCircuit, MessageSquare, Settings, FileText, LogOut, TrendingUp, MessageCircle, Info, ScanText, Target, Video, Bell, Link2, Palette, Zap, Star, Crown, Shield, Award, Trophy } from 'lucide-react-native';
+import { BookOpen, BrainCircuit, MessageSquare, Settings, FileText, LogOut, TrendingUp, MessageCircle, Info, ScanText, Target, Video, Bell, Link2, Palette, Zap, Star, Crown, Shield, Award, Trophy, Gamepad2, Moon, Sun } from 'lucide-react-native';
 import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Platform, Modal, TextInput, Alert, Animated } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useApp } from '@/contexts/app-context';
@@ -9,34 +9,35 @@ import { useState, useCallback, useMemo, memo, useEffect, useRef } from 'react';
 import { LANGUAGES } from '@/constants/ncert-data';
 import { useMutation } from '@tanstack/react-query';
 import { generateText } from '@rork-ai/toolkit-sdk';
+import { useTheme } from '@/contexts/theme-context';
 
 interface Message {
   role: 'user' | 'assistant';
   content: string;
 }
 
-const FeatureCard = memo(({ feature, onPress }: { feature: any; onPress: () => void }) => {
+const FeatureCard = memo(({ feature, onPress, cardBg, textColor, subTextColor }: { feature: any; onPress: () => void; cardBg: string; textColor: string; subTextColor: string }) => {
   const Icon = feature.icon;
   return (
     <TouchableOpacity
-      style={styles.featureCard}
+      style={[styles.featureCard, { backgroundColor: cardBg }]}
       onPress={onPress}
       activeOpacity={0.8}
     >
       <View style={[styles.iconCircle, { backgroundColor: feature.color + '20' }]}>
         <Icon size={32} color={feature.color} strokeWidth={2} />
       </View>
-      <Text style={styles.featureTitle}>{feature.title}</Text>
-      <Text style={styles.featureDescription}>{feature.description}</Text>
+      <Text style={[styles.featureTitle, { color: textColor }]}>{feature.title}</Text>
+      <Text style={[styles.featureDescription, { color: subTextColor }]}>{feature.description}</Text>
     </TouchableOpacity>
   );
 });
 
 FeatureCard.displayName = 'FeatureCard';
 
-const UploadCard = memo(({ upload, onPress }: { upload: any; onPress: () => void }) => (
+const UploadCard = memo(({ upload, onPress, cardBg, textColor, subTextColor }: { upload: any; onPress: () => void; cardBg: string; textColor: string; subTextColor: string }) => (
   <TouchableOpacity
-    style={styles.uploadCard}
+    style={[styles.uploadCard, { backgroundColor: cardBg }]}
     activeOpacity={0.8}
     onPress={onPress}
   >
@@ -47,9 +48,9 @@ const UploadCard = memo(({ upload, onPress }: { upload: any; onPress: () => void
         <FileText size={24} color="#f59e0b" />
       )}
     </View>
-    <Text style={styles.uploadTitle} numberOfLines={2}>{upload.title}</Text>
+    <Text style={[styles.uploadTitle, { color: textColor }]} numberOfLines={2}>{upload.title}</Text>
     <Text style={styles.uploadMeta}>{upload.board} Grade {upload.grade}</Text>
-    <Text style={styles.uploadSubject} numberOfLines={1}>{upload.subject}</Text>
+    <Text style={[styles.uploadSubject, { color: subTextColor }]} numberOfLines={1}>{upload.subject}</Text>
   </TouchableOpacity>
 ));
 
@@ -72,6 +73,7 @@ export default function StudentDashboard() {
   const router = useRouter();
   const { resetApp, selectedLanguage, changeLanguage, userProgress, hasXPReward } = useApp();
   const { signOut } = useAuth();
+  const { colors, isDark, toggleDarkMode } = useTheme();
   const insets = useSafeAreaInsets();
   const [showSettings, setShowSettings] = useState(false);
   const [showChatbot, setShowChatbot] = useState(false);
@@ -215,6 +217,14 @@ export default function StudentDashboard() {
       route: '/student/comic-learn',
     },
     {
+      id: 'fun-learning',
+      title: 'Fun with Learning',
+      description: 'Pacman, Flappy Bird & GK Quiz!',
+      icon: Gamepad2,
+      color: '#f97316',
+      route: '/student/fun-learning',
+    },
+    {
       id: 'competition',
       title: 'Monthly Challenge',
       description: 'Compete & win Premium rewards!',
@@ -268,9 +278,9 @@ export default function StudentDashboard() {
   }, [router]);
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
       <LinearGradient
-        colors={['#0f172a', '#1e3a5f']}
+        colors={colors.headerGradientStudent}
         style={styles.header}
       >
         <View style={styles.headerContent}>
@@ -283,12 +293,20 @@ export default function StudentDashboard() {
               <Text style={styles.subtitle}>Let&apos;s learn something new today</Text>
             </View>
           </View>
-          <TouchableOpacity
-            style={styles.settingsButton}
-            onPress={() => setShowSettings(!showSettings)}
-          >
-            <Settings size={24} color="#ffffff" />
-          </TouchableOpacity>
+          <View style={styles.headerActions}>
+            <TouchableOpacity
+              style={styles.darkModeButton}
+              onPress={toggleDarkMode}
+            >
+              {isDark ? <Sun size={20} color="#fbbf24" /> : <Moon size={20} color="#94a3b8" />}
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.settingsButton}
+              onPress={() => setShowSettings(!showSettings)}
+            >
+              <Settings size={24} color="#ffffff" />
+            </TouchableOpacity>
+          </View>
         </View>
 
         <View style={styles.xpBar}>
@@ -387,22 +405,22 @@ export default function StudentDashboard() {
               style={styles.uploadsScroll}
             >
               {recentUploads.map((item) => (
-                <UploadCard key={item.id} upload={item} onPress={() => handleUploadPress(item)} />
+                <UploadCard key={item.id} upload={item} onPress={() => handleUploadPress(item)} cardBg={colors.cardBg} textColor={colors.text} subTextColor={colors.textSecondary} />
               ))}
             </ScrollView>
           </View>
         )}
 
-        <Text style={styles.sectionTitle}>Features</Text>
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>Features</Text>
         <View style={styles.featuresList}>
           {features.map((item) => (
-            <FeatureCard key={item.id} feature={item} onPress={() => handleFeaturePress(item.route)} />
+            <FeatureCard key={item.id} feature={item} onPress={() => handleFeaturePress(item.route)} cardBg={colors.cardBg} textColor={colors.text} subTextColor={colors.textSecondary} />
           ))}
         </View>
 
-        <View style={styles.infoCard}>
-          <Text style={styles.infoTitle}>✨ Offline & Online</Text>
-          <Text style={styles.infoText}>
+        <View style={[styles.infoCard, { backgroundColor: colors.infoBg, borderLeftColor: colors.infoBorder }]}>
+          <Text style={[styles.infoTitle, { color: colors.infoTitle }]}>✨ Offline & Online</Text>
+          <Text style={[styles.infoText, { color: colors.infoText }]}>
             All NCERT content is available both offline and online. Download once and access anytime!
           </Text>
         </View>
@@ -494,7 +512,19 @@ export default function StudentDashboard() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  darkModeButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   header: {
     paddingHorizontal: 20,

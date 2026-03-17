@@ -3,10 +3,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Platform } from 'react-native';
 import * as StoreReview from 'expo-store-review';
-import { UserRole, Language, UserProgress, QuizResult, ContentActivity, TeacherActivity, ExamActivity, TeacherUpload, XPEntry } from '@/types';
+import { UserRole, Language, UserProgress, QuizResult, ContentActivity, TeacherActivity, ExamActivity, TeacherUpload, XPEntry, GamePlayRecord, GKQuizRecord, FunLearningState } from '@/types';
 
 const XP_REWARD_THRESHOLD = 10000;
 const XP_REWARD_DURATION_DAYS = 30;
+const STREAK_XP_REWARD_DAYS = 7;
+const STREAK_XP_REWARD_AMOUNT = 3;
 
 const REVIEW_STORAGE_KEY = 'storeReviewData';
 const MIN_ACTIONS_FOR_REVIEW = 3;
@@ -28,6 +30,13 @@ export const [AppProvider, useApp] = createContextHook(() => {
     totalXP: 0,
     xpHistory: [],
     xpReward: null,
+    streakXPAwarded: [],
+    funLearning: {
+      gamePlaysToday: [],
+      gkQuizzesToday: [],
+      lastPlayDate: '',
+      pendingXPLoss: false,
+    },
   });
 
   const saveProgress = useCallback(async (progress: UserProgress) => {
@@ -43,17 +52,55 @@ export const [AppProvider, useApp] = createContextHook(() => {
     const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
     
     setUserProgress(prev => {
+      let newStreak = prev.currentStreak;
       if (lastActive === today) {
         return prev;
       } else if (lastActive === yesterday) {
-        const updated = { ...prev, currentStreak: prev.currentStreak + 1, lastActiveDate: today };
-        void saveProgress(updated);
-        return updated;
+        newStreak = prev.currentStreak + 1;
       } else {
-        const updated = { ...prev, currentStreak: 1, lastActiveDate: today };
-        void saveProgress(updated);
-        return updated;
+        newStreak = 1;
       }
+
+      let updatedXP = prev.totalXP;
+      let updatedHistory = prev.xpHistory;
+      let updatedStreakXPAwarded = [...prev.streakXPAwarded];
+
+      if (newStreak >= STREAK_XP_REWARD_DAYS && newStreak % STREAK_XP_REWARD_DAYS === 0) {
+        const streakKey = `${today}_${newStreak}`;
+        if (!updatedStreakXPAwarded.includes(streakKey)) {
+          updatedXP += STREAK_XP_REWARD_AMOUNT;
+          updatedHistory = [...updatedHistory, {
+            id: Date.now().toString(),
+            amount: STREAK_XP_REWARD_AMOUNT,
+            reason: `${STREAK_XP_REWARD_DAYS}-day streak bonus!`,
+            earnedAt: new Date(),
+          }];
+          updatedStreakXPAwarded = [...updatedStreakXPAwarded, streakKey];
+          console.log(`Streak XP awarded: +${STREAK_XP_REWARD_AMOUNT} XP for ${STREAK_XP_REWARD_DAYS}-day streak`);
+        }
+      }
+
+      const todayStr = today;
+      const funLearning: FunLearningState = prev.funLearning.lastPlayDate === todayStr
+        ? prev.funLearning
+        : {
+            gamePlaysToday: [],
+            gkQuizzesToday: [],
+            lastPlayDate: todayStr,
+            pendingXPLoss: false,
+          };
+
+      const updated = {
+        ...prev,
+        currentStreak: newStreak,
+        lastActiveDate: today,
+        totalXP: updatedXP,
+        xpHistory: updatedHistory,
+        streakXPAwarded: updatedStreakXPAwarded,
+        funLearning,
+      };
+      void saveProgress(updated);
+      return updated;
     });
   }, [saveProgress]);
 
@@ -79,6 +126,13 @@ export const [AppProvider, useApp] = createContextHook(() => {
           totalXP: parsed.totalXP || 0,
           xpHistory: parsed.xpHistory || [],
           xpReward: parsed.xpReward || null,
+        streakXPAwarded: parsed.streakXPAwarded || [],
+        funLearning: parsed.funLearning || {
+          gamePlaysToday: [],
+          gkQuizzesToday: [],
+          lastPlayDate: '',
+          pendingXPLoss: false,
+        },
         };
         setUserProgress(normalizedProgress);
         updateStreak(normalizedProgress.lastActiveDate);
@@ -250,6 +304,75 @@ export const [AppProvider, useApp] = createContextHook(() => {
     }
   }, []);
 
+  const recordGamePlay = useCallback((game: 'pacman' | 'flappy', won: boolean) => {
+    const today = new Date().toISOString().split('T')[0];
+    setUserProgress(prev => {
+      const record: GamePlayRecord = { date: today, game, won };
+      const funLearning = prev.funLearning.lastPlayDate === today
+        ? { ...prev.funLearning }
+        : { gamePlaysToday: [], gkQuizzesToday: [], lastPlayDate: today, pendingXPLoss: false };
+
+      funLearning.gamePlaysToday = [...funLearning.gamePlaysToday, record];
+
+      let newXP = prev.totalXP;
+      let newHistory = prev.xpHistory;
+
+      if (!won) {
+        funLearning.pendingXPLoss = true;
+        newXP = Math.max(0, newXP - 1);
+        newHistory = [...newHistory, {
+          id: Date.now().toString(),
+          amount: -1,
+          reason: `Lost ${game === 'pacman' ? 'Pacman' : 'Flappy Bird'} game`,
+          earnedAt: new Date(),
+        }];
+        console.log('Game lost: -1 XP');
+      }
+
+      const updated = { ...prev, totalXP: newXP, xpHistory: newHistory, funLearning };
+      void saveProgress(updated);
+      return updated;
+    });
+  }, [saveProgress]);
+
+  const recordGKQuiz = useCallback((score: number, totalQuestions: number) => {
+    const today = new Date().toISOString().split('T')[0];
+    setUserProgress(prev => {
+      const record: GKQuizRecord = { date: today, score, totalQuestions };
+      const funLearning = prev.funLearning.lastPlayDate === today
+        ? { ...prev.funLearning }
+        : { gamePlaysToday: [], gkQuizzesToday: [], lastPlayDate: today, pendingXPLoss: false };
+
+      funLearning.gkQuizzesToday = [...funLearning.gkQuizzesToday, record];
+
+      let newXP = prev.totalXP;
+      let newHistory = prev.xpHistory;
+
+      if (score >= 3 && funLearning.pendingXPLoss) {
+        funLearning.pendingXPLoss = false;
+        newXP = newXP + 1;
+        newHistory = [...newHistory, {
+          id: Date.now().toString(),
+          amount: 1,
+          reason: 'GK Quiz reimbursement (+1 XP)',
+          earnedAt: new Date(),
+        }];
+        console.log('GK Quiz passed: +1 XP reimbursement');
+      }
+
+      const updated = { ...prev, totalXP: newXP, xpHistory: newHistory, funLearning };
+      void saveProgress(updated);
+      return updated;
+    });
+  }, [saveProgress]);
+
+  const canPlayGame = useCallback((game: 'pacman' | 'flappy') => {
+    const today = new Date().toISOString().split('T')[0];
+    const fl = userProgress.funLearning;
+    if (fl.lastPlayDate !== today) return true;
+    return !fl.gamePlaysToday.some(g => g.game === game);
+  }, [userProgress.funLearning]);
+
   const hasXPReward = useMemo(() => {
     if (!userProgress.xpReward) return false;
     return userProgress.xpReward.active && new Date(userProgress.xpReward.expiresAt) > new Date();
@@ -272,5 +395,8 @@ export const [AppProvider, useApp] = createContextHook(() => {
     maybeRequestReview,
     addXP,
     hasXPReward,
-  }), [userRole, selectedLanguage, isLoading, userProgress, selectRole, changeLanguage, resetApp, addQuizResult, addContentActivity, addStudyTime, addTeacherActivity, addExamActivity, addTeacherUpload, maybeRequestReview, addXP, hasXPReward]);
+    recordGamePlay,
+    recordGKQuiz,
+    canPlayGame,
+  }), [userRole, selectedLanguage, isLoading, userProgress, selectRole, changeLanguage, resetApp, addQuizResult, addContentActivity, addStudyTime, addTeacherActivity, addExamActivity, addTeacherUpload, maybeRequestReview, addXP, hasXPReward, recordGamePlay, recordGKQuiz, canPlayGame]);
 });

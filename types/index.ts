@@ -167,6 +167,25 @@ export interface CompetitionState {
   monthKey: string;
 }
 
+export interface GamePlayRecord {
+  date: string;
+  game: 'pacman' | 'flappy';
+  won: boolean;
+}
+
+export interface GKQuizRecord {
+  date: string;
+  score: number;
+  totalQuestions: number;
+}
+
+export interface FunLearningState {
+  gamePlaysToday: GamePlayRecord[];
+  gkQuizzesToday: GKQuizRecord[];
+  lastPlayDate: string;
+  pendingXPLoss: boolean;
+}
+
 export interface UserProgress {
   quizzesCompleted: QuizResult[];
   contentActivities: ContentActivity[];
@@ -179,4 +198,6 @@ export interface UserProgress {
   totalXP: number;
   xpHistory: XPEntry[];
   xpReward: XPReward | null;
+  streakXPAwarded: string[];
+  funLearning: FunLearningState;
 }

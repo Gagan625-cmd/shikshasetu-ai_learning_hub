@@ -6,6 +6,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { AppProvider, useApp } from "@/contexts/app-context";
 import { AuthProvider } from "@/contexts/auth-context";
 import { SubscriptionProvider, useSubscription } from "@/contexts/subscription-context";
+import { ThemeProvider } from "@/contexts/theme-context";
 import { trpc, trpcClient } from "@/lib/trpc";
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
@@ -47,11 +48,13 @@ export default function RootLayout() {
         <AuthProvider>
           <SubscriptionProvider>
             <AppProvider>
-              <XPRewardBridge>
-                <GestureHandlerRootView style={{ flex: 1 }}>
-                  <RootLayoutNav />
-                </GestureHandlerRootView>
-              </XPRewardBridge>
+              <ThemeProvider>
+                <XPRewardBridge>
+                  <GestureHandlerRootView style={{ flex: 1 }}>
+                    <RootLayoutNav />
+                  </GestureHandlerRootView>
+                </XPRewardBridge>
+              </ThemeProvider>
             </AppProvider>
           </SubscriptionProvider>
         </AuthProvider>
