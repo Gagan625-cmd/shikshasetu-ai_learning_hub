@@ -44,22 +44,29 @@ function getUserStorageKey(userEmail: string | undefined, key: string): string {
 export const [AppProvider, useApp] = createContextHook(() => {
   const { user } = useAuth();
   const currentUserEmail = user?.email;
+  const emailRef = useRef<string | undefined>(currentUserEmail);
   const prevUserRef = useRef<string | undefined>(undefined);
+  const isInitialLoadRef = useRef(true);
 
   const [userRole, setUserRole] = useState<UserRole | null>(null);
   const [selectedLanguage, setSelectedLanguage] = useState<Language>('english');
   const [isLoading, setIsLoading] = useState(true);
   const [userProgress, setUserProgress] = useState<UserProgress>({ ...DEFAULT_PROGRESS });
 
+  useEffect(() => {
+    emailRef.current = currentUserEmail;
+  }, [currentUserEmail]);
+
   const saveProgress = useCallback(async (progress: UserProgress) => {
     try {
-      const key = getUserStorageKey(currentUserEmail, 'userProgress');
+      const email = emailRef.current;
+      const key = getUserStorageKey(email, 'userProgress');
       await AsyncStorage.setItem(key, JSON.stringify(progress));
-      console.log('Saved progress for key:', key);
+      console.log('Saved progress for key:', key, 'email:', email);
     } catch (error) {
       console.log('Error saving progress:', error);
     }
-  }, [currentUserEmail]);
+  }, []);
 
   const updateStreak = useCallback((lastActive: string) => {
     const today = new Date().toISOString().split('T')[0];
@@ -118,17 +125,24 @@ export const [AppProvider, useApp] = createContextHook(() => {
     });
   }, [saveProgress]);
 
-  const loadSettings = useCallback(async () => {
+  const loadSettingsForUser = useCallback(async (email: string | undefined) => {
     try {
-      const roleKey = getUserStorageKey(currentUserEmail, 'userRole');
-      const langKey = getUserStorageKey(currentUserEmail, 'language');
-      const progressKey = getUserStorageKey(currentUserEmail, 'userProgress');
-      console.log('Loading settings for user:', currentUserEmail, 'keys:', roleKey, langKey, progressKey);
+      const roleKey = getUserStorageKey(email, 'userRole');
+      const langKey = getUserStorageKey(email, 'language');
+      const progressKey = getUserStorageKey(email, 'userProgress');
+      console.log('Loading settings for user:', email, 'keys:', roleKey, langKey, progressKey);
 
-      const role = await AsyncStorage.getItem(roleKey);
-      const language = await AsyncStorage.getItem(langKey);
-      const progress = await AsyncStorage.getItem(progressKey);
-      
+      const [role, language, progress] = await Promise.all([
+        AsyncStorage.getItem(roleKey),
+        AsyncStorage.getItem(langKey),
+        AsyncStorage.getItem(progressKey),
+      ]);
+
+      if (emailRef.current !== email) {
+        console.log('User changed during load, aborting. Expected:', email, 'Current:', emailRef.current);
+        return;
+      }
+
       if (role) setUserRole(role as UserRole);
       else setUserRole(null);
       if (language) setSelectedLanguage(language as Language);
@@ -147,13 +161,13 @@ export const [AppProvider, useApp] = createContextHook(() => {
           totalXP: parsed.totalXP || 0,
           xpHistory: parsed.xpHistory || [],
           xpReward: parsed.xpReward || null,
-        streakXPAwarded: parsed.streakXPAwarded || [],
-        funLearning: parsed.funLearning || {
-          gamePlaysToday: [],
-          gkQuizzesToday: [],
-          lastPlayDate: '',
-          pendingXPLoss: false,
-        },
+          streakXPAwarded: parsed.streakXPAwarded || [],
+          funLearning: parsed.funLearning || {
+            gamePlaysToday: [],
+            gkQuizzesToday: [],
+            lastPlayDate: '',
+            pendingXPLoss: false,
+          },
         };
         setUserProgress(normalizedProgress);
         updateStreak(normalizedProgress.lastActiveDate);
@@ -165,38 +179,46 @@ export const [AppProvider, useApp] = createContextHook(() => {
     } finally {
       setIsLoading(false);
     }
-  }, [updateStreak, currentUserEmail]);
+  }, [updateStreak]);
 
   useEffect(() => {
-    void loadSettings();
-  }, [loadSettings]);
+    const emailChanged = prevUserRef.current !== currentUserEmail;
+    const isFirstLoad = isInitialLoadRef.current;
 
-  useEffect(() => {
-    if (prevUserRef.current !== currentUserEmail) {
-      console.log('User changed from', prevUserRef.current, 'to', currentUserEmail);
+    if (isFirstLoad || emailChanged) {
+      console.log('User change detected. From:', prevUserRef.current, 'To:', currentUserEmail, 'isFirstLoad:', isFirstLoad);
+      isInitialLoadRef.current = false;
       prevUserRef.current = currentUserEmail;
+
+      setUserRole(null);
+      setSelectedLanguage('english');
+      setUserProgress({ ...DEFAULT_PROGRESS });
       setIsLoading(true);
-      void loadSettings();
+
+      void loadSettingsForUser(currentUserEmail);
     }
-  }, [currentUserEmail, loadSettings]);
+  }, [currentUserEmail, loadSettingsForUser]);
 
   const selectRole = useCallback(async (role: UserRole) => {
     setUserRole(role);
-    const key = getUserStorageKey(currentUserEmail, 'userRole');
+    const key = getUserStorageKey(emailRef.current, 'userRole');
     await AsyncStorage.setItem(key, role);
-  }, [currentUserEmail]);
+    console.log('Saved role for key:', key);
+  }, []);
 
   const changeLanguage = useCallback(async (language: Language) => {
     setSelectedLanguage(language);
-    const key = getUserStorageKey(currentUserEmail, 'language');
+    const key = getUserStorageKey(emailRef.current, 'language');
     await AsyncStorage.setItem(key, language);
-  }, [currentUserEmail]);
+    console.log('Saved language for key:', key);
+  }, []);
 
   const resetApp = useCallback(async () => {
     setUserRole(null);
-    const key = getUserStorageKey(currentUserEmail, 'userRole');
+    const key = getUserStorageKey(emailRef.current, 'userRole');
     await AsyncStorage.removeItem(key);
-  }, [currentUserEmail]);
+    console.log('Reset role for key:', key);
+  }, []);
 
   const addXP = useCallback((amount: number, reason: string) => {
     setUserProgress(prev => {
