@@ -300,6 +300,7 @@ function FlappyBirdGame({ onFinish }: { onFinish: (won: boolean) => void; colors
   const [gameOver, setGameOver] = useState(false);
   const [started, setStarted] = useState(false);
   const TARGET_SCORE = 5;
+  const pendingGameOver = useRef<{ won: boolean } | null>(null);
 
   const birdRotation = useRef(new Animated.Value(0)).current;
   const birdBob = useRef(new Animated.Value(0)).current;
@@ -357,8 +358,7 @@ function FlappyBirdGame({ onFinish }: { onFinish: (won: boolean) => void; colors
       setBirdY(y => {
         const newY = y + velocity;
         if (newY <= 0 || newY >= GAME_HEIGHT - BIRD_SIZE - GROUND_HEIGHT) {
-          setGameOver(true);
-          onFinish(false);
+          pendingGameOver.current = { won: false };
           return y;
         }
         return newY;
@@ -388,10 +388,20 @@ function FlappyBirdGame({ onFinish }: { onFinish: (won: boolean) => void; colors
 
   useEffect(() => {
     if (gameOver) return;
+    if (pendingGameOver.current) {
+      setGameOver(true);
+      onFinish(pendingGameOver.current.won);
+      pendingGameOver.current = null;
+      return;
+    }
     const birdLeft = 50;
     const birdRight = birdLeft + BIRD_SIZE;
     const birdTop = birdY;
     const birdBottom = birdY + BIRD_SIZE;
+
+    let shouldEndGame = false;
+    let won = false;
+    let newScore = score;
 
     for (const pipe of pipes) {
       const pipeLeft = pipe.x;
@@ -399,26 +409,32 @@ function FlappyBirdGame({ onFinish }: { onFinish: (won: boolean) => void; colors
 
       if (birdRight > pipeLeft && birdLeft < pipeRight) {
         if (birdTop < pipe.gapY || birdBottom > pipe.gapY + PIPE_GAP) {
-          setGameOver(true);
-          onFinish(false);
-          return;
+          shouldEndGame = true;
+          won = false;
+          break;
         }
       }
 
       if (!pipe.scored && pipe.x + PIPE_WIDTH < birdLeft) {
         pipe.scored = true;
         flashScore();
-        setScore(s => {
-          const ns = s + 1;
-          if (ns >= TARGET_SCORE) {
-            setGameOver(true);
-            onFinish(true);
-          }
-          return ns;
-        });
+        newScore = newScore + 1;
+        if (newScore >= TARGET_SCORE) {
+          shouldEndGame = true;
+          won = true;
+        }
       }
     }
-  }, [birdY, pipes, gameOver, onFinish, flashScore]);
+
+    if (newScore !== score) {
+      setScore(newScore);
+    }
+
+    if (shouldEndGame) {
+      setGameOver(true);
+      onFinish(won);
+    }
+  }, [birdY, pipes, gameOver, onFinish, flashScore, score]);
 
   const birdRotateInterp = birdRotation.interpolate({
     inputRange: [-30, 0, 60],
