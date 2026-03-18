@@ -277,26 +277,78 @@ function PacmanGame({ onFinish, colors: themeColors }: { onFinish: (won: boolean
   );
 }
 
-function FlappyBirdGame({ onFinish, colors: themeColors }: { onFinish: (won: boolean) => void; colors: any }) {
+const CLOUD_POSITIONS = [
+  { x: 20, y: 30, size: 40, opacity: 0.7 },
+  { x: 120, y: 60, size: 32, opacity: 0.5 },
+  { x: 220, y: 20, size: 36, opacity: 0.6 },
+  { x: 80, y: 90, size: 28, opacity: 0.4 },
+];
+
+const PIPE_CAP_HEIGHT = 20;
+const PIPE_CAP_OVERHANG = 6;
+const GROUND_HEIGHT = 40;
+
+function FlappyBirdGame({ onFinish }: { onFinish: (won: boolean) => void; colors: any }) {
   const [birdY, setBirdY] = useState(GAME_HEIGHT / 2);
   const [velocity, setVelocity] = useState(0);
-  const [pipes, setPipes] = useState<Array<{ x: number; gapY: number }>>([
-    { x: GAME_WIDTH, gapY: 150 },
-    { x: GAME_WIDTH + 200, gapY: 200 },
-    { x: GAME_WIDTH + 400, gapY: 120 },
+  const [pipes, setPipes] = useState<Array<{ x: number; gapY: number; scored: boolean }>>([
+    { x: GAME_WIDTH, gapY: 150, scored: false },
+    { x: GAME_WIDTH + 200, gapY: 200, scored: false },
+    { x: GAME_WIDTH + 400, gapY: 120, scored: false },
   ]);
   const [score, setScore] = useState(0);
   const [gameOver, setGameOver] = useState(false);
   const [started, setStarted] = useState(false);
   const TARGET_SCORE = 5;
 
+  const birdRotation = useRef(new Animated.Value(0)).current;
+  const birdBob = useRef(new Animated.Value(0)).current;
+  const cloudAnim = useRef(new Animated.Value(0)).current;
+  const scoreFlash = useRef(new Animated.Value(1)).current;
+  const startPulse = useRef(new Animated.Value(1)).current;
   const gameLoop = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    if (!started) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(birdBob, { toValue: -8, duration: 600, useNativeDriver: true }),
+          Animated.timing(birdBob, { toValue: 8, duration: 600, useNativeDriver: true }),
+        ])
+      ).start();
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(startPulse, { toValue: 1.15, duration: 800, useNativeDriver: true }),
+          Animated.timing(startPulse, { toValue: 1, duration: 800, useNativeDriver: true }),
+        ])
+      ).start();
+    }
+  }, [started, birdBob, startPulse]);
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.timing(cloudAnim, { toValue: 1, duration: 20000, useNativeDriver: true })
+    ).start();
+  }, [cloudAnim]);
 
   const jump = useCallback(() => {
     if (gameOver) return;
-    if (!started) setStarted(true);
+    if (!started) {
+      setStarted(true);
+      birdBob.stopAnimation();
+      startPulse.stopAnimation();
+    }
     setVelocity(FLAPPY_JUMP);
-  }, [gameOver, started]);
+    Animated.sequence([
+      Animated.timing(birdRotation, { toValue: -30, duration: 100, useNativeDriver: true }),
+      Animated.timing(birdRotation, { toValue: 0, duration: 300, useNativeDriver: true }),
+    ]).start();
+  }, [gameOver, started, birdRotation, birdBob, startPulse]);
+
+  const flashScore = useCallback(() => {
+    scoreFlash.setValue(1.4);
+    Animated.spring(scoreFlash, { toValue: 1, friction: 4, tension: 120, useNativeDriver: true }).start();
+  }, [scoreFlash]);
 
   useEffect(() => {
     if (!started || gameOver) return;
@@ -304,7 +356,7 @@ function FlappyBirdGame({ onFinish, colors: themeColors }: { onFinish: (won: boo
       setVelocity(v => v + FLAPPY_GRAVITY);
       setBirdY(y => {
         const newY = y + velocity;
-        if (newY <= 0 || newY >= GAME_HEIGHT - BIRD_SIZE) {
+        if (newY <= 0 || newY >= GAME_HEIGHT - BIRD_SIZE - GROUND_HEIGHT) {
           setGameOver(true);
           onFinish(false);
           return y;
@@ -312,24 +364,27 @@ function FlappyBirdGame({ onFinish, colors: themeColors }: { onFinish: (won: boo
         return newY;
       });
 
+      if (velocity > 2) {
+        Animated.timing(birdRotation, { toValue: Math.min(velocity * 5, 60), duration: 100, useNativeDriver: true }).start();
+      }
+
       setPipes(prevPipes => {
         const newPipes = prevPipes.map(p => ({ ...p, x: p.x - 3 }));
-
         newPipes.forEach((pipe, idx) => {
           if (pipe.x + PIPE_WIDTH < 0) {
             newPipes[idx] = {
               x: GAME_WIDTH,
-              gapY: 60 + Math.random() * (GAME_HEIGHT - PIPE_GAP - 120),
+              gapY: 60 + Math.random() * (GAME_HEIGHT - PIPE_GAP - GROUND_HEIGHT - 120),
+              scored: false,
             };
           }
         });
-
         return newPipes;
       });
     }, 30);
 
     return () => { if (gameLoop.current) clearInterval(gameLoop.current); };
-  }, [started, gameOver, velocity, onFinish]);
+  }, [started, gameOver, velocity, onFinish, birdRotation]);
 
   useEffect(() => {
     if (gameOver) return;
@@ -350,7 +405,9 @@ function FlappyBirdGame({ onFinish, colors: themeColors }: { onFinish: (won: boo
         }
       }
 
-      if (Math.abs(pipe.x - birdLeft) < 4 && pipe.x < birdLeft) {
+      if (!pipe.scored && pipe.x + PIPE_WIDTH < birdLeft) {
+        pipe.scored = true;
+        flashScore();
         setScore(s => {
           const ns = s + 1;
           if (ns >= TARGET_SCORE) {
@@ -361,70 +418,167 @@ function FlappyBirdGame({ onFinish, colors: themeColors }: { onFinish: (won: boo
         });
       }
     }
-  }, [birdY, pipes, gameOver, onFinish]);
+  }, [birdY, pipes, gameOver, onFinish, flashScore]);
+
+  const birdRotateInterp = birdRotation.interpolate({
+    inputRange: [-30, 0, 60],
+    outputRange: ['-30deg', '0deg', '60deg'],
+  });
+
+  const cloudTranslate = cloudAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, -GAME_WIDTH],
+  });
 
   return (
     <View style={flappyStyles.container}>
-      <View style={flappyStyles.scoreRow}>
-        <Text style={[flappyStyles.scoreText, { color: themeColors.text }]}>Score: {score}/{TARGET_SCORE}</Text>
-        {gameOver && (
-          <View style={[flappyStyles.gameOverBadge, { backgroundColor: score >= TARGET_SCORE ? '#10b981' : '#ef4444' }]}>
-            <Text style={flappyStyles.gameOverText}>{score >= TARGET_SCORE ? 'You Win!' : 'Game Over'}</Text>
-          </View>
-        )}
-      </View>
       <TouchableOpacity
         activeOpacity={1}
         onPress={jump}
         style={[flappyStyles.gameArea, { width: GAME_WIDTH, height: GAME_HEIGHT }]}
       >
         <LinearGradient
-          colors={['#87CEEB', '#4682B4', '#2E5090']}
+          colors={['#7EC8E3', '#55A8D9', '#3B8CC7', '#2570A8']}
+          locations={[0, 0.35, 0.7, 1]}
           style={StyleSheet.absoluteFillObject}
         />
-        <View style={[flappyStyles.ground, { width: GAME_WIDTH }]} />
 
-        {!started && !gameOver && (
-          <View style={flappyStyles.tapPrompt}>
-            <Text style={flappyStyles.tapText}>Tap to Start!</Text>
+        <View style={flappyStyles.sunWrap}>
+          <View style={flappyStyles.sunOuter}>
+            <View style={flappyStyles.sunInner} />
           </View>
-        )}
+        </View>
 
-        <View
-          style={[
-            flappyStyles.bird,
-            { top: birdY, left: 50 },
-          ]}
-        >
-          <Text style={flappyStyles.birdEmoji}>🐦</Text>
+        <Animated.View style={[flappyStyles.cloudLayer, { transform: [{ translateX: cloudTranslate }] }]}>
+          {CLOUD_POSITIONS.map((cloud, i) => (
+            <View key={i} style={[
+              flappyStyles.cloud,
+              { left: cloud.x, top: cloud.y, width: cloud.size, height: cloud.size * 0.55, opacity: cloud.opacity },
+            ]} />
+          ))}
+          {CLOUD_POSITIONS.map((cloud, i) => (
+            <View key={`dup-${i}`} style={[
+              flappyStyles.cloud,
+              { left: cloud.x + GAME_WIDTH, top: cloud.y, width: cloud.size, height: cloud.size * 0.55, opacity: cloud.opacity },
+            ]} />
+          ))}
+        </Animated.View>
+
+        <View style={flappyStyles.scoreOverlay}>
+          <Animated.Text style={[flappyStyles.scoreOverlayText, { transform: [{ scale: scoreFlash }] }]}>
+            {score}
+          </Animated.Text>
         </View>
 
         {pipes.map((pipe, i) => (
           <View key={i}>
-            <View
+            <LinearGradient
+              colors={['#4CAF50', '#388E3C', '#2E7D32']}
               style={[
-                flappyStyles.pipe,
+                flappyStyles.pipeBody,
                 {
                   left: pipe.x,
                   top: 0,
-                  height: pipe.gapY,
+                  height: Math.max(pipe.gapY - PIPE_CAP_HEIGHT, 0),
                   width: PIPE_WIDTH,
                 },
               ]}
             />
-            <View
+            <View style={[
+              flappyStyles.pipeCap,
+              {
+                left: pipe.x - PIPE_CAP_OVERHANG,
+                top: pipe.gapY - PIPE_CAP_HEIGHT,
+                width: PIPE_WIDTH + PIPE_CAP_OVERHANG * 2,
+                height: PIPE_CAP_HEIGHT,
+              },
+            ]} />
+
+            <View style={[
+              flappyStyles.pipeCap,
+              {
+                left: pipe.x - PIPE_CAP_OVERHANG,
+                top: pipe.gapY + PIPE_GAP,
+                width: PIPE_WIDTH + PIPE_CAP_OVERHANG * 2,
+                height: PIPE_CAP_HEIGHT,
+              },
+            ]} />
+            <LinearGradient
+              colors={['#2E7D32', '#388E3C', '#4CAF50']}
               style={[
-                flappyStyles.pipe,
+                flappyStyles.pipeBody,
                 {
                   left: pipe.x,
-                  top: pipe.gapY + PIPE_GAP,
-                  height: GAME_HEIGHT - pipe.gapY - PIPE_GAP,
+                  top: pipe.gapY + PIPE_GAP + PIPE_CAP_HEIGHT,
+                  height: Math.max(GAME_HEIGHT - pipe.gapY - PIPE_GAP - PIPE_CAP_HEIGHT - GROUND_HEIGHT, 0),
                   width: PIPE_WIDTH,
                 },
               ]}
             />
           </View>
         ))}
+
+        <Animated.View
+          style={[
+            flappyStyles.bird,
+            {
+              top: started ? birdY : GAME_HEIGHT / 2 - BIRD_SIZE / 2,
+              left: 50,
+              transform: [
+                { rotate: started ? birdRotateInterp as any : '0deg' },
+                { translateY: started ? 0 : (birdBob as any) },
+              ],
+            },
+          ]}
+        >
+          <View style={flappyStyles.birdBody}>
+            <View style={flappyStyles.birdWing} />
+            <View style={flappyStyles.birdEye}>
+              <View style={flappyStyles.birdPupil} />
+            </View>
+            <View style={flappyStyles.birdBeak} />
+          </View>
+        </Animated.View>
+
+        <View style={[flappyStyles.groundLayer, { width: GAME_WIDTH * 2 }]}>
+          <View style={[flappyStyles.grassStripe, { width: GAME_WIDTH * 2 }]} />
+          <View style={[flappyStyles.dirtLayer, { width: GAME_WIDTH * 2 }]} />
+        </View>
+
+        {!started && !gameOver && (
+          <View style={flappyStyles.tapPrompt}>
+            <View style={flappyStyles.startCard}>
+              <Animated.View style={{ transform: [{ scale: startPulse }] }}>
+                <View style={flappyStyles.startIconCircle}>
+                  <Bird size={32} color="#fff" />
+                </View>
+              </Animated.View>
+              <Text style={flappyStyles.startTitle}>Flappy Bird</Text>
+              <Text style={flappyStyles.startSubtitle}>Pass {TARGET_SCORE} pipes to win!</Text>
+              <View style={flappyStyles.tapIndicator}>
+                <Text style={flappyStyles.tapText}>Tap anywhere to fly</Text>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {gameOver && (
+          <View style={flappyStyles.gameOverOverlay}>
+            <View style={flappyStyles.gameOverCard}>
+              <Text style={flappyStyles.gameOverEmoji}>{score >= TARGET_SCORE ? '🏆' : '💥'}</Text>
+              <Text style={flappyStyles.gameOverTitle}>
+                {score >= TARGET_SCORE ? 'Amazing!' : 'Crashed!'}
+              </Text>
+              <View style={flappyStyles.gameOverScoreWrap}>
+                <Text style={flappyStyles.gameOverScoreLabel}>Score</Text>
+                <Text style={[
+                  flappyStyles.gameOverScoreValue,
+                  { color: score >= TARGET_SCORE ? '#10b981' : '#ef4444' },
+                ]}>{score}/{TARGET_SCORE}</Text>
+              </View>
+            </View>
+          </View>
+        )}
       </TouchableOpacity>
     </View>
   );
@@ -1409,36 +1563,154 @@ const flappyStyles = StyleSheet.create({
   container: {
     alignItems: 'center',
   },
-  scoreRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 16,
-  },
-  scoreText: {
-    fontSize: 18,
-    fontWeight: '700' as const,
-  },
-  gameOverBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
-  gameOverText: {
-    fontSize: 14,
-    fontWeight: '700' as const,
-    color: '#fff',
-  },
   gameArea: {
     position: 'relative',
-    borderRadius: 12,
+    borderRadius: 16,
     overflow: 'hidden',
+    ...Platform.select({
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 12 },
+      android: { elevation: 6 },
+      web: { boxShadow: '0 4px 16px rgba(0,0,0,0.2)' },
+    }),
   },
-  ground: {
+  sunWrap: {
+    position: 'absolute',
+    top: 15,
+    right: 30,
+    zIndex: 1,
+  },
+  sunOuter: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 236, 130, 0.35)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  sunInner: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: '#FFE066',
+  },
+  cloudLayer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: GAME_WIDTH * 2,
+    height: 140,
+    zIndex: 1,
+  },
+  cloud: {
+    position: 'absolute',
+    backgroundColor: 'rgba(255,255,255,0.8)',
+    borderRadius: 20,
+  },
+  scoreOverlay: {
+    position: 'absolute',
+    top: 16,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    zIndex: 15,
+  },
+  scoreOverlayText: {
+    fontSize: 42,
+    fontWeight: '900' as const,
+    color: '#fff',
+    textShadowColor: 'rgba(0,0,0,0.35)',
+    textShadowOffset: { width: 2, height: 2 },
+    textShadowRadius: 4,
+  },
+  pipeBody: {
+    position: 'absolute',
+    borderLeftWidth: 2,
+    borderRightWidth: 2,
+    borderColor: 'rgba(0,0,0,0.15)',
+  },
+  pipeCap: {
+    position: 'absolute',
+    backgroundColor: '#2E7D32',
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: 'rgba(0,0,0,0.15)',
+    zIndex: 5,
+  },
+  bird: {
+    position: 'absolute',
+    width: BIRD_SIZE + 4,
+    height: BIRD_SIZE + 4,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  birdBody: {
+    width: BIRD_SIZE,
+    height: BIRD_SIZE,
+    borderRadius: BIRD_SIZE / 2,
+    backgroundColor: '#FFD93D',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#E6A800',
+  },
+  birdWing: {
+    position: 'absolute',
+    left: -4,
+    top: 10,
+    width: 14,
+    height: 10,
+    borderRadius: 6,
+    backgroundColor: '#FF9800',
+    transform: [{ rotate: '-15deg' }],
+  },
+  birdEye: {
+    position: 'absolute',
+    right: 4,
+    top: 5,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#333',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  birdPupil: {
+    width: 5,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: '#1a1a2e',
+    marginLeft: 2,
+  },
+  birdBeak: {
+    position: 'absolute',
+    right: -6,
+    top: 12,
+    width: 0,
+    height: 0,
+    borderTopWidth: 4,
+    borderBottomWidth: 4,
+    borderLeftWidth: 8,
+    borderTopColor: 'transparent',
+    borderBottomColor: 'transparent',
+    borderLeftColor: '#FF6B35',
+  },
+  groundLayer: {
     position: 'absolute',
     bottom: 0,
-    height: 30,
-    backgroundColor: '#8B4513',
+    left: 0,
+    height: GROUND_HEIGHT,
+    zIndex: 8,
+  },
+  grassStripe: {
+    height: 8,
+    backgroundColor: '#4CAF50',
+  },
+  dirtLayer: {
+    flex: 1,
+    backgroundColor: '#8D6E63',
   },
   tapPrompt: {
     position: 'absolute',
@@ -1448,29 +1720,98 @@ const flappyStyles = StyleSheet.create({
     bottom: 0,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.3)',
+    backgroundColor: 'rgba(0,0,0,0.25)',
     zIndex: 20,
   },
-  tapText: {
-    fontSize: 24,
-    fontWeight: '800' as const,
-    color: '#fff',
+  startCard: {
+    backgroundColor: 'rgba(255,255,255,0.95)',
+    borderRadius: 24,
+    padding: 28,
+    alignItems: 'center',
+    width: '75%',
+    gap: 10,
+    ...Platform.select({
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.2, shadowRadius: 16 },
+      android: { elevation: 8 },
+      web: { boxShadow: '0 6px 20px rgba(0,0,0,0.2)' },
+    }),
   },
-  bird: {
-    position: 'absolute',
-    width: BIRD_SIZE,
-    height: BIRD_SIZE,
+  startIconCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#38bdf8',
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 10,
   },
-  birdEmoji: {
-    fontSize: 26,
+  startTitle: {
+    fontSize: 22,
+    fontWeight: '800' as const,
+    color: '#1e293b',
   },
-  pipe: {
+  startSubtitle: {
+    fontSize: 14,
+    color: '#64748b',
+    fontWeight: '500' as const,
+  },
+  tapIndicator: {
+    marginTop: 6,
+    backgroundColor: '#38bdf8',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 14,
+  },
+  tapText: {
+    fontSize: 15,
+    fontWeight: '700' as const,
+    color: '#fff',
+  },
+  gameOverOverlay: {
     position: 'absolute',
-    backgroundColor: '#22c55e',
-    borderRadius: 4,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    zIndex: 20,
+  },
+  gameOverCard: {
+    backgroundColor: 'rgba(255,255,255,0.95)',
+    borderRadius: 24,
+    padding: 32,
+    alignItems: 'center',
+    width: '70%',
+    gap: 8,
+    ...Platform.select({
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.2, shadowRadius: 16 },
+      android: { elevation: 8 },
+      web: { boxShadow: '0 6px 20px rgba(0,0,0,0.2)' },
+    }),
+  },
+  gameOverEmoji: {
+    fontSize: 48,
+  },
+  gameOverTitle: {
+    fontSize: 24,
+    fontWeight: '800' as const,
+    color: '#1e293b',
+  },
+  gameOverScoreWrap: {
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  gameOverScoreLabel: {
+    fontSize: 13,
+    fontWeight: '600' as const,
+    color: '#94a3b8',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  gameOverScoreValue: {
+    fontSize: 36,
+    fontWeight: '900' as const,
   },
 });
 
