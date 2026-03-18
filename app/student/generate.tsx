@@ -4,6 +4,7 @@ import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Platform, TextInp
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState } from 'react';
 import { useApp } from '@/contexts/app-context';
+import { useTheme } from '@/contexts/theme-context';
 import { useMutation } from '@tanstack/react-query';
 import { generateText } from '@rork-ai/toolkit-sdk';
 import { NCERT_SUBJECTS } from '@/constants/ncert-data';
@@ -1326,6 +1327,7 @@ export default function ContentGenerator() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { selectedLanguage, addContentActivity } = useApp();
+  const { colors } = useTheme();
   
   const [selectedBoard, setSelectedBoard] = useState<'NCERT' | 'ICSE'>('NCERT');
   const [selectedGrade, setSelectedGrade] = useState<number>(6);
@@ -1949,12 +1951,12 @@ IMPORTANT REQUIREMENTS:
   };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <View style={styles.header}>
+    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
+      <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <ChevronLeft size={24} color="#1e293b" />
+          <ChevronLeft size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>AI Content Generator</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>AI Content Generator</Text>
         <View style={styles.backButton} />
       </View>
 
@@ -1964,10 +1966,10 @@ IMPORTANT REQUIREMENTS:
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Select Board</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Select Board</Text>
           <View style={styles.boardButtons}>
             <TouchableOpacity
-              style={[styles.boardButton, selectedBoard === 'NCERT' && styles.boardButtonActiveNCERT]}
+              style={[styles.boardButton, { backgroundColor: colors.cardBg, borderColor: colors.border }, selectedBoard === 'NCERT' && styles.boardButtonActiveNCERT]}
               onPress={() => {
                 setSelectedBoard('NCERT');
                 setSelectedGrade(6);
@@ -1975,12 +1977,12 @@ IMPORTANT REQUIREMENTS:
                 setSelectedChapter('');
               }}
             >
-              <Text style={[styles.boardButtonText, selectedBoard === 'NCERT' && styles.boardButtonTextActive]}>
+              <Text style={[styles.boardButtonText, { color: colors.textSecondary }, selectedBoard === 'NCERT' && styles.boardButtonTextActive]}>
                 NCERT
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.boardButton, selectedBoard === 'ICSE' && styles.boardButtonActiveICSE]}
+              style={[styles.boardButton, { backgroundColor: colors.cardBg, borderColor: colors.border }, selectedBoard === 'ICSE' && styles.boardButtonActiveICSE]}
               onPress={() => {
                 setSelectedBoard('ICSE');
                 setSelectedGrade(9);
@@ -1988,7 +1990,7 @@ IMPORTANT REQUIREMENTS:
                 setSelectedChapter('');
               }}
             >
-              <Text style={[styles.boardButtonText, selectedBoard === 'ICSE' && styles.boardButtonTextActive]}>
+              <Text style={[styles.boardButtonText, { color: colors.textSecondary }, selectedBoard === 'ICSE' && styles.boardButtonTextActive]}>
                 ICSE
               </Text>
             </TouchableOpacity>
@@ -1996,19 +1998,19 @@ IMPORTANT REQUIREMENTS:
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Select Grade</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Select Grade</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.optionScroll}>
             {(selectedBoard === 'NCERT' ? [6, 7, 8, 9, 10] : [9, 10]).map((grade) => (
               <TouchableOpacity
                 key={grade}
-                style={[styles.optionButton, selectedGrade === grade && styles.optionButtonActive]}
+                style={[styles.optionButton, { backgroundColor: colors.cardBg, borderColor: colors.border }, selectedGrade === grade && styles.optionButtonActive]}
                 onPress={() => {
                   setSelectedGrade(grade);
                   setSelectedSubject('');
                   setSelectedChapter('');
                 }}
               >
-                <Text style={[styles.optionText, selectedGrade === grade && styles.optionTextActive]}>
+                <Text style={[styles.optionText, { color: colors.textSecondary }, selectedGrade === grade && styles.optionTextActive]}>
                   Grade {grade}
                 </Text>
               </TouchableOpacity>
@@ -2017,18 +2019,18 @@ IMPORTANT REQUIREMENTS:
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Select Subject</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Select Subject</Text>
           <View style={styles.optionGrid}>
             {subjects.map((subject) => (
               <TouchableOpacity
                 key={subject.id}
-                style={[styles.gridButton, selectedSubject === subject.id && styles.gridButtonActive]}
+                style={[styles.gridButton, { backgroundColor: colors.cardBg, borderColor: colors.border }, selectedSubject === subject.id && styles.gridButtonActive]}
                 onPress={() => {
                   setSelectedSubject(subject.id);
                   setSelectedChapter('');
                 }}
               >
-                <Text style={[styles.gridText, selectedSubject === subject.id && styles.gridTextActive]}>
+                <Text style={[styles.gridText, { color: colors.textSecondary }, selectedSubject === subject.id && styles.gridTextActive]}>
                   {subject.name}
                 </Text>
               </TouchableOpacity>
@@ -2040,7 +2042,7 @@ IMPORTANT REQUIREMENTS:
           <View style={styles.section}>
             {isMultiChapterMode ? (
               <>
-                <Text style={styles.sectionTitle}>Select Chapters for Question Paper</Text>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>Select Chapters for Question Paper</Text>
                 <Text style={styles.sectionSubtitle}>
                   Select multiple chapters to create a comprehensive ICSE board exam paper
                 </Text>
@@ -2081,7 +2083,7 @@ IMPORTANT REQUIREMENTS:
               </>
             ) : (
               <>
-                <Text style={styles.sectionTitle}>Select Chapter (or enter custom topic)</Text>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>Select Chapter (or enter custom topic)</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.optionScroll}>
                   {chapters.map((chapter) => (
                     <TouchableOpacity
@@ -2124,7 +2126,7 @@ IMPORTANT REQUIREMENTS:
         )}
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Content Type</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Content Type</Text>
           <View style={styles.contentTypeGrid}>
             {contentTypes.map((type) => {
               const Icon = type.icon;
@@ -2137,7 +2139,7 @@ IMPORTANT REQUIREMENTS:
                   ]}
                   onPress={() => setContentType(type.id)}
                 >
-                  <Icon size={24} color={contentType === type.id ? type.color : '#64748b'} />
+                  <Icon size={24} color={contentType === type.id ? type.color : colors.textSecondary} />
                   <Text
                     style={[
                       styles.contentTypeText,

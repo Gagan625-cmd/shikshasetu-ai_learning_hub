@@ -2,18 +2,20 @@ import { useRouter } from 'expo-router';
 import { ChevronLeft } from 'lucide-react-native';
 import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTheme } from '@/contexts/theme-context';
 
 export default function AboutPage() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { colors } = useTheme();
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <View style={styles.header}>
+    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
+      <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <ChevronLeft size={24} color="#1e293b" />
+          <ChevronLeft size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>About ShikshaSetu</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>About ShikshaSetu</Text>
         <View style={styles.backButton} />
       </View>
 
@@ -23,46 +25,46 @@ export default function AboutPage() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Our Mission</Text>
-          <Text style={styles.sectionText}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Our Mission</Text>
+          <Text style={[styles.sectionText, { color: colors.textSecondary }]}>
             ShikshaSetu is an AI-powered educational platform designed to bridge learning gaps and provide equitable educational support using artificial intelligence. We deliver personalized learning journeys and empower students with AI-generated resources.
           </Text>
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Founders</Text>
-          <View style={styles.founderCard}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Founders</Text>
+          <View style={[styles.founderCard, { backgroundColor: colors.cardBg }]}>
             <View style={styles.founderInitials}>
               <Text style={styles.founderInitialsText}>GN</Text>
             </View>
             <View style={styles.founderInfo}>
-              <Text style={styles.founderName}>Gagandeep.N</Text>
-              <Text style={styles.founderRole}>Founder & CEO</Text>
+              <Text style={[styles.founderName, { color: colors.text }]}>Gagandeep.N</Text>
+              <Text style={[styles.founderRole, { color: colors.textSecondary }]}>Founder & CEO</Text>
             </View>
           </View>
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Mentor</Text>
-          <View style={styles.founderCard}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Mentor</Text>
+          <View style={[styles.founderCard, { backgroundColor: colors.cardBg }]}>
             <View style={styles.founderInitials}>
               <Text style={styles.founderInitialsText}>SB</Text>
             </View>
             <View style={styles.founderInfo}>
-              <Text style={styles.founderName}>Soniya Babu</Text>
-              <Text style={styles.founderRole}>Mentor</Text>
+              <Text style={[styles.founderName, { color: colors.text }]}>Soniya Babu</Text>
+              <Text style={[styles.founderRole, { color: colors.textSecondary }]}>Mentor</Text>
             </View>
           </View>
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Features</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Features</Text>
           
           <View style={styles.featureItem}>
             <Text style={styles.featureBullet}>📚</Text>
             <View style={styles.featureContent}>
-              <Text style={styles.featureTitle}>AI Content Generator</Text>
-              <Text style={styles.featureDescription}>
+              <Text style={[styles.featureTitle, { color: colors.text }]}>AI Content Generator</Text>
+              <Text style={[styles.featureDescription, { color: colors.textSecondary }]}>
                 Generate comprehensive notes, summaries, worksheets, mind maps, and question papers for any chapter with AI assistance.
               </Text>
             </View>
@@ -71,8 +73,8 @@ export default function AboutPage() {
           <View style={styles.featureItem}>
             <Text style={styles.featureBullet}>📝</Text>
             <View style={styles.featureContent}>
-              <Text style={styles.featureTitle}>AI Exam Scanner</Text>
-              <Text style={styles.featureDescription}>
+              <Text style={[styles.featureTitle, { color: colors.text }]}>AI Exam Scanner</Text>
+              <Text style={[styles.featureDescription, { color: colors.textSecondary }]}>
                 Scan your exam papers and get instant AI-powered grading, detailed feedback, and personalized improvement plans.
               </Text>
             </View>
@@ -81,8 +83,8 @@ export default function AboutPage() {
           <View style={styles.featureItem}>
             <Text style={styles.featureBullet}>🎯</Text>
             <View style={styles.featureContent}>
-              <Text style={styles.featureTitle}>Adaptive Quiz Generation</Text>
-              <Text style={styles.featureDescription}>
+              <Text style={[styles.featureTitle, { color: colors.text }]}>Adaptive Quiz Generation</Text>
+              <Text style={[styles.featureDescription, { color: colors.textSecondary }]}>
                 Practice with AI-generated quizzes that adapt to your learning level and provide instant feedback on your performance.
               </Text>
             </View>
@@ -91,8 +93,8 @@ export default function AboutPage() {
           <View style={styles.featureItem}>
             <Text style={styles.featureBullet}>💬</Text>
             <View style={styles.featureContent}>
-              <Text style={styles.featureTitle}>AI Interview Practice</Text>
-              <Text style={styles.featureDescription}>
+              <Text style={[styles.featureTitle, { color: colors.text }]}>AI Interview Practice</Text>
+              <Text style={[styles.featureDescription, { color: colors.textSecondary }]}>
                 Prepare for interviews with AI-powered mock interviews, real-time feedback, and comprehensive performance analysis.
               </Text>
             </View>
@@ -101,8 +103,8 @@ export default function AboutPage() {
           <View style={styles.featureItem}>
             <Text style={styles.featureBullet}>📖</Text>
             <View style={styles.featureContent}>
-              <Text style={styles.featureTitle}>NCERT & ICSE Content</Text>
-              <Text style={styles.featureDescription}>
+              <Text style={[styles.featureTitle, { color: colors.text }]}>NCERT & ICSE Content</Text>
+              <Text style={[styles.featureDescription, { color: colors.textSecondary }]}>
                 Complete syllabus coverage for NCERT (Grades 6-10) and ICSE (Grades 9-10) with chapter-wise content generation.
               </Text>
             </View>
@@ -111,8 +113,8 @@ export default function AboutPage() {
           <View style={styles.featureItem}>
             <Text style={styles.featureBullet}>🌐</Text>
             <View style={styles.featureContent}>
-              <Text style={styles.featureTitle}>Multilingual Support</Text>
-              <Text style={styles.featureDescription}>
+              <Text style={[styles.featureTitle, { color: colors.text }]}>Multilingual Support</Text>
+              <Text style={[styles.featureDescription, { color: colors.textSecondary }]}>
                 Study in your preferred language with support for English, Hindi, and more regional languages.
               </Text>
             </View>
@@ -121,8 +123,8 @@ export default function AboutPage() {
           <View style={styles.featureItem}>
             <Text style={styles.featureBullet}>📊</Text>
             <View style={styles.featureContent}>
-              <Text style={styles.featureTitle}>Performance Analytics</Text>
-              <Text style={styles.featureDescription}>
+              <Text style={[styles.featureTitle, { color: colors.text }]}>Performance Analytics</Text>
+              <Text style={[styles.featureDescription, { color: colors.textSecondary }]}>
                 Track your learning progress with detailed analytics, activity history, and personalized insights.
               </Text>
             </View>
@@ -131,8 +133,8 @@ export default function AboutPage() {
           <View style={styles.featureItem}>
             <Text style={styles.featureBullet}>🔊</Text>
             <View style={styles.featureContent}>
-              <Text style={styles.featureTitle}>Text-to-Speech</Text>
-              <Text style={styles.featureDescription}>
+              <Text style={[styles.featureTitle, { color: colors.text }]}>Text-to-Speech</Text>
+              <Text style={[styles.featureDescription, { color: colors.textSecondary }]}>
                 Listen to any generated content with high-quality text-to-speech in multiple languages for better accessibility.
               </Text>
             </View>
@@ -140,8 +142,8 @@ export default function AboutPage() {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Technology</Text>
-          <Text style={styles.sectionText}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Technology</Text>
+          <Text style={[styles.sectionText, { color: colors.textSecondary }]}>
             Built with React Native, Expo, and powered by advanced AI models including GPT-4 for content generation and learning assistance.
           </Text>
         </View>

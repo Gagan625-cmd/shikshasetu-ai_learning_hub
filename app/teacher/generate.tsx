@@ -8,6 +8,7 @@ import { generatePdfHtml } from '@/lib/pdf-formatter';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState, useMemo, useCallback } from 'react';
 import { useApp } from '@/contexts/app-context';
+import { useTheme } from '@/contexts/theme-context';
 import { useMutation } from '@tanstack/react-query';
 import { generateText } from '@rork-ai/toolkit-sdk';
 import { NCERT_SUBJECTS } from '@/constants/ncert-data';
@@ -27,6 +28,7 @@ export default function TeacherContentGenerator() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { selectedLanguage, addTeacherActivity } = useApp();
+  const { colors } = useTheme();
   
   const [selectedBoard, setSelectedBoard] = useState<'NCERT' | 'ICSE'>('NCERT');
   const [selectedGrade, setSelectedGrade] = useState<number>(6);
@@ -554,12 +556,12 @@ Provide complete detailed solutions here at the end.`;
   }, [generatedContent, getTeacherPdfHtml]);
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <View style={styles.header}>
+    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
+      <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <ChevronLeft size={24} color="#1e293b" />
+          <ChevronLeft size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>AI Co-Pilot</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>AI Co-Pilot</Text>
         <View style={styles.backButton} />
       </View>
 

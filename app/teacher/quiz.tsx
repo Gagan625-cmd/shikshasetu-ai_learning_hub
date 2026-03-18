@@ -4,6 +4,7 @@ import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Platform } from '
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState } from 'react';
 import { useApp } from '@/contexts/app-context';
+import { useTheme } from '@/contexts/theme-context';
 import { useMutation } from '@tanstack/react-query';
 import { generateObject } from '@rork-ai/toolkit-sdk';
 import { z } from 'zod';
@@ -25,6 +26,7 @@ export default function TeacherQuizGenerator() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { selectedLanguage, maybeRequestReview } = useApp();
+  const { colors } = useTheme();
   
   const [syllabus, setSyllabus] = useState<'NCERT' | 'ICSE'>('NCERT');
   const [selectedGrade, setSelectedGrade] = useState<number>(6);
@@ -107,12 +109,12 @@ Make questions aligned with ${syllabus} exam pattern and difficulty level.`;
   const currentQ = quiz?.questions[currentQuestion];
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <View style={styles.header}>
+    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
+      <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <ChevronLeft size={24} color="#1e293b" />
+          <ChevronLeft size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>MCQ Generator</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>MCQ Generator</Text>
         <View style={styles.backButton} />
       </View>
 

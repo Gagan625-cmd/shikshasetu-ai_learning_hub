@@ -4,6 +4,7 @@ import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Platform } from '
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState } from 'react';
 import { useApp } from '@/contexts/app-context';
+import { useTheme } from '@/contexts/theme-context';
 import { useMutation } from '@tanstack/react-query';
 import { generateObject } from '@rork-ai/toolkit-sdk';
 import { z } from 'zod';
@@ -26,6 +27,7 @@ export default function QuizGenerator() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { selectedLanguage, addQuizResult, maybeRequestReview, addXP, userProgress } = useApp();
+  const { colors } = useTheme();
   
   const [selectedBoard, setSelectedBoard] = useState<'NCERT' | 'ICSE'>('NCERT');
   const [selectedGrade, setSelectedGrade] = useState<number>(6);
@@ -165,12 +167,12 @@ Provide detailed explanations showing the reasoning process.`;
   const allAnswered = quiz && selectedAnswers.length === quiz.questions.length && selectedAnswers.every((a) => a !== undefined);
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <View style={styles.header}>
+    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
+      <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <ChevronLeft size={24} color="#1e293b" />
+          <ChevronLeft size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>MCQ Generator</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>MCQ Generator</Text>
         <View style={styles.backButton} />
       </View>
 
@@ -182,10 +184,10 @@ Provide detailed explanations showing the reasoning process.`;
         {!quiz && (
           <>
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Select Board</Text>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Select Board</Text>
               <View style={styles.boardButtons}>
                 <TouchableOpacity
-                  style={[styles.boardButton, selectedBoard === 'NCERT' && styles.boardButtonActiveNCERT]}
+                  style={[styles.boardButton, { backgroundColor: colors.cardBg, borderColor: colors.border }, selectedBoard === 'NCERT' && styles.boardButtonActiveNCERT]}
                   onPress={() => {
                     setSelectedBoard('NCERT');
                     setSelectedGrade(6);
@@ -193,12 +195,12 @@ Provide detailed explanations showing the reasoning process.`;
                     setSelectedChapter('');
                   }}
                 >
-                  <Text style={[styles.boardButtonText, selectedBoard === 'NCERT' && styles.boardButtonTextActive]}>
+                  <Text style={[styles.boardButtonText, { color: colors.textSecondary }, selectedBoard === 'NCERT' && styles.boardButtonTextActive]}>
                     NCERT
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[styles.boardButton, selectedBoard === 'ICSE' && styles.boardButtonActiveICSE]}
+                  style={[styles.boardButton, { backgroundColor: colors.cardBg, borderColor: colors.border }, selectedBoard === 'ICSE' && styles.boardButtonActiveICSE]}
                   onPress={() => {
                     setSelectedBoard('ICSE');
                     setSelectedGrade(9);
@@ -206,7 +208,7 @@ Provide detailed explanations showing the reasoning process.`;
                     setSelectedChapter('');
                   }}
                 >
-                  <Text style={[styles.boardButtonText, selectedBoard === 'ICSE' && styles.boardButtonTextActive]}>
+                  <Text style={[styles.boardButtonText, { color: colors.textSecondary }, selectedBoard === 'ICSE' && styles.boardButtonTextActive]}>
                     ICSE
                   </Text>
                 </TouchableOpacity>
@@ -214,19 +216,19 @@ Provide detailed explanations showing the reasoning process.`;
             </View>
 
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Select Grade</Text>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Select Grade</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.optionScroll}>
                 {(selectedBoard === 'NCERT' ? [6, 7, 8, 9, 10] : [9, 10]).map((grade) => (
                   <TouchableOpacity
                     key={grade}
-                    style={[styles.optionButton, selectedGrade === grade && styles.optionButtonActive]}
+                    style={[styles.optionButton, { backgroundColor: colors.cardBg, borderColor: colors.border }, selectedGrade === grade && styles.optionButtonActive]}
                     onPress={() => {
                       setSelectedGrade(grade);
                       setSelectedSubject('');
                       setSelectedChapter('');
                     }}
                   >
-                    <Text style={[styles.optionText, selectedGrade === grade && styles.optionTextActive]}>
+                    <Text style={[styles.optionText, { color: colors.textSecondary }, selectedGrade === grade && styles.optionTextActive]}>
                       Grade {grade}
                     </Text>
                   </TouchableOpacity>
@@ -235,18 +237,18 @@ Provide detailed explanations showing the reasoning process.`;
             </View>
 
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Select Subject</Text>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Select Subject</Text>
               <View style={styles.optionGrid}>
                 {subjects.map((subject) => (
                   <TouchableOpacity
                     key={subject.id}
-                    style={[styles.gridButton, selectedSubject === subject.id && styles.gridButtonActive]}
+                    style={[styles.gridButton, { backgroundColor: colors.cardBg, borderColor: colors.border }, selectedSubject === subject.id && styles.gridButtonActive]}
                     onPress={() => {
                       setSelectedSubject(subject.id);
                       setSelectedChapter('');
                     }}
                   >
-                    <Text style={[styles.gridText, selectedSubject === subject.id && styles.gridTextActive]}>
+                    <Text style={[styles.gridText, { color: colors.textSecondary }, selectedSubject === subject.id && styles.gridTextActive]}>
                       {subject.name}
                     </Text>
                   </TouchableOpacity>
@@ -256,12 +258,12 @@ Provide detailed explanations showing the reasoning process.`;
 
             {selectedSubject && (
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Select Chapter</Text>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>Select Chapter</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.optionScroll}>
                   {chapters.map((chapter) => (
                     <TouchableOpacity
                       key={chapter.id}
-                      style={[styles.chapterButton, selectedChapter === chapter.id && styles.chapterButtonActive]}
+                      style={[styles.chapterButton, { backgroundColor: colors.cardBg, borderColor: colors.border }, selectedChapter === chapter.id && styles.chapterButtonActive]}
                       onPress={() => setSelectedChapter(chapter.id)}
                     >
                       <Text style={[styles.chapterNumber, selectedChapter === chapter.id && styles.chapterNumberActive]}>
@@ -310,12 +312,12 @@ Provide detailed explanations showing the reasoning process.`;
               />
             </View>
 
-            <Text style={styles.questionNumber}>
+            <Text style={[styles.questionNumber, { color: colors.textSecondary }]}>
               Question {currentQuestion + 1} of {quiz.questions.length}
             </Text>
 
-            <View style={styles.questionCard}>
-              <Text style={styles.questionText}>{currentQ.question}</Text>
+            <View style={[styles.questionCard, { backgroundColor: colors.cardBg }]}>
+              <Text style={[styles.questionText, { color: colors.text }]}>{currentQ.question}</Text>
 
               <View style={styles.optionsContainer}>
                 {currentQ.options.map((option, index) => {
@@ -327,7 +329,7 @@ Provide detailed explanations showing the reasoning process.`;
                     <TouchableOpacity
                       key={index}
                       style={[
-                        styles.optionCard,
+                        styles.optionCard, { backgroundColor: colors.inputBg, borderColor: colors.border },
                         isSelected && !showCorrectness && styles.optionCardSelected,
                         showCorrectness && isSelected && isCorrect && styles.optionCardCorrect,
                         showCorrectness && isSelected && !isCorrect && styles.optionCardWrong,
@@ -338,7 +340,7 @@ Provide detailed explanations showing the reasoning process.`;
                     >
                       <View style={styles.optionContent}>
                         <Text style={styles.optionLetter}>{String.fromCharCode(65 + index)}</Text>
-                        <Text style={styles.optionText2}>{option}</Text>
+                        <Text style={[styles.optionText2, { color: colors.text }]}>{option}</Text>
                       </View>
                       {showCorrectness && isSelected && isCorrect && (
                         <CheckCircle size={20} color="#10b981" />
@@ -368,7 +370,7 @@ Provide detailed explanations showing the reasoning process.`;
               
               {currentQuestion < quiz.questions.length - 1 && (
                 <TouchableOpacity
-                  style={[styles.navButton, styles.navButtonPrimary]}
+                  style={[styles.navButton, styles.navButtonPrimary, { borderColor: '#3b82f6' }]}
                   onPress={handleNext}
                 >
                   <Text style={[styles.navButtonText, styles.navButtonTextPrimary]}>Next</Text>
@@ -386,8 +388,8 @@ Provide detailed explanations showing the reasoning process.`;
             </View>
 
             {showResults && (
-              <View style={styles.resultsCard}>
-                <Text style={styles.resultsTitle}>Quiz Results</Text>
+              <View style={[styles.resultsCard, { backgroundColor: colors.cardBg }]}>
+                <Text style={[styles.resultsTitle, { color: colors.text }]}>Quiz Results</Text>
                 <Text style={styles.resultsScore}>
                   Score: {calculateScore()} / {quiz.questions.length}
                 </Text>

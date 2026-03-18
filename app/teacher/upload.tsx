@@ -4,6 +4,7 @@ import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Platform, TextInp
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState } from 'react';
 import { useApp } from '@/contexts/app-context';
+import { useTheme } from '@/contexts/theme-context';
 import { NCERT_SUBJECTS } from '@/constants/ncert-data';
 import { ICSE_SUBJECTS } from '@/constants/icse-data';
 
@@ -11,6 +12,7 @@ export default function TeacherUpload() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { selectedLanguage, addTeacherUpload } = useApp();
+  const { colors } = useTheme();
   
   const [uploadType, setUploadType] = useState<'video' | 'text'>('video');
   const [selectedBoard, setSelectedBoard] = useState<'NCERT' | 'ICSE'>('NCERT');
@@ -79,12 +81,12 @@ export default function TeacherUpload() {
     (uploadType === 'video' ? videoUrl.trim() : content.trim());
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <View style={styles.header}>
+    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
+      <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <ChevronLeft size={24} color="#1e293b" />
+          <ChevronLeft size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Upload Content</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Upload Content</Text>
         <View style={styles.backButton} />
       </View>
 

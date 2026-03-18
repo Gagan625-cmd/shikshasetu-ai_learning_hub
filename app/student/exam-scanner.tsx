@@ -3,6 +3,7 @@ import { ChevronLeft, ExternalLink, Sparkles, Lock } from 'lucide-react-native';
 import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Platform, Linking, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSubscription } from '@/contexts/subscription-context';
+import { useTheme } from '@/contexts/theme-context';
 import { LinearGradient } from 'expo-linear-gradient';
 
 const EXAM_SCANNER_APP_URL = 'https://shikshasetu-exam-scanner-loajhcw.rork.app';
@@ -11,6 +12,7 @@ export default function ExamScanner() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { isPremium } = useSubscription();
+  const { colors } = useTheme();
 
   const openExamScannerApp = async () => {
     try {
@@ -28,8 +30,8 @@ export default function ExamScanner() {
 
   if (!isPremium) {
     return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
-        <View style={styles.header}>
+      <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
+        <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
             <ChevronLeft size={24} color="#ffffff" />
           </TouchableOpacity>
@@ -84,12 +86,12 @@ export default function ExamScanner() {
   }
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <View style={styles.header}>
+    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
+      <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <ChevronLeft size={24} color="#1e293b" />
+          <ChevronLeft size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>AI Exam Scanner</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>AI Exam Scanner</Text>
         <View style={styles.backButton} />
       </View>
 
@@ -98,19 +100,19 @@ export default function ExamScanner() {
         contentContainerStyle={[styles.contentContainer, { paddingBottom: insets.bottom + 20 }]}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.heroSection}>
+        <View style={[styles.heroSection, { backgroundColor: colors.cardBg }]}>
           <View style={styles.iconContainer}>
             <Sparkles size={48} color="#3b82f6" />
           </View>
-          <Text style={styles.heroTitle}>AI-Powered Exam Scanner</Text>
-          <Text style={styles.heroDescription}>
+          <Text style={[styles.heroTitle, { color: colors.text }]}>AI-Powered Exam Scanner</Text>
+          <Text style={[styles.heroDescription, { color: colors.textSecondary }]}>
             Scan your exam papers with advanced AI technology and get instant detailed feedback, marks, and personalized improvement plans.
           </Text>
         </View>
 
-        <View style={styles.infoCard}>
-          <Text style={styles.infoTitle}>📝 How it works</Text>
-          <Text style={styles.infoText}>
+        <View style={[styles.infoCard, { backgroundColor: colors.infoBg, borderLeftColor: colors.infoBorder }]}>
+          <Text style={[styles.infoTitle, { color: colors.infoTitle }]}>📝 How it works</Text>
+          <Text style={[styles.infoText, { color: colors.infoText }]}>
             1. Click the button below to open the exam scanner app{' \n'}
             2. Take a photo or upload your written exam paper{'\n'}
             3. AI will scan and extract your answers{'\n'}
@@ -119,25 +121,25 @@ export default function ExamScanner() {
         </View>
 
         <View style={styles.featuresGrid}>
-          <View style={styles.featureCard}>
+          <View style={[styles.featureCard, { backgroundColor: colors.cardBg }]}>
             <Text style={styles.featureIcon}>🎯</Text>
-            <Text style={styles.featureTitle}>Accurate Grading</Text>
-            <Text style={styles.featureText}>AI-powered answer evaluation with detailed feedback</Text>
+            <Text style={[styles.featureTitle, { color: colors.text }]}>Accurate Grading</Text>
+            <Text style={[styles.featureText, { color: colors.textSecondary }]}>AI-powered answer evaluation with detailed feedback</Text>
           </View>
-          <View style={styles.featureCard}>
+          <View style={[styles.featureCard, { backgroundColor: colors.cardBg }]}>
             <Text style={styles.featureIcon}>📊</Text>
-            <Text style={styles.featureTitle}>Performance Analytics</Text>
-            <Text style={styles.featureText}>Track your progress and identify weak areas</Text>
+            <Text style={[styles.featureTitle, { color: colors.text }]}>Performance Analytics</Text>
+            <Text style={[styles.featureText, { color: colors.textSecondary }]}>Track your progress and identify weak areas</Text>
           </View>
-          <View style={styles.featureCard}>
+          <View style={[styles.featureCard, { backgroundColor: colors.cardBg }]}>
             <Text style={styles.featureIcon}>💡</Text>
-            <Text style={styles.featureTitle}>Smart Suggestions</Text>
-            <Text style={styles.featureText}>Personalized improvement plans for better scores</Text>
+            <Text style={[styles.featureTitle, { color: colors.text }]}>Smart Suggestions</Text>
+            <Text style={[styles.featureText, { color: colors.textSecondary }]}>Personalized improvement plans for better scores</Text>
           </View>
-          <View style={styles.featureCard}>
+          <View style={[styles.featureCard, { backgroundColor: colors.cardBg }]}>
             <Text style={styles.featureIcon}>⚡</Text>
-            <Text style={styles.featureTitle}>Instant Results</Text>
-            <Text style={styles.featureText}>Get your results in seconds, not days</Text>
+            <Text style={[styles.featureTitle, { color: colors.text }]}>Instant Results</Text>
+            <Text style={[styles.featureText, { color: colors.textSecondary }]}>Get your results in seconds, not days</Text>
           </View>
         </View>
 

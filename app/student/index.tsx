@@ -717,14 +717,14 @@ export default function StudentDashboard() {
         presentationStyle="pageSheet"
         onRequestClose={() => setShowChatbot(false)}
       >
-        <View style={[styles.chatbotModal, { paddingTop: insets.top }]}>
-          <View style={styles.chatHeader}>
+        <View style={[styles.chatbotModal, { paddingTop: insets.top, backgroundColor: colors.background }]}>
+          <View style={[styles.chatHeader, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
             <View>
-              <Text style={styles.chatTitle}>ShikshaBuddy</Text>
-              <Text style={styles.chatSubtitle}>Your AI Learning Assistant</Text>
+              <Text style={[styles.chatTitle, { color: colors.text }]}>ShikshaBuddy</Text>
+              <Text style={[styles.chatSubtitle, { color: colors.textSecondary }]}>Your AI Learning Assistant</Text>
             </View>
-            <TouchableOpacity onPress={() => setShowChatbot(false)} style={styles.closeButton}>
-              <Text style={styles.closeButtonText}>✕</Text>
+            <TouchableOpacity onPress={() => setShowChatbot(false)} style={[styles.closeButton, { backgroundColor: colors.inputBg }]}>
+              <Text style={[styles.closeButtonText, { color: colors.textSecondary }]}>✕</Text>
             </TouchableOpacity>
           </View>
 
@@ -733,9 +733,9 @@ export default function StudentDashboard() {
             contentContainerStyle={styles.chatMessagesContent}
           >
             {messages.length === 0 && (
-              <View style={styles.welcomeMessage}>
-                <Text style={styles.welcomeText}>👋 Hello! I&apos;m ShikshaBuddy.</Text>
-                <Text style={styles.welcomeSubtext}>Ask me any questions about your studies!</Text>
+              <View style={[styles.welcomeMessage, { backgroundColor: colors.infoBg }]}>
+                <Text style={[styles.welcomeText, { color: colors.infoTitle }]}>👋 Hello! I&apos;m ShikshaBuddy.</Text>
+                <Text style={[styles.welcomeSubtext, { color: colors.infoText }]}>Ask me any questions about your studies!</Text>
               </View>
             )}
             {messages.map((msg, idx) => (
@@ -743,12 +743,12 @@ export default function StudentDashboard() {
                 key={idx}
                 style={[
                   styles.messageBubble,
-                  msg.role === 'user' ? styles.userBubble : styles.assistantBubble,
+                  msg.role === 'user' ? styles.userBubble : [styles.assistantBubble, { backgroundColor: colors.cardBg, borderColor: colors.border }],
                 ]}
               >
                 <Text style={[
                   styles.messageText,
-                  msg.role === 'user' ? styles.userText : styles.assistantText,
+                  msg.role === 'user' ? styles.userText : [styles.assistantText, { color: colors.text }],
                 ]}>
                   {msg.content}
                 </Text>
@@ -756,11 +756,11 @@ export default function StudentDashboard() {
             ))}
           </ScrollView>
 
-          <View style={[styles.chatInput, { paddingBottom: insets.bottom + 8 }]}>
+          <View style={[styles.chatInput, { paddingBottom: insets.bottom + 8, backgroundColor: colors.surface, borderTopColor: colors.border }]}>
             <TextInput
-              style={styles.chatTextInput}
+              style={[styles.chatTextInput, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.text }]}
               placeholder="Ask me anything..."
-              placeholderTextColor="#94a3b8"
+              placeholderTextColor={colors.textTertiary}
               value={inputText}
               onChangeText={setInputText}
               multiline

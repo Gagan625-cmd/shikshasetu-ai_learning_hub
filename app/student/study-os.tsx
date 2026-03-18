@@ -6,6 +6,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { generateText } from '@rork-ai/toolkit-sdk';
 import { useApp } from '@/contexts/app-context';
+import { useTheme } from '@/contexts/theme-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSubscription } from '@/contexts/subscription-context';
 
@@ -14,6 +15,7 @@ export default function StudyOS() {
   const insets = useSafeAreaInsets();
   const { userProgress, addStudyTime } = useApp();
   const { isPremium } = useSubscription();
+  const { colors } = useTheme();
   
   const [activeTab, setActiveTab] = useState<'timer' | 'blocker' | 'streaks' | 'coach'>('timer');
   
@@ -378,9 +380,9 @@ Respond with encouraging, motivational, and practical advice in 2-3 sentences. B
 
             <View style={styles.coachInputContainer}>
               <TextInput
-                style={styles.coachInput}
+                style={[styles.coachInput, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.text }]}
                 placeholder="Ask Setu Sensei anything..."
-                placeholderTextColor="#94a3b8"
+                placeholderTextColor={colors.textTertiary}
                 value={coachInput}
                 onChangeText={setCoachInput}
                 multiline

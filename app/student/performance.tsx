@@ -3,6 +3,7 @@ import { ChevronLeft, Award, TrendingUp, BookOpen, CheckCircle, Clock, FileText,
 import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useApp } from '@/contexts/app-context';
+import { useTheme } from '@/contexts/theme-context';
 import { useMemo, useState } from 'react';
 
 type TimeFilter = 'week' | 'month' | 'all';
@@ -11,6 +12,7 @@ export default function StudentPerformance() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { userProgress } = useApp();
+  const { colors } = useTheme();
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('all');
 
   const filteredProgress = useMemo(() => {
@@ -301,12 +303,12 @@ export default function StudentPerformance() {
   const hasAnyData = stats.quizzesCompleted > 0 || stats.lessonsCompleted > 0 || stats.examsScanned > 0;
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <View style={styles.header}>
+    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
+      <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <ChevronLeft size={24} color="#1e293b" />
+          <ChevronLeft size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Performance</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Performance</Text>
         <View style={styles.backButton} />
       </View>
 
@@ -315,14 +317,14 @@ export default function StudentPerformance() {
         contentContainerStyle={[styles.contentContainer, { paddingBottom: insets.bottom + 20 }]}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.filterContainer}>
+        <View style={[styles.filterContainer, { backgroundColor: colors.border }]}>
           {(['week', 'month', 'all'] as TimeFilter[]).map(filter => (
             <TouchableOpacity
               key={filter}
-              style={[styles.filterButton, timeFilter === filter && styles.filterButtonActive]}
+              style={[styles.filterButton, timeFilter === filter && [styles.filterButtonActive, { backgroundColor: colors.cardBg }]]}
               onPress={() => setTimeFilter(filter)}
             >
-              <Text style={[styles.filterText, timeFilter === filter && styles.filterTextActive]}>
+              <Text style={[styles.filterText, { color: colors.textSecondary }, timeFilter === filter && { color: colors.text }]}>
                 {filter === 'week' ? 'This Week' : filter === 'month' ? 'This Month' : 'All Time'}
               </Text>
             </TouchableOpacity>
@@ -367,36 +369,36 @@ export default function StudentPerformance() {
         )}
 
         <View style={styles.statsGrid}>
-          <View style={styles.statCard}>
+          <View style={[styles.statCard, { backgroundColor: colors.cardBg }]}>
             <View style={[styles.statIcon, { backgroundColor: '#dbeafe' }]}>
               <BookOpen size={24} color="#2563eb" />
             </View>
-            <Text style={styles.statValue}>{stats.lessonsCompleted}</Text>
-            <Text style={styles.statLabel}>Content</Text>
+            <Text style={[styles.statValue, { color: colors.text }]}>{stats.lessonsCompleted}</Text>
+            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Content</Text>
           </View>
 
-          <View style={styles.statCard}>
+          <View style={[styles.statCard, { backgroundColor: colors.cardBg }]}>
             <View style={[styles.statIcon, { backgroundColor: '#d1fae5' }]}>
               <CheckCircle size={24} color="#10b981" />
             </View>
-            <Text style={styles.statValue}>{stats.quizzesCompleted}</Text>
-            <Text style={styles.statLabel}>Quizzes</Text>
+            <Text style={[styles.statValue, { color: colors.text }]}>{stats.quizzesCompleted}</Text>
+            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Quizzes</Text>
           </View>
 
-          <View style={styles.statCard}>
+          <View style={[styles.statCard, { backgroundColor: colors.cardBg }]}>
             <View style={[styles.statIcon, { backgroundColor: '#fef3c7' }]}>
               <TrendingUp size={24} color="#f59e0b" />
             </View>
-            <Text style={styles.statValue}>{stats.averageScore}%</Text>
-            <Text style={styles.statLabel}>Quiz Avg</Text>
+            <Text style={[styles.statValue, { color: colors.text }]}>{stats.averageScore}%</Text>
+            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Quiz Avg</Text>
           </View>
 
-          <View style={styles.statCard}>
+          <View style={[styles.statCard, { backgroundColor: colors.cardBg }]}>
             <View style={[styles.statIcon, { backgroundColor: '#fce7f3' }]}>
               <Clock size={24} color="#ec4899" />
             </View>
-            <Text style={styles.statValue}>{Math.floor(stats.totalStudyTime / 60)}h</Text>
-            <Text style={styles.statLabel}>Study Time</Text>
+            <Text style={[styles.statValue, { color: colors.text }]}>{Math.floor(stats.totalStudyTime / 60)}h</Text>
+            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Study Time</Text>
           </View>
         </View>
 
@@ -429,10 +431,10 @@ export default function StudentPerformance() {
           </View>
         )}
 
-        <View style={styles.weeklyCard}>
+        <View style={[styles.weeklyCard, { backgroundColor: colors.cardBg }]}>
           <View style={styles.sectionHeader}>
             <Calendar size={20} color="#64748b" />
-            <Text style={styles.sectionTitle}>Weekly Activity</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Weekly Activity</Text>
           </View>
           <View style={styles.weeklyChart}>
             {weeklyProgress.map((day, index) => (
@@ -461,14 +463,14 @@ export default function StudentPerformance() {
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Brain size={20} color="#64748b" />
-              <Text style={styles.sectionTitle}>Subject-wise Performance</Text>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Subject-wise Performance</Text>
             </View>
             <View style={styles.subjectList}>
               {subjectPerformance.map((subject, index) => (
-                <View key={index} style={styles.subjectCard}>
+                <View key={index} style={[styles.subjectCard, { backgroundColor: colors.cardBg }]}>
                   <View style={styles.subjectHeader}>
                     <View style={styles.subjectInfo}>
-                      <Text style={styles.subjectName}>{subject.subject}</Text>
+                      <Text style={[styles.subjectName, { color: colors.text }]}>{subject.subject}</Text>
                       <View style={[styles.boardBadge, { 
                         backgroundColor: subject.board === 'NCERT' ? '#eff6ff' : '#d1fae5' 
                       }]}>
@@ -502,7 +504,7 @@ export default function StudentPerformance() {
                     </View>
                   </View>
                   {subject.averageScore !== null && (
-                    <View style={styles.progressBarContainer}>
+                    <View style={[styles.progressBarContainer, { backgroundColor: colors.border }]}>
                       <View style={[styles.progressBar, { width: `${subject.averageScore}%` }]} />
                     </View>
                   )}
@@ -516,14 +518,14 @@ export default function StudentPerformance() {
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Star size={20} color="#f59e0b" />
-              <Text style={styles.sectionTitle}>Strong Areas</Text>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Strong Areas</Text>
             </View>
             <View style={styles.areaList}>
               {strongAreas.map((area, index) => (
                 <View key={index} style={styles.strongAreaCard}>
                   <View style={styles.areaContent}>
-                    <Text style={styles.areaChapter} numberOfLines={1}>{area.chapter}</Text>
-                    <Text style={styles.areaSubject}>{area.subject} • {area.board}</Text>
+                    <Text style={[styles.areaChapter, { color: colors.text }]} numberOfLines={1}>{area.chapter}</Text>
+                    <Text style={[styles.areaSubject, { color: colors.textSecondary }]}>{area.subject} • {area.board}</Text>
                   </View>
                   <View style={styles.areaScore}>
                     <Text style={styles.strongScoreText}>{area.averageScore}%</Text>
@@ -539,14 +541,14 @@ export default function StudentPerformance() {
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <AlertTriangle size={20} color="#ef4444" />
-              <Text style={styles.sectionTitle}>Needs Improvement</Text>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Needs Improvement</Text>
             </View>
             <View style={styles.areaList}>
               {weakAreas.map((area, index) => (
                 <View key={index} style={styles.weakAreaCard}>
                   <View style={styles.areaContent}>
-                    <Text style={styles.areaChapter} numberOfLines={1}>{area.chapter}</Text>
-                    <Text style={styles.areaSubject}>{area.subject} • {area.board}</Text>
+                    <Text style={[styles.areaChapter, { color: colors.text }]} numberOfLines={1}>{area.chapter}</Text>
+                    <Text style={[styles.areaSubject, { color: colors.textSecondary }]}>{area.subject} • {area.board}</Text>
                   </View>
                   <View style={styles.areaScore}>
                     <Text style={styles.weakScoreText}>{area.averageScore}%</Text>
@@ -567,7 +569,7 @@ export default function StudentPerformance() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Clock size={20} color="#64748b" />
-            <Text style={styles.sectionTitle}>Recent Activity</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Recent Activity</Text>
           </View>
           {recentActivity.length > 0 ? (
             <View style={styles.activityList}>
@@ -576,13 +578,13 @@ export default function StudentPerformance() {
                 const color = getActivityColor(activity.type);
 
                 return (
-                  <View key={activity.id} style={styles.activityCard}>
+                  <View key={activity.id} style={[styles.activityCard, { backgroundColor: colors.cardBg }]}>
                     <View style={[styles.activityIcon, { backgroundColor: color + '20' }]}>
                       <Icon size={20} color={color} />
                     </View>
                     <View style={styles.activityContent}>
                       <View style={styles.activityHeader}>
-                        <Text style={styles.activityTitle}>{activity.subject}</Text>
+                        <Text style={[styles.activityTitle, { color: colors.text }]}>{activity.subject}</Text>
                         {activity.board !== 'Exam' && (
                           <View style={[styles.boardBadgeSmall, { 
                             backgroundColor: activity.board === 'NCERT' ? '#eff6ff' : '#d1fae5' 
@@ -593,7 +595,7 @@ export default function StudentPerformance() {
                           </View>
                         )}
                       </View>
-                      <Text style={styles.activitySubtitle} numberOfLines={1}>{activity.topic}</Text>
+                      <Text style={[styles.activitySubtitle, { color: colors.textSecondary }]} numberOfLines={1}>{activity.topic}</Text>
                       <Text style={styles.activityDate}>{activity.date}</Text>
                     </View>
                     {activity.score !== undefined && (
@@ -615,7 +617,7 @@ export default function StudentPerformance() {
               })}
             </View>
           ) : (
-            <View style={styles.emptyState}>
+            <View style={[styles.emptyState, { backgroundColor: colors.cardBg }]}>
               <Award size={48} color="#cbd5e1" />
               <Text style={styles.emptyStateText}>No activity yet</Text>
               <Text style={styles.emptyStateSubtext}>

@@ -17,6 +17,7 @@ import { useMutation } from '@tanstack/react-query';
 import { generateText } from '@rork-ai/toolkit-sdk';
 import { NCERT_SUBJECTS } from '@/constants/ncert-data';
 import { ICSE_SUBJECTS } from '@/constants/icse-data';
+import { useTheme } from '@/contexts/theme-context';
 
 interface ComicPanel {
   id: number;
@@ -59,6 +60,7 @@ const MOOD_BACKGROUNDS: Record<string, string[]> = {
 
 export default function ComicLearnScreen() {
   const insets = useSafeAreaInsets();
+  const { colors } = useTheme();
   const scrollRef = useRef<ScrollView>(null);
   
   const [selectedBoard, setSelectedBoard] = useState<string>('');
@@ -296,7 +298,7 @@ Make it the BEST comic lesson ever - students should laugh, learn deeply, and re
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <Stack.Screen 
         options={{ 
           title: 'Comic Learn',

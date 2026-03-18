@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState } from 'react';
 import { ICSE_SUBJECTS } from '@/constants/icse-data';
 import { useApp } from '@/contexts/app-context';
+import { useTheme } from '@/contexts/theme-context';
 import { useMutation } from '@tanstack/react-query';
 import { generateText } from '@rork-ai/toolkit-sdk';
 import * as Speech from 'expo-speech';
@@ -37,6 +38,7 @@ export default function ICESEContentBrowser() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { selectedLanguage } = useApp();
+  const { colors } = useTheme();
   const [selectedGrade, setSelectedGrade] = useState<number>(9);
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedChapter, setSelectedChapter] = useState<{ title: string; number: number; subject: string; grade: number } | null>(null);
@@ -445,17 +447,17 @@ Make it thorough, well-formatted, exam-oriented, and aligned with ICSE syllabus 
   };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <View style={styles.header}>
+    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
+      <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <ChevronLeft size={24} color="#1e293b" />
+          <ChevronLeft size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>ICSE Content</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>ICSE Content</Text>
         <View style={styles.backButton} />
       </View>
 
-      <View style={styles.gradeSelector}>
-        <Text style={styles.gradeSelectorLabel}>Select Grade:</Text>
+      <View style={[styles.gradeSelector, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+        <Text style={[styles.gradeSelectorLabel, { color: colors.textSecondary }]}>Select Grade:</Text>
         <View style={styles.gradeButtons}>
           {grades.map((grade) => (
             <TouchableOpacity
@@ -499,12 +501,12 @@ Make it thorough, well-formatted, exam-oriented, and aligned with ICSE syllabus 
         presentationStyle="pageSheet"
         onRequestClose={() => setModalVisible(false)}
       >
-        <View style={[styles.modalContainer, { paddingTop: insets.top }]}>
-          <View style={styles.modalHeader}>
+        <View style={[styles.modalContainer, { paddingTop: insets.top, backgroundColor: colors.background }]}>
+          <View style={[styles.modalHeader, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
             <TouchableOpacity style={styles.backButton} onPress={() => setModalVisible(false)}>
-              <ChevronLeft size={24} color="#1e293b" />
+              <ChevronLeft size={24} color={colors.text} />
             </TouchableOpacity>
-            <Text style={styles.modalHeaderTitle} numberOfLines={1}>
+            <Text style={[styles.modalHeaderTitle, { color: colors.text }]} numberOfLines={1}>
               {selectedChapter?.title}
             </Text>
             <View style={styles.backButton} />

@@ -3,12 +3,14 @@ import { ChevronLeft, Users, FileText, Video, TrendingUp } from 'lucide-react-na
 import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useApp } from '@/contexts/app-context';
+import { useTheme } from '@/contexts/theme-context';
 import { useMemo } from 'react';
 
 export default function TeacherPerformance() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { userProgress } = useApp();
+  const { colors } = useTheme();
 
   const stats = useMemo(() => {
     const activities = userProgress.teacherActivities || [];
@@ -28,12 +30,12 @@ export default function TeacherPerformance() {
   }, [userProgress.teacherActivities]);
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <View style={styles.header}>
+    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
+      <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <ChevronLeft size={24} color="#1e293b" />
+          <ChevronLeft size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Performance</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Performance</Text>
         <View style={styles.backButton} />
       </View>
 

@@ -4,6 +4,7 @@ import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Platform, TextInp
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState, useRef, useEffect } from 'react';
 import { useApp } from '@/contexts/app-context';
+import { useTheme } from '@/contexts/theme-context';
 import { useRorkAgent } from '@rork-ai/toolkit-sdk';
 import { NCERT_SUBJECTS } from '@/constants/ncert-data';
 
@@ -11,6 +12,7 @@ export default function StudentInterview() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { selectedLanguage } = useApp();
+  const { colors } = useTheme();
   const scrollViewRef = useRef<ScrollView>(null);
   
   const [selectedGrade, setSelectedGrade] = useState<number>(6);
@@ -68,12 +70,12 @@ Start by greeting the student and asking your first question.`;
   const canStart = !!(selectedChapter && selectedSubject);
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <View style={styles.header}>
+    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
+      <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <ChevronLeft size={24} color="#1e293b" />
+          <ChevronLeft size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Interview Practice</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Interview Practice</Text>
         <View style={styles.backButton} />
       </View>
 
@@ -92,12 +94,12 @@ Start by greeting the student and asking your first question.`;
           </View>
 
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Select Grade</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Select Grade</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.optionScroll}>
               {[6, 7, 8, 9, 10].map((grade) => (
                 <TouchableOpacity
                   key={grade}
-                  style={[styles.optionButton, selectedGrade === grade && styles.optionButtonActive]}
+                  style={[styles.optionButton, { backgroundColor: colors.cardBg, borderColor: colors.border }, selectedGrade === grade && styles.optionButtonActive]}
                   onPress={() => {
                     setSelectedGrade(grade);
                     setSelectedSubject('');
@@ -113,12 +115,12 @@ Start by greeting the student and asking your first question.`;
           </View>
 
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Select Subject</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Select Subject</Text>
             <View style={styles.optionGrid}>
               {subjects.map((subject) => (
                 <TouchableOpacity
                   key={subject.id}
-                  style={[styles.gridButton, selectedSubject === subject.id && styles.gridButtonActive]}
+                  style={[styles.gridButton, { backgroundColor: colors.cardBg, borderColor: colors.border }, selectedSubject === subject.id && styles.gridButtonActive]}
                   onPress={() => {
                     setSelectedSubject(subject.id);
                     setSelectedChapter('');
@@ -134,12 +136,12 @@ Start by greeting the student and asking your first question.`;
 
           {selectedSubject && (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Select Chapter</Text>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Select Chapter</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.optionScroll}>
                 {chapters.map((chapter) => (
                   <TouchableOpacity
                     key={chapter.id}
-                    style={[styles.chapterButton, selectedChapter === chapter.id && styles.chapterButtonActive]}
+                    style={[styles.chapterButton, { backgroundColor: colors.cardBg, borderColor: colors.border }, selectedChapter === chapter.id && styles.chapterButtonActive]}
                     onPress={() => setSelectedChapter(chapter.id)}
                   >
                     <Text style={[styles.chapterNumber, selectedChapter === chapter.id && styles.chapterNumberActive]}>
@@ -179,7 +181,7 @@ Start by greeting the student and asking your first question.`;
                 key={index}
                 style={[
                   styles.messageBubble,
-                  message.role === 'user' ? styles.userMessage : styles.aiMessage,
+                  message.role === 'user' ? styles.userMessage : styles.aiMessage, { backgroundColor: colors.cardBg },
                 ]}
               >
                 {message.parts.map((part, partIndex) => {
@@ -189,7 +191,7 @@ Start by greeting the student and asking your first question.`;
                         key={partIndex}
                         style={[
                           styles.messageText,
-                          message.role === 'user' ? styles.userMessageText : styles.aiMessageText,
+                          message.role === 'user' ? styles.userMessageText : styles.aiMessageText, { color: colors.text },
                         ]}
                       >
                         {part.text}
@@ -202,11 +204,11 @@ Start by greeting the student and asking your first question.`;
             ))}
           </ScrollView>
 
-          <View style={[styles.inputContainer, { paddingBottom: insets.bottom || 20 }]}>
+          <View style={[styles.inputContainer, { paddingBottom: insets.bottom || 20, backgroundColor: colors.surface, borderTopColor: colors.border }]}>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.text }]}
               placeholder="Type your answer..."
-              placeholderTextColor="#94a3b8"
+              placeholderTextColor={colors.textTertiary}
               value={inputText}
               onChangeText={setInputText}
               multiline

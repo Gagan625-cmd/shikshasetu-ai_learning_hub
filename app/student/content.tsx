@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState } from 'react';
 import { NCERT_SUBJECTS } from '@/constants/ncert-data';
 import { useApp } from '@/contexts/app-context';
+import { useTheme } from '@/contexts/theme-context';
 import { useMutation } from '@tanstack/react-query';
 import { generateText } from '@rork-ai/toolkit-sdk';
 import * as Speech from 'expo-speech';
@@ -13,6 +14,7 @@ export default function ContentBrowser() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { selectedLanguage } = useApp();
+  const { colors } = useTheme();
   const [selectedGrade, setSelectedGrade] = useState<number>(6);
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedChapter, setSelectedChapter] = useState<{ title: string; number: number; subject: string; grade: number } | null>(null);
@@ -295,17 +297,17 @@ Make it comprehensive, well-formatted, and easy to understand for students.`;
   };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <View style={styles.header}>
+    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
+      <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <ChevronLeft size={24} color="#1e293b" />
+          <ChevronLeft size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>NCERT Content</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>NCERT Content</Text>
         <View style={styles.backButton} />
       </View>
 
-      <View style={styles.gradeSelector}>
-        <Text style={styles.gradeSelectorLabel}>Select Grade:</Text>
+      <View style={[styles.gradeSelector, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+        <Text style={[styles.gradeSelectorLabel, { color: colors.textSecondary }]}>Select Grade:</Text>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -319,7 +321,7 @@ Make it comprehensive, well-formatted, and easy to understand for students.`;
             >
               <GraduationCap
                 size={20}
-                color={selectedGrade === grade ? '#ffffff' : '#64748b'}
+                color={selectedGrade === grade ? '#ffffff' : colors.textSecondary}
               />
               <Text
                 style={[
@@ -340,19 +342,19 @@ Make it comprehensive, well-formatted, and easy to understand for students.`;
         showsVerticalScrollIndicator={false}
       >
         {subjects.map((subject) => (
-          <View key={subject.id} style={styles.subjectCard}>
-            <View style={styles.subjectHeader}>
+          <View key={subject.id} style={[styles.subjectCard, { backgroundColor: colors.cardBg }]}>
+            <View style={[styles.subjectHeader, { borderBottomColor: colors.border }]}>
               <View style={styles.subjectIconContainer}>
                 <BookOpen size={24} color="#3b82f6" strokeWidth={2} />
               </View>
-              <Text style={styles.subjectName}>{subject.name}</Text>
+              <Text style={[styles.subjectName, { color: colors.text }]}>{subject.name}</Text>
             </View>
 
             <View style={styles.chaptersContainer}>
               {subject.chapters.map((chapter) => (
                 <TouchableOpacity
                   key={chapter.id}
-                  style={styles.chapterItem}
+                  style={[styles.chapterItem, { backgroundColor: colors.inputBg }]}
                   activeOpacity={0.7}
                   onPress={() => handleChapterPress(chapter, subject)}
                 >
@@ -360,8 +362,8 @@ Make it comprehensive, well-formatted, and easy to understand for students.`;
                     <Text style={styles.chapterNumberText}>{chapter.number}</Text>
                   </View>
                   <View style={styles.chapterContent}>
-                    <Text style={styles.chapterTitle}>{chapter.title}</Text>
-                    <Text style={styles.chapterDescription} numberOfLines={2}>
+                    <Text style={[styles.chapterTitle, { color: colors.text }]}>{chapter.title}</Text>
+                    <Text style={[styles.chapterDescription, { color: colors.textSecondary }]} numberOfLines={2}>
                       {chapter.description}
                     </Text>
                   </View>
@@ -379,12 +381,12 @@ Make it comprehensive, well-formatted, and easy to understand for students.`;
         presentationStyle="pageSheet"
         onRequestClose={() => setModalVisible(false)}
       >
-        <View style={[styles.modalContainer, { paddingTop: insets.top }]}>
-          <View style={styles.modalHeader}>
+        <View style={[styles.modalContainer, { paddingTop: insets.top, backgroundColor: colors.background }]}>
+          <View style={[styles.modalHeader, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
             <TouchableOpacity style={styles.backButton} onPress={() => setModalVisible(false)}>
-              <ChevronLeft size={24} color="#1e293b" />
+              <ChevronLeft size={24} color={colors.text} />
             </TouchableOpacity>
-            <Text style={styles.modalHeaderTitle} numberOfLines={1}>
+            <Text style={[styles.modalHeaderTitle, { color: colors.text }]} numberOfLines={1}>
               {selectedChapter?.title}
             </Text>
             <View style={styles.backButton} />
@@ -395,7 +397,7 @@ Make it comprehensive, well-formatted, and easy to understand for students.`;
             contentContainerStyle={[styles.modalContentContainer, { paddingBottom: insets.bottom + 20 }]}
             showsVerticalScrollIndicator={false}
           >
-            <View style={styles.chapterInfoCard}>
+            <View style={[styles.chapterInfoCard, { backgroundColor: colors.infoBg, borderLeftColor: colors.infoBorder }]}>
               <Text style={styles.chapterInfoTitle}>Chapter {selectedChapter?.number}</Text>
               <Text style={styles.chapterInfoSubject}>{selectedChapter?.subject}</Text>
               <Text style={styles.chapterInfoGrade}>Grade {selectedChapter?.grade}</Text>
@@ -412,7 +414,7 @@ Make it comprehensive, well-formatted, and easy to understand for students.`;
             )}
 
             {generateContentMutation.isPending && (
-              <View style={styles.loadingCard}>
+              <View style={[styles.loadingCard, { backgroundColor: colors.cardBg }]}>
                 <Text style={styles.loadingText}>Generating content...</Text>
               </View>
             )}
@@ -424,9 +426,9 @@ Make it comprehensive, well-formatted, and easy to understand for students.`;
             )}
 
             {generatedContent && (
-              <View style={styles.contentCard}>
+              <View style={[styles.contentCard, { backgroundColor: colors.cardBg }]}>
                 <View style={styles.contentHeader}>
-                  <Text style={styles.contentHeaderTitle}>Generated Content</Text>
+                  <Text style={[styles.contentHeaderTitle, { color: colors.text }]}>Generated Content</Text>
                   <TouchableOpacity style={styles.speakerButton} onPress={handleTextToSpeech}>
                     {isSpeaking ? (
                       <VolumeX size={20} color="#3b82f6" />
@@ -436,7 +438,7 @@ Make it comprehensive, well-formatted, and easy to understand for students.`;
                     <Text style={styles.speakerButtonText}>{isSpeaking ? 'Stop' : 'Listen'}</Text>
                   </TouchableOpacity>
                 </View>
-                <Text style={styles.contentText}>{cleanMarkdown(generatedContent)}</Text>
+                <Text style={[styles.contentText, { color: colors.textSecondary }]}>{cleanMarkdown(generatedContent)}</Text>
               </View>
             )}
           </ScrollView>

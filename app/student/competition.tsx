@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState, useEffect, useRef, useMemo, useCallback, memo } from 'react';
 import { useApp } from '@/contexts/app-context';
 import { useAuth } from '@/contexts/auth-context';
+import { useTheme } from '@/contexts/theme-context';
 import { useMutation } from '@tanstack/react-query';
 import { generateObject } from '@rork-ai/toolkit-sdk';
 import { z } from 'zod';
@@ -130,6 +131,7 @@ export default function CompetitionScreen() {
   const insets = useSafeAreaInsets();
   const { selectedLanguage, addQuizResult, addXP, userProgress } = useApp();
   const { user } = useAuth();
+  const { colors } = useTheme();
 
   const [selectedBoard, setSelectedBoard] = useState<'CBSE' | 'ICSE'>('CBSE');
   const [activeTab, setActiveTab] = useState<'overview' | 'leaderboard' | 'syllabus'>('overview');
@@ -327,7 +329,7 @@ This is a competitive exam - make it appropriately challenging.`
     const timerColor = timeLeft <= 10 ? '#ef4444' : timeLeft <= 20 ? '#f59e0b' : '#10b981';
 
     return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
+      <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
         <LinearGradient colors={['#0f172a', '#1e293b']} style={styles.quizHeader}>
           <View style={styles.quizHeaderRow}>
             <TouchableOpacity onPress={() => {
@@ -394,7 +396,7 @@ This is a competitive exam - make it appropriately challenging.`
     const estimatedRank = Math.max(1, Math.floor(35 - (percentage / 100) * 34));
 
     return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
+      <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
         <ScrollView contentContainerStyle={[styles.resultsContainer, { paddingBottom: insets.bottom + 20 }]}>
           <LinearGradient
             colors={percentage >= 80 ? ['#059669', '#10b981'] : percentage >= 50 ? ['#d97706', '#f59e0b'] : ['#dc2626', '#ef4444']}
@@ -484,7 +486,7 @@ This is a competitive exam - make it appropriately challenging.`
   }
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
       <LinearGradient colors={['#0f172a', '#1a1a2e', '#16213e']} style={styles.heroHeader}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <ChevronLeft size={24} color="#ffffff" />
@@ -527,7 +529,7 @@ This is a competitive exam - make it appropriately challenging.`
         </View>
       </LinearGradient>
 
-      <View style={styles.tabBar}>
+      <View style={[styles.tabBar, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
         {(['overview', 'leaderboard', 'syllabus'] as const).map((tab) => (
           <TouchableOpacity
             key={tab}

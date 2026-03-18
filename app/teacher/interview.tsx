@@ -11,6 +11,7 @@ import { z } from 'zod';
 import { NCERT_SUBJECTS, LANGUAGES } from '@/constants/ncert-data';
 import { ICSE_SUBJECTS } from '@/constants/icse-data';
 import { useSubscription } from '@/contexts/subscription-context';
+import { useTheme } from '@/contexts/theme-context';
 import { LinearGradient } from 'expo-linear-gradient';
 
 
@@ -33,6 +34,7 @@ export default function TeacherInterview() {
   const insets = useSafeAreaInsets();
   useApp();
   const { isPremium } = useSubscription();
+  const { colors } = useTheme();
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const [hasAudioPermission, setHasAudioPermission] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
@@ -452,7 +454,7 @@ Start now by greeting briefly in ${languageName} and then immediately use askQue
 
   if (!isPremium) {
     return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
+      <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
         <View style={styles.header}>
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
             <ChevronLeft size={24} color="#ffffff" />
@@ -509,7 +511,7 @@ Start now by greeting briefly in ${languageName} and then immediately use askQue
 
   if (isInterviewEnded && evaluation.overallScore) {
     return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
+      <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
         <View style={styles.header}>
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
             <ChevronLeft size={24} color="#1e293b" />
@@ -605,7 +607,7 @@ Start now by greeting briefly in ${languageName} and then immediately use askQue
   }
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <ChevronLeft size={24} color="#1e293b" />

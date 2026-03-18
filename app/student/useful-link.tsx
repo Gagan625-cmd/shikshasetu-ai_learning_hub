@@ -3,10 +3,12 @@ import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ChevronLeft, ExternalLink, Globe } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTheme } from '@/contexts/theme-context';
 
 export default function UsefulLinkScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { colors } = useTheme();
 
   const handleOpenLink = async () => {
     const url = 'https://teaching-video-downl-ogpg.bolt.host/';
@@ -21,7 +23,7 @@ export default function UsefulLinkScreen() {
   };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
       <LinearGradient colors={['#1e3c72', '#2a5298']} style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <ChevronLeft size={24} color="#ffffff" />
@@ -35,13 +37,13 @@ export default function UsefulLinkScreen() {
         contentContainerStyle={[styles.contentContainer, { paddingBottom: insets.bottom + 20 }]}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.linkCard}>
+        <View style={[styles.linkCard, { backgroundColor: colors.cardBg }]}>
           <View style={styles.iconCircle}>
             <Globe size={40} color="#3b82f6" strokeWidth={2} />
           </View>
 
-          <Text style={styles.cardTitle}>Teaching Video Resources</Text>
-          <Text style={styles.cardDescription}>
+          <Text style={[styles.cardTitle, { color: colors.text }]}>Teaching Video Resources</Text>
+          <Text style={[styles.cardDescription, { color: colors.textSecondary }]}>
             Access teaching video download resources to enhance your learning experience.
           </Text>
 
@@ -52,17 +54,17 @@ export default function UsefulLinkScreen() {
             </LinearGradient>
           </TouchableOpacity>
 
-          <View style={styles.urlContainer}>
-            <Text style={styles.urlLabel}>URL:</Text>
-            <Text style={styles.urlText} numberOfLines={2}>
+          <View style={[styles.urlContainer, { backgroundColor: colors.inputBg, borderColor: colors.border }]}>
+            <Text style={[styles.urlLabel, { color: colors.textSecondary }]}>URL:</Text>
+            <Text style={[styles.urlText, { color: colors.text }]} numberOfLines={2}>
               https://teaching-video-downl-ogpg.bolt.host/
             </Text>
           </View>
         </View>
 
-        <View style={styles.infoCard}>
-          <Text style={styles.infoTitle}>ℹ️ About this resource</Text>
-          <Text style={styles.infoText}>
+        <View style={[styles.infoCard, { backgroundColor: colors.infoBg, borderLeftColor: colors.infoBorder }]}>
+          <Text style={[styles.infoTitle, { color: colors.infoTitle }]}>ℹ️ About this resource</Text>
+          <Text style={[styles.infoText, { color: colors.infoText }]}>
             This external resource provides teaching video downloads to supplement your studies. Make sure you have an internet connection to access it.
           </Text>
         </View>
