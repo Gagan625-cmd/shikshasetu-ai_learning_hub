@@ -5,6 +5,7 @@ export default function StudentLayout() {
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="index" />
       <Stack.Screen name="content" />
+      <Stack.Screen name="icse-content" />
       <Stack.Screen name="generate" />
       <Stack.Screen name="quiz" />
       <Stack.Screen name="interview" />
@@ -14,6 +15,8 @@ export default function StudentLayout() {
       <Stack.Screen name="useful-link" />
       <Stack.Screen name="competition" />
       <Stack.Screen name="fun-learning" />
+      <Stack.Screen name="comic-learn" />
+      <Stack.Screen name="about" />
     </Stack>
   );
 }

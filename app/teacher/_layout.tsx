@@ -13,6 +13,7 @@ export default function TeacherLayout() {
       <Stack.Screen name="performance" />
       <Stack.Screen name="useful-link" />
       <Stack.Screen name="voice-assistant" />
+      <Stack.Screen name="about" />
     </Stack>
   );
 }
