@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { BookOpen, BrainCircuit, MessageSquare, Settings, FileText, LogOut, TrendingUp, MessageCircle, Info, ScanText, Target, Video, Bell, Link2, Palette, Zap, Star, Crown, Shield, Award, Trophy, Gamepad2, Moon, Sun, ChevronRight, Quote, Mail, Sparkles, Key, Layers } from 'lucide-react-native';
+import { BookOpen, BrainCircuit, MessageSquare, Settings, FileText, LogOut, TrendingUp, MessageCircle, Info, ScanText, Target, Video, Bell, Link2, Palette, Zap, Star, Crown, Shield, Award, Trophy, Gamepad2, Moon, Sun, ChevronRight, Quote, Mail, Sparkles, Key, Layers, CalendarClock } from 'lucide-react-native';
 import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Platform, Modal, TextInput, Alert, Animated } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useApp } from '@/contexts/app-context';
@@ -504,6 +504,7 @@ export default function StudentDashboard() {
     { id: 'interview', title: 'Interview Practice', description: 'Personalized AI interview session', icon: MessageSquare, color: '#f59e0b', route: '/student/interview' },
     { id: 'performance', title: 'Performance', description: 'View your progress and achievements', icon: TrendingUp, color: '#ec4899', route: '/student/performance' },
     { id: 'exam-scanner', title: 'AI Exam Scanner', description: 'Scan & grade your exam papers', icon: ScanText, color: '#06b6d4', route: '/student/exam-scanner' },
+    { id: 'timetable', title: 'AI Study Planner', description: 'Generate a smart exam timetable', icon: CalendarClock, color: '#0ea5e9', route: '/student/timetable' },
     { id: 'study-os', title: 'Study OS', description: 'Focus timer, streaks & AI coach', icon: Target, color: '#f97316', route: '/student/study-os' },
     { id: 'comic-learn', title: 'Comic Learn', description: 'Learn chapters through fun comics', icon: Palette, color: '#ef4444', route: '/student/comic-learn' },
     { id: 'fun-learning', title: 'Fun with Learning', description: 'Pacman, Jumping Fox & GK Quiz!', icon: Gamepad2, color: '#f97316', route: '/student/fun-learning' },
