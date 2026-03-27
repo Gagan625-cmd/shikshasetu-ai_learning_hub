@@ -51,8 +51,26 @@ function getChaptersForSubject(board: Board, grade: number, subjectName: string)
   return subject ? subject.chapters.map(c => `Ch ${c.number}: ${c.title}`) : [];
 }
 
+function stripMarkdown(text: string): string {
+  return text
+    .replace(/\*\*\*(.+?)\*\*\*/g, '$1')
+    .replace(/\*\*(.+?)\*\*/g, '$1')
+    .replace(/\*(.+?)\*/g, '$1')
+    .replace(/__(.+?)__/g, '$1')
+    .replace(/_(.+?)_/g, '$1')
+    .replace(/~~(.+?)~~/g, '$1')
+    .replace(/`(.+?)`/g, '$1')
+    .replace(/^#{1,6}\s+/gm, '')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    .replace(/^>\s?/gm, '')
+    .replace(/^---+$/gm, '')
+    .replace(/^\*\*\*+$/gm, '')
+    .trim();
+}
+
 function parseTimetable(text: string): GeneratedTimetable {
-  const lines = text.split('\n').filter(l => l.trim());
+  const cleaned = stripMarkdown(text);
+  const lines = cleaned.split('\n').filter(l => l.trim());
   const dailyPlans: DayPlan[] = [];
   let overview = '';
   let revisionStrategy = '';
@@ -64,33 +82,37 @@ function parseTimetable(text: string): GeneratedTimetable {
   for (const line of lines) {
     const trimmed = line.trim();
 
-    if (trimmed.match(/^(#|TITLE:|Study Plan)/i) && !title.includes('Day')) {
-      title = trimmed.replace(/^#+\s*/, '').replace(/^TITLE:\s*/i, '').trim() || title;
+    if (trimmed.match(/^(TITLE:|Study Plan)/i) && !title.includes('Day')) {
+      title = stripMarkdown(trimmed.replace(/^TITLE:\s*/i, '').trim()) || title;
       continue;
     }
 
     if (trimmed.match(/^(OVERVIEW|Summary|Introduction)/i)) {
       currentSection = 'overview';
+      const afterHeader = trimmed.replace(/^(OVERVIEW|Summary|Introduction)[:\s]*/i, '').trim();
+      if (afterHeader) overview += afterHeader;
       continue;
     }
 
-    if (trimmed.match(/^(REVISION|Revision Strategy)/i)) {
+    if (trimmed.match(/^(REVISION STRATEGY|REVISION|Revision Strategy)/i)) {
       currentSection = 'revision';
+      const afterHeader = trimmed.replace(/^(REVISION STRATEGY|REVISION|Revision Strategy)[:\s]*/i, '').trim();
+      if (afterHeader) revisionStrategy += afterHeader;
       continue;
     }
 
-    if (trimmed.match(/^(TIPS|Study Tips|General Tips)/i)) {
+    if (trimmed.match(/^(TIPS|Study Tips|General Tips|Pro Tips)/i)) {
       currentSection = 'tips';
       continue;
     }
 
-    const dayMatch = trimmed.match(/^(DAY|Day)\s*(\d+)/i);
+    const dayMatch = trimmed.match(/^(?:DAY|Day)\s*(\d+)/i);
     if (dayMatch) {
       if (currentDay) dailyPlans.push(currentDay);
       const dateMatch = trimmed.match(/\(([^)]+)\)/);
       currentDay = {
-        day: parseInt(dayMatch[2], 10),
-        date: dateMatch ? dateMatch[1] : `Day ${dayMatch[2]}`,
+        day: parseInt(dayMatch[1], 10),
+        date: dateMatch ? dateMatch[1] : `Day ${dayMatch[1]}`,
         sessions: [],
         tip: '',
       };
@@ -99,44 +121,50 @@ function parseTimetable(text: string): GeneratedTimetable {
     }
 
     if (currentSection === 'overview') {
-      overview += (overview ? ' ' : '') + trimmed.replace(/^[-•*]\s*/, '');
+      const clean = trimmed.replace(/^[-•*]\s*/, '');
+      if (clean) overview += (overview ? ' ' : '') + clean;
       continue;
     }
 
     if (currentSection === 'revision') {
-      revisionStrategy += (revisionStrategy ? ' ' : '') + trimmed.replace(/^[-•*]\s*/, '');
+      const clean = trimmed.replace(/^[-•*]\s*/, '');
+      if (clean) revisionStrategy += (revisionStrategy ? ' ' : '') + clean;
       continue;
     }
 
     if (currentSection === 'tips') {
-      if (trimmed.startsWith('-') || trimmed.startsWith('•') || trimmed.startsWith('*') || trimmed.match(/^\d+\./)) {
-        tips.push(trimmed.replace(/^[-•*\d.]\s*/, ''));
+      if (trimmed.startsWith('-') || trimmed.startsWith('•') || trimmed.startsWith('*') || trimmed.match(/^\d+[.)]/)) {
+        const tipText = trimmed.replace(/^[-•*\d.)]\s*/, '').trim();
+        if (tipText) tips.push(tipText);
+      } else if (trimmed.length > 5 && !trimmed.match(/^(TIPS|Study Tips)/i)) {
+        tips.push(trimmed);
       }
       continue;
     }
 
     if (currentDay && currentSection === 'day') {
-      if (trimmed.toLowerCase().startsWith('tip:')) {
-        currentDay.tip = trimmed.replace(/^tip:\s*/i, '');
+      if (trimmed.toLowerCase().startsWith('tip:') || trimmed.toLowerCase().startsWith('daily tip:')) {
+        currentDay.tip = trimmed.replace(/^(daily )?tip:\s*/i, '');
         continue;
       }
 
-      const sessionMatch = trimmed.match(/^[-•*]\s*(.+)/);
+      const sessionMatch = trimmed.match(/^[-•*\d.)]\s*(.+)/);
       if (sessionMatch) {
         const sessionText = sessionMatch[1];
-        const parts = sessionText.split(/[|–—:,]/).map(p => p.trim()).filter(Boolean);
+        const parts = sessionText.split(/[|–—]/).map(p => p.trim()).filter(Boolean);
 
-        let subject = parts[0] || 'Study';
-        let chapter = parts[1] || '';
+        let subject = stripMarkdown(parts[0] || 'Study');
+        let chapter = stripMarkdown(parts[1] || '');
         let duration = '';
         let activity = '';
         let priority: 'high' | 'medium' | 'low' = 'medium';
 
         for (const part of parts) {
-          if (part.match(/\d+\s*(hr|hour|min|minute)/i)) duration = part;
-          if (part.match(/(revise|practice|solve|read|learn|review|memorize|write|test)/i)) activity = part;
-          if (part.match(/(high|important|critical)/i)) priority = 'high';
-          if (part.match(/(low|light|easy)/i)) priority = 'low';
+          const cleanPart = stripMarkdown(part);
+          if (cleanPart.match(/\d+\s*(hr|hour|min|minute)/i)) duration = cleanPart;
+          if (cleanPart.match(/(revise|practice|solve|read|learn|review|memorize|write|test)/i)) activity = cleanPart;
+          if (cleanPart.match(/(high|important|critical)/i)) priority = 'high';
+          if (cleanPart.match(/(low|light|easy)/i)) priority = 'low';
         }
 
         if (!duration) duration = '1-2 hrs';
@@ -150,7 +178,7 @@ function parseTimetable(text: string): GeneratedTimetable {
   if (currentDay) dailyPlans.push(currentDay);
 
   if (dailyPlans.length === 0) {
-    const textLines = text.split('\n').filter(l => l.trim());
+    const textLines = cleaned.split('\n').filter(l => l.trim());
     let dayNum = 1;
     let currentSessions: SessionPlan[] = [];
 
@@ -158,7 +186,7 @@ function parseTimetable(text: string): GeneratedTimetable {
       const t = line.trim();
       if (t.startsWith('-') || t.startsWith('•') || t.startsWith('*')) {
         currentSessions.push({
-          subject: t.replace(/^[-•*]\s*/, ''),
+          subject: stripMarkdown(t.replace(/^[-•*]\s*/, '')),
           chapter: '',
           duration: '1-2 hrs',
           activity: 'Study',
@@ -189,11 +217,11 @@ function parseTimetable(text: string): GeneratedTimetable {
   }
 
   return {
-    title,
-    overview: overview || 'A personalized study plan tailored to your exam schedule.',
+    title: stripMarkdown(title),
+    overview: stripMarkdown(overview) || 'A personalized study plan tailored to your exam schedule.',
     dailyPlans,
-    revisionStrategy: revisionStrategy || 'Dedicate the last 20% of your preparation time for revision and practice tests.',
-    tips: tips.length > 0 ? tips : [
+    revisionStrategy: stripMarkdown(revisionStrategy) || 'Dedicate the last 20% of your preparation time for revision and practice tests.',
+    tips: tips.length > 0 ? tips.map(t => stripMarkdown(t)) : [
       'Start with difficult subjects when your energy is highest',
       'Take 10-minute breaks every 45 minutes',
       'Use active recall instead of passive reading',
@@ -213,7 +241,7 @@ export default function TimetableScreen() {
   const [daysLeft, setDaysLeft] = useState('');
   const [hoursPerDay, setHoursPerDay] = useState(4);
   const [timetable, setTimetable] = useState<GeneratedTimetable | null>(null);
-  const [rawText, setRawText] = useState('');
+
   const [expandedDay, setExpandedDay] = useState<number | null>(null);
   const [showSubjectPicker, setShowSubjectPicker] = useState(false);
 
@@ -308,7 +336,7 @@ TIPS
       return response;
     },
     onSuccess: (response) => {
-      setRawText(response);
+
       const parsed = parseTimetable(response);
       setTimetable(parsed);
       setExpandedDay(1);
@@ -340,7 +368,7 @@ TIPS
 
   const handleReset = useCallback(() => {
     setTimetable(null);
-    setRawText('');
+
     setExpandedDay(null);
   }, []);
 
@@ -703,12 +731,7 @@ TIPS
               </View>
             )}
 
-            {rawText ? (
-              <View style={[styles.rawCard, { backgroundColor: isDark ? '#0d1a2d' : '#ffffff', borderColor: isDark ? '#152a45' : '#e2e8f0' }]}>
-                <Text style={[styles.rawTitle, { color: colors.textSecondary }]}>Full AI Response</Text>
-                <Text style={[styles.rawText, { color: colors.text }]} selectable>{rawText}</Text>
-              </View>
-            ) : null}
+
           </Animated.View>
         )}
       </ScrollView>
@@ -1154,18 +1177,5 @@ const styles = StyleSheet.create({
     lineHeight: 19,
     fontWeight: '500' as const,
   },
-  rawCard: {
-    borderRadius: 18,
-    padding: 18,
-    borderWidth: 1,
-  },
-  rawTitle: {
-    fontSize: 14,
-    fontWeight: '700' as const,
-    marginBottom: 10,
-  },
-  rawText: {
-    fontSize: 13,
-    lineHeight: 20,
-  },
+
 });
