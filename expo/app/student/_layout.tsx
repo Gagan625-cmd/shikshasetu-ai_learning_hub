@@ -18,6 +18,7 @@ export default function StudentLayout() {
       <Stack.Screen name="comic-learn" />
       <Stack.Screen name="about" />
       <Stack.Screen name="messages" />
+      <Stack.Screen name="flashcards" />
     </Stack>
   );
 }

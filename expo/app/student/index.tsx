@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { BookOpen, BrainCircuit, MessageSquare, Settings, FileText, LogOut, TrendingUp, MessageCircle, Info, ScanText, Target, Video, Bell, Link2, Palette, Zap, Star, Crown, Shield, Award, Trophy, Gamepad2, Moon, Sun, ChevronRight, Quote, Mail, Sparkles, Key } from 'lucide-react-native';
+import { BookOpen, BrainCircuit, MessageSquare, Settings, FileText, LogOut, TrendingUp, MessageCircle, Info, ScanText, Target, Video, Bell, Link2, Palette, Zap, Star, Crown, Shield, Award, Trophy, Gamepad2, Moon, Sun, ChevronRight, Quote, Mail, Sparkles, Key, Layers } from 'lucide-react-native';
 import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Platform, Modal, TextInput, Alert, Animated } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useApp } from '@/contexts/app-context';
@@ -499,6 +499,7 @@ export default function StudentDashboard() {
     { id: 'content', title: 'NCERT Content', description: 'Browse chapters from Grade 6-10', icon: BookOpen, color: '#3b82f6', route: '/student/content' },
     { id: 'icse-content', title: 'ICSE Content', description: 'Physics, Chemistry, Biology & Maths', icon: BookOpen, color: '#059669', route: '/student/icse-content' },
     { id: 'generate', title: 'AI Content Generator', description: 'Generate notes, summaries & worksheets', icon: BrainCircuit, color: '#8b5cf6', route: '/student/generate' },
+    { id: 'flashcards', title: 'AI Flashcards', description: 'Premium interactive flashcards for all chapters', icon: Layers, color: '#f59e0b', route: '/student/flashcards' },
     { id: 'quiz', title: 'AI Quiz', description: 'Practice with AI-generated quizzes', icon: FileText, color: '#10b981', route: '/student/quiz' },
     { id: 'interview', title: 'Interview Practice', description: 'Personalized AI interview session', icon: MessageSquare, color: '#f59e0b', route: '/student/interview' },
     { id: 'performance', title: 'Performance', description: 'View your progress and achievements', icon: TrendingUp, color: '#ec4899', route: '/student/performance' },
