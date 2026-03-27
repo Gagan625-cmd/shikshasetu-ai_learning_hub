@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { ChevronLeft, Sparkles, Loader2, Crown, Share2, PenTool, BookOpen, Highlighter } from 'lucide-react-native';
+import { ChevronLeft, Sparkles, Loader2, Crown, Share2, PenTool, BookOpen, Highlighter, ArrowLeft, ArrowRight } from 'lucide-react-native';
 import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Platform, Animated, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
@@ -34,44 +34,38 @@ interface NoteSection {
   colorIndex: number;
 }
 
-const HandwrittenNoteCard = ({ section, index }: { section: NoteSection; index: number }) => {
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(40)).current;
+const BookPageContent = ({ section, pageNum, totalPages }: { section: NoteSection; pageNum: number; totalPages: number }) => {
   const colorScheme = NOTE_COLORS[section.colorIndex % NOTE_COLORS.length];
 
-  useEffect(() => {
-    const delay = Math.min(index * 100, 600);
-    const timer = setTimeout(() => {
-      Animated.parallel([
-        Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver: true }),
-        Animated.spring(slideAnim, { toValue: 0, friction: 8, useNativeDriver: true }),
-      ]).start();
-    }, delay);
-    return () => clearTimeout(timer);
-  }, [fadeAnim, slideAnim, index]);
-
-  const rotation = index % 2 === 0 ? '-0.8deg' : '0.6deg';
-
   return (
-    <Animated.View style={[noteCardStyles.wrapper, { opacity: fadeAnim, transform: [{ translateY: slideAnim }, { rotate: rotation }] }]}>
-      <View style={[noteCardStyles.card, { backgroundColor: colorScheme.bg, borderColor: colorScheme.border }]}>
-        <View style={[noteCardStyles.topTape, { backgroundColor: colorScheme.highlight }]} />
+    <View style={[bookStyles.page, { backgroundColor: colorScheme.bg, borderColor: colorScheme.border }]}>
+      <View style={[bookStyles.pageSpine, { backgroundColor: colorScheme.accent + '15' }]} />
+      <View style={[bookStyles.marginLine, { borderLeftColor: colorScheme.accent + '30' }]} />
 
-        <View style={[noteCardStyles.marginLine, { borderLeftColor: colorScheme.accent + '40' }]} />
+      <View style={bookStyles.ruledLines}>
+        {Array.from({ length: 20 }).map((_, i) => (
+          <View key={i} style={[bookStyles.ruledLine, { borderBottomColor: colorScheme.accent + '10' }]} />
+        ))}
+      </View>
 
+      <View style={bookStyles.pageInner}>
         {section.title ? (
-          <View style={noteCardStyles.titleArea}>
-            <View style={[noteCardStyles.titleUnderline, { backgroundColor: colorScheme.accent + '30' }]}>
-              <Text style={[noteCardStyles.title, { color: colorScheme.title }]}>{section.title}</Text>
+          <View style={bookStyles.pageTitleArea}>
+            <View style={[bookStyles.pageTitleBg, { backgroundColor: colorScheme.accent + '18' }]}>
+              <Text style={[bookStyles.pageTitle, { color: colorScheme.title }]}>{section.title}</Text>
             </View>
-            <View style={[noteCardStyles.titleDot, { backgroundColor: colorScheme.accent }]} />
+            <View style={[bookStyles.pageTitleLine, { backgroundColor: colorScheme.accent + '40' }]} />
           </View>
         ) : null}
 
-        <View style={noteCardStyles.contentArea}>
+        <ScrollView
+          style={bookStyles.pageContentScroll}
+          showsVerticalScrollIndicator={false}
+          nestedScrollEnabled
+        >
           {section.content.split('\n').map((line, lineIdx) => {
             const trimmed = line.trim();
-            if (!trimmed) return <View key={lineIdx} style={noteCardStyles.emptyLine} />;
+            if (!trimmed) return <View key={lineIdx} style={bookStyles.emptyLine} />;
 
             const isImportant = trimmed.startsWith('*') || trimmed.startsWith('!') || trimmed.includes('IMPORTANT') || trimmed.includes('Remember');
             const isBullet = trimmed.startsWith('-') || trimmed.startsWith('•') || trimmed.startsWith('→');
@@ -79,9 +73,9 @@ const HandwrittenNoteCard = ({ section, index }: { section: NoteSection; index: 
 
             if (isImportant) {
               return (
-                <View key={lineIdx} style={[noteCardStyles.importantLine, { backgroundColor: colorScheme.highlight, borderLeftColor: colorScheme.accent }]}>
-                  <Highlighter size={12} color={colorScheme.accent} />
-                  <Text style={[noteCardStyles.importantText, { color: colorScheme.accent }]}>
+                <View key={lineIdx} style={[bookStyles.importantLine, { backgroundColor: colorScheme.highlight, borderLeftColor: colorScheme.accent }]}>
+                  <Highlighter size={11} color={colorScheme.accent} />
+                  <Text style={[bookStyles.importantText, { color: colorScheme.accent }]}>
                     {trimmed.replace(/^\*\s*|^!\s*/, '')}
                   </Text>
                 </View>
@@ -90,17 +84,17 @@ const HandwrittenNoteCard = ({ section, index }: { section: NoteSection; index: 
 
             if (isFormula) {
               return (
-                <View key={lineIdx} style={[noteCardStyles.formulaLine, { backgroundColor: colorScheme.accent + '10', borderColor: colorScheme.accent + '25' }]}>
-                  <Text style={[noteCardStyles.formulaText, { color: colorScheme.accent }]}>{trimmed}</Text>
+                <View key={lineIdx} style={[bookStyles.formulaLine, { backgroundColor: colorScheme.accent + '10', borderColor: colorScheme.accent + '25' }]}>
+                  <Text style={[bookStyles.formulaText, { color: colorScheme.accent }]}>{trimmed}</Text>
                 </View>
               );
             }
 
             if (isBullet) {
               return (
-                <View key={lineIdx} style={noteCardStyles.bulletLine}>
-                  <View style={[noteCardStyles.bulletDot, { backgroundColor: colorScheme.accent }]} />
-                  <Text style={[noteCardStyles.bulletText, { color: colorScheme.text }]}>
+                <View key={lineIdx} style={bookStyles.bulletLine}>
+                  <View style={[bookStyles.bulletDot, { backgroundColor: colorScheme.accent }]} />
+                  <Text style={[bookStyles.bulletText, { color: colorScheme.text }]}>
                     {trimmed.replace(/^[-•→]\s*/, '')}
                   </Text>
                 </View>
@@ -108,134 +102,499 @@ const HandwrittenNoteCard = ({ section, index }: { section: NoteSection; index: 
             }
 
             return (
-              <Text key={lineIdx} style={[noteCardStyles.contentText, { color: colorScheme.text }]}>
+              <Text key={lineIdx} style={[bookStyles.contentText, { color: colorScheme.text }]}>
                 {trimmed}
               </Text>
             );
           })}
+        </ScrollView>
+      </View>
+
+      <View style={bookStyles.pageFooter}>
+        <View style={[bookStyles.pageNumCircle, { backgroundColor: colorScheme.accent + '15', borderColor: colorScheme.accent + '30' }]}>
+          <Text style={[bookStyles.pageNum, { color: colorScheme.accent }]}>{pageNum}</Text>
+        </View>
+        <Text style={[bookStyles.pageTotal, { color: colorScheme.accent + '60' }]}>of {totalPages}</Text>
+      </View>
+
+      <View style={[bookStyles.cornerFold, { borderTopColor: colorScheme.border, borderRightColor: colorScheme.bg }]} />
+    </View>
+  );
+};
+
+const BookViewer = ({ sections, subjectName, board, grade, isDark, colors, onReset, onExport }: {
+  sections: NoteSection[];
+  subjectName: string;
+  board: string;
+  grade: number;
+  isDark: boolean;
+  colors: any;
+  onReset: () => void;
+  onExport: () => void;
+}) => {
+  const [currentPage, setCurrentPage] = useState(0);
+  const flipAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const fadeInAnim = useRef(new Animated.Value(0)).current;
+  const [isFlipping, setIsFlipping] = useState(false);
+
+  useEffect(() => {
+    Animated.timing(fadeInAnim, { toValue: 1, duration: 500, useNativeDriver: true }).start();
+  }, [fadeInAnim]);
+
+  const flipToPage = useCallback((nextPage: number) => {
+    if (isFlipping || nextPage < 0 || nextPage >= sections.length) return;
+    setIsFlipping(true);
+
+    if (Platform.OS !== 'web') {
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+
+    Animated.sequence([
+      Animated.parallel([
+        Animated.timing(flipAnim, {
+          toValue: nextPage > currentPage ? 1 : -1,
+          duration: 250,
+          useNativeDriver: true,
+        }),
+        Animated.timing(scaleAnim, {
+          toValue: 0.92,
+          duration: 250,
+          useNativeDriver: true,
+        }),
+      ]),
+      Animated.timing(flipAnim, {
+        toValue: 0,
+        duration: 0,
+        useNativeDriver: true,
+      }),
+      Animated.parallel([
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          friction: 8,
+          tension: 60,
+          useNativeDriver: true,
+        }),
+      ]),
+    ]).start(() => {
+      setIsFlipping(false);
+    });
+
+    setTimeout(() => {
+      setCurrentPage(nextPage);
+    }, 200);
+  }, [currentPage, sections.length, isFlipping, flipAnim, scaleAnim]);
+
+  const goNext = useCallback(() => {
+    flipToPage(currentPage + 1);
+  }, [currentPage, flipToPage]);
+
+  const goPrev = useCallback(() => {
+    flipToPage(currentPage - 1);
+  }, [currentPage, flipToPage]);
+
+  const translateX = flipAnim.interpolate({
+    inputRange: [-1, 0, 1],
+    outputRange: [40, 0, -40],
+  });
+
+  const currentSection = sections[currentPage];
+  const colorScheme = NOTE_COLORS[currentSection.colorIndex % NOTE_COLORS.length];
+  const progress = ((currentPage + 1) / sections.length) * 100;
+
+  return (
+    <Animated.View style={[bookStyles.bookContainer, { opacity: fadeInAnim }]}>
+      <LinearGradient
+        colors={['#4a0e2b', '#7b1141', '#a01751']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={bookStyles.bookHeader}
+      >
+        <View style={bookStyles.bookHeaderDecor} />
+        <View style={bookStyles.bookHeaderRow}>
+          <View style={bookStyles.bookIconBg}>
+            <BookOpen size={20} color="#ffffff" />
+          </View>
+          <View style={bookStyles.bookHeaderTextArea}>
+            <Text style={bookStyles.bookTitle}>{subjectName} Notes</Text>
+            <Text style={bookStyles.bookSubtitle}>{board} Class {grade} - All Chapters</Text>
+          </View>
+          <TouchableOpacity onPress={onExport} style={bookStyles.exportBtn}>
+            <Share2 size={18} color="#fda4af" />
+          </TouchableOpacity>
         </View>
 
-        <View style={[noteCardStyles.cornerFold, { borderTopColor: colorScheme.border }]} />
+        <View style={bookStyles.progressArea}>
+          <View style={bookStyles.progressBarBg}>
+            <View style={[bookStyles.progressBarFill, { width: `${progress}%` as any }]} />
+          </View>
+          <Text style={bookStyles.progressText}>Page {currentPage + 1} of {sections.length}</Text>
+        </View>
+      </LinearGradient>
+
+      <View style={bookStyles.bookBody}>
+        <View style={[bookStyles.bookShadowLeft, { backgroundColor: colorScheme.accent + '08' }]} />
+        <View style={[bookStyles.bookShadowRight, { backgroundColor: colorScheme.accent + '08' }]} />
+
+        <Animated.View
+          style={[
+            bookStyles.pageWrapper,
+            {
+              transform: [
+                { translateX },
+                { scale: scaleAnim },
+                { perspective: 1000 },
+              ],
+            },
+          ]}
+        >
+          <BookPageContent
+            section={currentSection}
+            pageNum={currentPage + 1}
+            totalPages={sections.length}
+          />
+        </Animated.View>
+
+        <View style={bookStyles.tapZones}>
+          <TouchableOpacity
+            style={bookStyles.tapZoneLeft}
+            onPress={goPrev}
+            disabled={currentPage === 0 || isFlipping}
+            activeOpacity={0.6}
+          >
+            {currentPage > 0 && (
+              <View style={[bookStyles.tapHint, bookStyles.tapHintLeft, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)' }]}>
+                <ArrowLeft size={16} color={isDark ? '#94a3b8' : '#64748b'} />
+              </View>
+            )}
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={bookStyles.tapZoneRight}
+            onPress={goNext}
+            disabled={currentPage === sections.length - 1 || isFlipping}
+            activeOpacity={0.6}
+          >
+            {currentPage < sections.length - 1 && (
+              <View style={[bookStyles.tapHint, bookStyles.tapHintRight, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)' }]}>
+                <ArrowRight size={16} color={isDark ? '#94a3b8' : '#64748b'} />
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
       </View>
+
+      <View style={bookStyles.navBar}>
+        <TouchableOpacity
+          style={[
+            bookStyles.navBtn,
+            { backgroundColor: isDark ? '#1e293b' : '#f1f5f9', borderColor: isDark ? '#334155' : '#e2e8f0' },
+            currentPage === 0 && bookStyles.navBtnDisabled,
+          ]}
+          onPress={goPrev}
+          disabled={currentPage === 0 || isFlipping}
+        >
+          <ArrowLeft size={18} color={currentPage === 0 ? '#94a3b8' : colorScheme.accent} />
+          <Text style={[bookStyles.navBtnText, { color: currentPage === 0 ? '#94a3b8' : colorScheme.accent }]}>Prev</Text>
+        </TouchableOpacity>
+
+        <View style={bookStyles.pageIndicators}>
+          {sections.length <= 12 ? sections.map((_, idx) => (
+            <TouchableOpacity
+              key={idx}
+              onPress={() => flipToPage(idx)}
+              style={[
+                bookStyles.pageDot,
+                { backgroundColor: idx === currentPage ? colorScheme.accent : (isDark ? '#334155' : '#cbd5e1') },
+                idx === currentPage && bookStyles.pageDotActive,
+              ]}
+            />
+          )) : (
+            <Text style={[bookStyles.pageIndicatorText, { color: isDark ? '#94a3b8' : '#64748b' }]}>
+              {currentPage + 1} / {sections.length}
+            </Text>
+          )}
+        </View>
+
+        <TouchableOpacity
+          style={[
+            bookStyles.navBtn,
+            { backgroundColor: isDark ? '#1e293b' : '#f1f5f9', borderColor: isDark ? '#334155' : '#e2e8f0' },
+            currentPage === sections.length - 1 && bookStyles.navBtnDisabled,
+          ]}
+          onPress={goNext}
+          disabled={currentPage === sections.length - 1 || isFlipping}
+        >
+          <Text style={[bookStyles.navBtnText, { color: currentPage === sections.length - 1 ? '#94a3b8' : colorScheme.accent }]}>Next</Text>
+          <ArrowRight size={18} color={currentPage === sections.length - 1 ? '#94a3b8' : colorScheme.accent} />
+        </TouchableOpacity>
+      </View>
+
+      <View style={bookStyles.flipHint}>
+        <Text style={[bookStyles.flipHintText, { color: isDark ? '#64748b' : '#94a3b8' }]}>
+          Tap left/right side of page or use arrows to flip
+        </Text>
+      </View>
+
+      <TouchableOpacity
+        style={[bookStyles.resetButton, { borderColor: isDark ? '#334155' : '#e2e8f0' }]}
+        onPress={onReset}
+      >
+        <Text style={[bookStyles.resetText, { color: colors.textSecondary }]}>Generate Another</Text>
+      </TouchableOpacity>
     </Animated.View>
   );
 };
 
-const noteCardStyles = StyleSheet.create({
-  wrapper: {
-    marginBottom: 18,
-    paddingHorizontal: 4,
+const bookStyles = StyleSheet.create({
+  bookContainer: {
+    flex: 1,
   },
-  card: {
-    borderRadius: 4,
-    borderWidth: 1,
+  bookHeader: {
+    borderRadius: 20,
     padding: 20,
-    paddingLeft: 28,
+    marginBottom: 16,
+    overflow: 'hidden',
+    position: 'relative' as const,
+  },
+  bookHeaderDecor: {
+    position: 'absolute' as const,
+    top: -20,
+    right: -10,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+  },
+  bookHeaderRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 12,
+    marginBottom: 14,
+  },
+  bookIconBg: {
+    width: 42,
+    height: 42,
+    borderRadius: 13,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    justifyContent: 'center' as const,
+    alignItems: 'center' as const,
+  },
+  bookHeaderTextArea: {
+    flex: 1,
+  },
+  bookTitle: {
+    fontSize: 19,
+    fontWeight: '800' as const,
+    color: '#ffffff',
+    letterSpacing: -0.3,
+  },
+  bookSubtitle: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.55)',
+    marginTop: 2,
+    fontWeight: '500' as const,
+  },
+  exportBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    justifyContent: 'center' as const,
+    alignItems: 'center' as const,
+  },
+  progressArea: {
+    gap: 6,
+  },
+  progressBarBg: {
+    height: 4,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: '100%' as const,
+    backgroundColor: '#fda4af',
+    borderRadius: 2,
+  },
+  progressText: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.5)',
+    fontWeight: '600' as const,
+  },
+  bookBody: {
+    position: 'relative' as const,
+    minHeight: 420,
+  },
+  bookShadowLeft: {
+    position: 'absolute' as const,
+    left: 0,
+    top: 10,
+    bottom: 10,
+    width: 6,
+    borderTopLeftRadius: 2,
+    borderBottomLeftRadius: 2,
+  },
+  bookShadowRight: {
+    position: 'absolute' as const,
+    right: 0,
+    top: 10,
+    bottom: 10,
+    width: 6,
+    borderTopRightRadius: 2,
+    borderBottomRightRadius: 2,
+  },
+  pageWrapper: {
+    minHeight: 420,
+  },
+  page: {
+    borderRadius: 6,
+    borderWidth: 1,
+    minHeight: 420,
     position: 'relative' as const,
     overflow: 'hidden',
     ...Platform.select({
-      ios: { shadowColor: '#000', shadowOffset: { width: 2, height: 4 }, shadowOpacity: 0.12, shadowRadius: 8 },
-      android: { elevation: 4 },
-      web: { boxShadow: '2px 4px 12px rgba(0,0,0,0.12)' },
+      ios: { shadowColor: '#000', shadowOffset: { width: 3, height: 6 }, shadowOpacity: 0.15, shadowRadius: 12 },
+      android: { elevation: 6 },
+      web: { boxShadow: '3px 6px 20px rgba(0,0,0,0.15)' },
     }),
   },
-  topTape: {
+  pageSpine: {
     position: 'absolute' as const,
-    top: -2,
-    left: '30%' as unknown as number,
-    width: 80,
-    height: 24,
-    borderBottomLeftRadius: 2,
-    borderBottomRightRadius: 2,
-    opacity: 0.7,
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 14,
   },
   marginLine: {
     position: 'absolute' as const,
-    left: 20,
+    left: 24,
     top: 0,
     bottom: 0,
     borderLeftWidth: 2,
     borderStyle: 'dashed' as const,
   },
-  titleArea: {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    gap: 8,
+  ruledLines: {
+    position: 'absolute' as const,
+    left: 30,
+    right: 10,
+    top: 60,
+    bottom: 50,
+  },
+  ruledLine: {
+    height: 28,
+    borderBottomWidth: 1,
+  },
+  pageInner: {
+    flex: 1,
+    paddingTop: 16,
+    paddingBottom: 50,
+    paddingLeft: 34,
+    paddingRight: 16,
+    minHeight: 360,
+  },
+  pageTitleArea: {
     marginBottom: 14,
-    paddingLeft: 8,
   },
-  titleUnderline: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 4,
+  pageTitleBg: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    alignSelf: 'flex-start' as const,
   },
-  title: {
+  pageTitle: {
     fontSize: 17,
     fontWeight: '800' as const,
     letterSpacing: -0.2,
   },
-  titleDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+  pageTitleLine: {
+    height: 2,
+    marginTop: 6,
+    borderRadius: 1,
   },
-  contentArea: {
-    paddingLeft: 8,
-    gap: 6,
+  pageContentScroll: {
+    flex: 1,
+    maxHeight: 320,
   },
   emptyLine: {
-    height: 8,
+    height: 6,
   },
   contentText: {
-    fontSize: 14,
-    lineHeight: 23,
+    fontSize: 13.5,
+    lineHeight: 22,
     fontWeight: '400' as const,
+    marginBottom: 2,
   },
   importantLine: {
     flexDirection: 'row' as const,
     alignItems: 'flex-start' as const,
-    gap: 8,
-    padding: 10,
+    gap: 7,
+    padding: 9,
     borderRadius: 6,
     borderLeftWidth: 3,
     marginVertical: 4,
   },
   importantText: {
-    fontSize: 13,
+    fontSize: 12.5,
     fontWeight: '700' as const,
-    lineHeight: 21,
+    lineHeight: 20,
     flex: 1,
   },
   formulaLine: {
-    padding: 10,
+    padding: 9,
     borderRadius: 6,
     borderWidth: 1,
     marginVertical: 4,
     alignItems: 'center' as const,
   },
   formulaText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600' as const,
     fontStyle: 'italic' as const,
-    lineHeight: 22,
+    lineHeight: 20,
   },
   bulletLine: {
     flexDirection: 'row' as const,
     alignItems: 'flex-start' as const,
-    gap: 10,
-    paddingVertical: 2,
+    gap: 8,
+    paddingVertical: 1,
   },
   bulletDot: {
-    width: 6,
-    height: 6,
+    width: 5,
+    height: 5,
     borderRadius: 3,
-    marginTop: 8,
+    marginTop: 7,
   },
   bulletText: {
-    fontSize: 14,
-    lineHeight: 23,
+    fontSize: 13.5,
+    lineHeight: 22,
     flex: 1,
     fontWeight: '400' as const,
+  },
+  pageFooter: {
+    position: 'absolute' as const,
+    bottom: 12,
+    left: 0,
+    right: 0,
+    flexDirection: 'row' as const,
+    justifyContent: 'center' as const,
+    alignItems: 'center' as const,
+    gap: 6,
+  },
+  pageNumCircle: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 1,
+    justifyContent: 'center' as const,
+    alignItems: 'center' as const,
+  },
+  pageNum: {
+    fontSize: 12,
+    fontWeight: '700' as const,
+  },
+  pageTotal: {
+    fontSize: 11,
+    fontWeight: '500' as const,
   },
   cornerFold: {
     position: 'absolute' as const,
@@ -243,9 +602,107 @@ const noteCardStyles = StyleSheet.create({
     right: 0,
     width: 0,
     height: 0,
-    borderTopWidth: 20,
-    borderRightWidth: 20,
+    borderTopWidth: 24,
+    borderRightWidth: 24,
     borderRightColor: 'transparent',
+  },
+  tapZones: {
+    position: 'absolute' as const,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    flexDirection: 'row' as const,
+  },
+  tapZoneLeft: {
+    flex: 1,
+    justifyContent: 'center' as const,
+    alignItems: 'flex-start' as const,
+  },
+  tapZoneRight: {
+    flex: 1,
+    justifyContent: 'center' as const,
+    alignItems: 'flex-end' as const,
+  },
+  tapHint: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center' as const,
+    alignItems: 'center' as const,
+  },
+  tapHintLeft: {
+    marginLeft: 4,
+  },
+  tapHintRight: {
+    marginRight: 4,
+  },
+  navBar: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'space-between' as const,
+    marginTop: 16,
+    gap: 10,
+  },
+  navBtn: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 11,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  navBtnDisabled: {
+    opacity: 0.5,
+  },
+  navBtnText: {
+    fontSize: 13,
+    fontWeight: '600' as const,
+  },
+  pageIndicators: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 5,
+    flex: 1,
+    justifyContent: 'center' as const,
+    flexWrap: 'wrap' as const,
+  },
+  pageDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+  },
+  pageDotActive: {
+    width: 18,
+    height: 7,
+    borderRadius: 4,
+  },
+  pageIndicatorText: {
+    fontSize: 14,
+    fontWeight: '700' as const,
+  },
+  flipHint: {
+    alignItems: 'center' as const,
+    marginTop: 10,
+  },
+  flipHintText: {
+    fontSize: 11,
+    fontWeight: '500' as const,
+  },
+  resetButton: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    gap: 6,
+    paddingVertical: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    marginTop: 16,
+  },
+  resetText: {
+    fontSize: 14,
+    fontWeight: '600' as const,
   },
 });
 
@@ -428,6 +885,11 @@ Make this the ULTIMATE last-minute revision sheet that a student can read 1 hour
     setRawText('');
   }, []);
 
+  const handleReset = useCallback(() => {
+    setNoteSections([]);
+    setRawText('');
+  }, []);
+
   const canGenerate = !!selectedSubject;
 
   return (
@@ -443,13 +905,7 @@ Make this the ULTIMATE last-minute revision sheet that a student can read 1 hour
             <Text style={styles.premiumTagText}>PREMIUM</Text>
           </View>
         </View>
-        {noteSections.length > 0 ? (
-          <TouchableOpacity style={styles.backButton} onPress={handleExportPdf}>
-            <Share2 size={20} color="#e11d48" />
-          </TouchableOpacity>
-        ) : (
-          <View style={styles.backButton} />
-        )}
+        <View style={styles.backButton} />
       </View>
 
       <ScrollView
@@ -476,7 +932,7 @@ Make this the ULTIMATE last-minute revision sheet that a student can read 1 hour
                 </View>
                 <Text style={styles.heroTitle}>Handwritten Notes</Text>
                 <Text style={styles.heroSubtitle}>
-                  Colourful last-minute revision notes covering ALL chapters. Perfect for quick revision before exams.
+                  Colourful last-minute revision notes covering ALL chapters. Flip through pages like a real book!
                 </Text>
                 <View style={styles.heroFeatures}>
                   <View style={[styles.heroFeature, { backgroundColor: 'rgba(251,191,36,0.2)' }]}>
@@ -485,7 +941,7 @@ Make this the ULTIMATE last-minute revision sheet that a student can read 1 hour
                   </View>
                   <View style={[styles.heroFeature, { backgroundColor: 'rgba(52,211,153,0.2)' }]}>
                     <BookOpen size={12} color="#34d399" />
-                    <Text style={styles.heroFeatureText}>All Chapters</Text>
+                    <Text style={styles.heroFeatureText}>Book Style</Text>
                   </View>
                   <View style={[styles.heroFeature, { backgroundColor: 'rgba(244,63,94,0.2)' }]}>
                     <Highlighter size={12} color="#fb7185" />
@@ -606,51 +1062,16 @@ Make this the ULTIMATE last-minute revision sheet that a student can read 1 hour
         )}
 
         {noteSections.length > 0 && (
-          <View style={styles.resultSection}>
-            <LinearGradient
-              colors={['#4a0e2b', '#7b1141', '#a01751']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.resultHeader}
-            >
-              <View style={styles.resultHeaderDecor} />
-              <View style={styles.resultHeaderContent}>
-                <View style={styles.resultIconBg}>
-                  <PenTool size={22} color="#ffffff" />
-                </View>
-                <View style={styles.resultHeaderText}>
-                  <Text style={styles.resultTitle}>{selectedSubjectData?.name} Notes</Text>
-                  <Text style={styles.resultSubtitle}>{selectedBoard} Class {selectedGrade} - All Chapters</Text>
-                </View>
-              </View>
-              <View style={styles.resultTags}>
-                <View style={styles.resultBadge}>
-                  <Text style={styles.resultBadgeText}>{noteSections.length} sections</Text>
-                </View>
-                <View style={[styles.resultBadge, { backgroundColor: 'rgba(251,191,36,0.2)' }]}>
-                  <Text style={[styles.resultBadgeText, { color: '#fbbf24' }]}>Last Minute</Text>
-                </View>
-              </View>
-            </LinearGradient>
-
-            {noteSections.map((section, idx) => (
-              <HandwrittenNoteCard
-                key={idx}
-                section={section}
-                index={idx}
-              />
-            ))}
-
-            <TouchableOpacity
-              style={[styles.resetButton, { borderColor: isDark ? '#334155' : '#e2e8f0' }]}
-              onPress={() => {
-                setNoteSections([]);
-                setRawText('');
-              }}
-            >
-              <Text style={[styles.resetText, { color: colors.textSecondary }]}>Generate Another</Text>
-            </TouchableOpacity>
-          </View>
+          <BookViewer
+            sections={noteSections}
+            subjectName={selectedSubjectData?.name || ''}
+            board={selectedBoard}
+            grade={selectedGrade}
+            isDark={isDark}
+            colors={colors}
+            onReset={handleReset}
+            onExport={handleExportPdf}
+          />
         )}
       </ScrollView>
     </View>
@@ -906,83 +1327,5 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: 14,
     color: '#b91c1c',
-  },
-  resultSection: {
-    gap: 0,
-  },
-  resultHeader: {
-    borderRadius: 20,
-    padding: 22,
-    marginBottom: 18,
-    overflow: 'hidden',
-    position: 'relative' as const,
-  },
-  resultHeaderDecor: {
-    position: 'absolute' as const,
-    top: -20,
-    right: -10,
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: 'rgba(255,255,255,0.06)',
-  },
-  resultHeaderContent: {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    gap: 14,
-    marginBottom: 12,
-  },
-  resultIconBg: {
-    width: 46,
-    height: 46,
-    borderRadius: 14,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    justifyContent: 'center' as const,
-    alignItems: 'center' as const,
-  },
-  resultHeaderText: {
-    flex: 1,
-  },
-  resultTitle: {
-    fontSize: 20,
-    fontWeight: '800' as const,
-    color: '#ffffff',
-    letterSpacing: -0.3,
-  },
-  resultSubtitle: {
-    fontSize: 13,
-    color: 'rgba(255,255,255,0.6)',
-    marginTop: 2,
-    fontWeight: '500' as const,
-  },
-  resultTags: {
-    flexDirection: 'row' as const,
-    gap: 8,
-  },
-  resultBadge: {
-    alignSelf: 'flex-start' as const,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 10,
-  },
-  resultBadgeText: {
-    fontSize: 11,
-    fontWeight: '700' as const,
-    color: 'rgba(255,255,255,0.8)',
-  },
-  resetButton: {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-    gap: 6,
-    paddingVertical: 14,
-    borderRadius: 14,
-    borderWidth: 1,
-    marginTop: 10,
-  },
-  resetText: {
-    fontSize: 14,
-    fontWeight: '600' as const,
   },
 });
