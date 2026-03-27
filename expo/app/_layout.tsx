@@ -9,6 +9,7 @@ import { SubscriptionProvider, useSubscription } from "@/contexts/subscription-c
 import { ThemeProvider } from "@/contexts/theme-context";
 import { MessagingProvider } from "@/contexts/messaging-context";
 import { trpc, trpcClient } from "@/lib/trpc";
+import BreakReminder from "@/components/BreakReminder";
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 void SplashScreen.preventAutoHideAsync();
@@ -54,6 +55,7 @@ export default function RootLayout() {
                   <XPRewardBridge>
                     <GestureHandlerRootView style={{ flex: 1 }}>
                       <RootLayoutNav />
+                      <BreakReminder />
                     </GestureHandlerRootView>
                   </XPRewardBridge>
                 </MessagingProvider>
