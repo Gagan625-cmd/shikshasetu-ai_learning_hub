@@ -20,6 +20,8 @@ export default function StudentLayout() {
       <Stack.Screen name="messages" />
       <Stack.Screen name="flashcards" />
       <Stack.Screen name="timetable" />
+      <Stack.Screen name="formula-sheet" />
+      <Stack.Screen name="handwritten-notes" />
     </Stack>
   );
 }
