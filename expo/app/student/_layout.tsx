@@ -22,6 +22,9 @@ export default function StudentLayout() {
       <Stack.Screen name="timetable" />
       <Stack.Screen name="formula-sheet" />
       <Stack.Screen name="handwritten-notes" />
+      <Stack.Screen name="quick-revision" />
+      <Stack.Screen name="weak-topics" />
+      <Stack.Screen name="study-rooms" />
     </Stack>
   );
 }

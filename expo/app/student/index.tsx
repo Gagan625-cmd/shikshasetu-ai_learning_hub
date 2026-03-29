@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { BookOpen, BrainCircuit, MessageSquare, Settings, FileText, LogOut, TrendingUp, MessageCircle, Info, ScanText, Target, Video, Bell, Link2, Palette, Zap, Star, Crown, Shield, Award, Trophy, Gamepad2, Moon, Sun, ChevronRight, Quote, Mail, Sparkles, Key, Layers, CalendarClock, Calculator, PenTool } from 'lucide-react-native';
+import { BookOpen, BrainCircuit, MessageSquare, Settings, FileText, LogOut, TrendingUp, MessageCircle, Info, ScanText, Target, Video, Bell, Link2, Palette, Zap, Star, Crown, Shield, Award, Trophy, Gamepad2, Moon, Sun, ChevronRight, Quote, Mail, Sparkles, Key, Layers, CalendarClock, Calculator, PenTool, Users, AlertTriangle } from 'lucide-react-native';
 import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Platform, Modal, TextInput, Alert, Animated } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useApp } from '@/contexts/app-context';
@@ -501,6 +501,9 @@ export default function StudentDashboard() {
     { id: 'generate', title: 'AI Content Generator', description: 'Generate notes, summaries & worksheets', icon: BrainCircuit, color: '#8b5cf6', route: '/student/generate' },
     { id: 'flashcards', title: 'AI Flashcards', description: 'Premium interactive flashcards for all chapters', icon: Layers, color: '#f59e0b', route: '/student/flashcards' },
     { id: 'quiz', title: 'AI Quiz', description: 'Practice with AI-generated quizzes', icon: FileText, color: '#10b981', route: '/student/quiz' },
+    { id: 'quick-revision', title: 'Quick Revision', description: '5-min before exam swipeable cards', icon: Zap, color: '#ef4444', route: '/student/quick-revision' },
+    { id: 'weak-topics', title: 'Weak Topic Finder', description: 'AI detects weak areas & builds plan', icon: AlertTriangle, color: '#f59e0b', route: '/student/weak-topics' },
+    { id: 'study-rooms', title: 'Study Rooms', description: 'Collaborate, share notes & quiz friends', icon: Users, color: '#6366f1', route: '/student/study-rooms' },
     { id: 'interview', title: 'Interview Practice', description: 'Personalized AI interview session', icon: MessageSquare, color: '#f59e0b', route: '/student/interview' },
     { id: 'performance', title: 'Performance', description: 'View your progress and achievements', icon: TrendingUp, color: '#ec4899', route: '/student/performance' },
     { id: 'exam-scanner', title: 'AI Exam Scanner', description: 'Scan & grade your exam papers', icon: ScanText, color: '#06b6d4', route: '/student/exam-scanner' },
