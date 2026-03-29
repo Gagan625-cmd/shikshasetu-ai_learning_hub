@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useTheme } from '@/contexts/theme-context';
 import { useMutation } from '@tanstack/react-query';
-import { generateText } from '@rork-ai/toolkit-sdk';
+import { robustGenerateText } from '@/lib/ai-generate';
 import { LinearGradient } from 'expo-linear-gradient';
 import { NCERT_SUBJECTS } from '@/constants/ncert-data';
 import { ICSE_SUBJECTS } from '@/constants/icse-data';
@@ -330,7 +330,7 @@ TIPS
 - Tip 4
 - Tip 5`;
 
-      const response = await generateText({
+      const response = await robustGenerateText({
         messages: [{ role: 'user', content: prompt }],
       });
       return response;

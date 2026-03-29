@@ -7,7 +7,7 @@ import { useTheme } from '@/contexts/theme-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { generateObject } from '@rork-ai/toolkit-sdk';
+import { robustGenerateObject } from '@/lib/ai-generate';
 import * as ImagePicker from 'expo-image-picker';
 import { z } from 'zod';
 
@@ -171,7 +171,7 @@ For partial answers, give partial marks. Consider the board exam marking scheme 
 
 Analyze ALL visible questions and answers.`;
 
-      const response = await generateObject({
+      const response = await robustGenerateObject({
         messages: [{
           role: 'user',
           content: [

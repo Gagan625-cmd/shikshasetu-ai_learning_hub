@@ -6,7 +6,7 @@ import { useState } from 'react';
 import { useApp } from '@/contexts/app-context';
 import { useTheme } from '@/contexts/theme-context';
 import { useMutation } from '@tanstack/react-query';
-import { generateObject } from '@rork-ai/toolkit-sdk';
+import { robustGenerateObject } from '@/lib/ai-generate';
 import { z } from 'zod';
 import { NCERT_SUBJECTS } from '@/constants/ncert-data';
 import { ICSE_SUBJECTS } from '@/constants/icse-data';
@@ -95,7 +95,7 @@ Make questions:
 
 Provide detailed explanations showing the reasoning process.`;
 
-      const result = await generateObject({
+      const result = await robustGenerateObject({
         messages: [{ role: 'user', content: prompt }],
         schema: QuizSchema,
       });
@@ -339,8 +339,20 @@ Provide detailed explanations showing the reasoning process.`;
                       disabled={showResults}
                     >
                       <View style={styles.optionContent}>
-                        <Text style={[styles.optionLetter, { color: colors.textSecondary }]}>{String.fromCharCode(65 + index)}</Text>
-                        <Text style={[styles.optionText2, { color: colors.text }]}>{option}</Text>
+                        <Text style={[
+                          styles.optionLetter,
+                          { color: colors.textSecondary },
+                          isSelected && !showCorrectness && { color: '#1e40af', backgroundColor: '#bfdbfe' },
+                          showCorrectness && isCorrect && { color: '#065f46', backgroundColor: '#a7f3d0' },
+                          showCorrectness && isSelected && !isCorrect && { color: '#991b1b', backgroundColor: '#fecaca' },
+                        ]}>{String.fromCharCode(65 + index)}</Text>
+                        <Text style={[
+                          styles.optionText2,
+                          { color: colors.text },
+                          isSelected && !showCorrectness && { color: '#1e3a5f' },
+                          showCorrectness && isCorrect && { color: '#065f46' },
+                          showCorrectness && isSelected && !isCorrect && { color: '#991b1b' },
+                        ]}>{option}</Text>
                       </View>
                       {showCorrectness && isSelected && isCorrect && (
                         <CheckCircle size={20} color="#10b981" />

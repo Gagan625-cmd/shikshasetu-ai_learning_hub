@@ -14,7 +14,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChevronDown, Sparkles, BookOpen, Zap, RefreshCw } from 'lucide-react-native';
 import { useMutation } from '@tanstack/react-query';
-import { generateText } from '@rork-ai/toolkit-sdk';
+import { robustGenerateText } from '@/lib/ai-generate';
 import { NCERT_SUBJECTS } from '@/constants/ncert-data';
 import { ICSE_SUBJECTS } from '@/constants/icse-data';
 import { useTheme } from '@/contexts/theme-context';
@@ -160,7 +160,7 @@ Grade: ${selectedGrade}
 
 Make it the BEST comic lesson ever - students should laugh, learn deeply, and remember everything!`;
 
-      const response = await generateText({ messages: [{ role: 'user', content: prompt }] });
+      const response = await robustGenerateText({ messages: [{ role: 'user', content: prompt }] });
       
       const jsonMatch = response.match(/\[[\s\S]*\]/);
       if (!jsonMatch) throw new Error('Failed to parse comic panels');

@@ -6,7 +6,7 @@ import { useState } from 'react';
 import { useApp } from '@/contexts/app-context';
 import { useTheme } from '@/contexts/theme-context';
 import { useMutation } from '@tanstack/react-query';
-import { generateObject } from '@rork-ai/toolkit-sdk';
+import { robustGenerateObject } from '@/lib/ai-generate';
 import { z } from 'zod';
 import { NCERT_SUBJECTS } from '@/constants/ncert-data';
 import { ICSE_SUBJECTS } from '@/constants/icse-data';
@@ -80,7 +80,7 @@ correctAnswer should be the index (0-3) of the correct option.
 Include a detailed explanation for each answer to help teachers understand the concept.
 Make questions aligned with ${syllabus} exam pattern and difficulty level.`;
 
-      const result = await generateObject({
+      const result = await robustGenerateObject({
         messages: [{ role: 'user', content: prompt }],
         schema: QuizSchema,
       });

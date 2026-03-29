@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { useApp } from '@/contexts/app-context';
 import { useTheme } from '@/contexts/theme-context';
-import { generateText } from '@rork-ai/toolkit-sdk';
+import { robustGenerateText } from '@/lib/ai-generate';
 
 interface VoiceAssistantProps {
   visible: boolean;
@@ -146,7 +146,7 @@ export default function VoiceAssistant({ visible, onClose }: VoiceAssistantProps
       setTranscript(transcribedText);
       
       const emotionPrompt = `Analyze the emotional tone of this text and respond with just one word: neutral, happy, stressed, confused, or excited.\n\nText: "${transcribedText}"`;
-      const emotionResult = await generateText({ messages: [{ role: 'user', content: emotionPrompt }] });
+      const emotionResult = await robustGenerateText({ messages: [{ role: 'user', content: emotionPrompt }] });
       const detectedEmotion = (emotionResult.toLowerCase().trim() as EmotionalState) || 'neutral';
       
       if (['neutral', 'happy', 'stressed', 'confused', 'excited'].includes(detectedEmotion)) {
@@ -167,7 +167,7 @@ Provide a structured response with:
 
 Make it detailed, practical, and ready to use in a classroom.`;
       
-      const generatedContent = await generateText({ messages: [{ role: 'user', content: contentPrompt }] });
+      const generatedContent = await robustGenerateText({ messages: [{ role: 'user', content: contentPrompt }] });
       setGeneratedContent(generatedContent);
 
       await addTeacherActivity({

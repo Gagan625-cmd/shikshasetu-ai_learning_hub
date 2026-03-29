@@ -7,7 +7,7 @@ import { useApp } from '@/contexts/app-context';
 import { useTheme } from '@/contexts/theme-context';
 import { useSubscription } from '@/contexts/subscription-context';
 import { useMutation } from '@tanstack/react-query';
-import { generateText } from '@rork-ai/toolkit-sdk';
+import { robustGenerateText } from '@/lib/ai-generate';
 import { NCERT_SUBJECTS } from '@/constants/ncert-data';
 import { ICSE_SUBJECTS } from '@/constants/icse-data';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -818,7 +818,7 @@ IMPORTANT REQUIREMENTS:
 
 Make this the ULTIMATE last-minute revision sheet that a student can read 1 hour before the exam.`;
 
-      const result = await generateText({ messages: [{ role: 'user', content: prompt }] });
+      const result = await robustGenerateText({ messages: [{ role: 'user', content: prompt }] });
       return result;
     },
     onSuccess: (data) => {

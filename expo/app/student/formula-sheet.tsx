@@ -7,7 +7,7 @@ import { useApp } from '@/contexts/app-context';
 import { useTheme } from '@/contexts/theme-context';
 import { useSubscription } from '@/contexts/subscription-context';
 import { useMutation } from '@tanstack/react-query';
-import { generateText } from '@rork-ai/toolkit-sdk';
+import { robustGenerateText } from '@/lib/ai-generate';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import * as Print from 'expo-print';
@@ -211,7 +211,7 @@ IMPORTANT REQUIREMENTS:
 
 This should be a COMPLETE formula reference covering the ENTIRE syllabus for the year.`;
 
-      const result = await generateText({ messages: [{ role: 'user', content: prompt }] });
+      const result = await robustGenerateText({ messages: [{ role: 'user', content: prompt }] });
       return result;
     },
     onSuccess: (data) => {

@@ -6,7 +6,7 @@ import { useState } from 'react';
 import { useApp } from '@/contexts/app-context';
 import { useTheme } from '@/contexts/theme-context';
 import { useMutation } from '@tanstack/react-query';
-import { generateText } from '@rork-ai/toolkit-sdk';
+import { robustGenerateText } from '@/lib/ai-generate';
 import { NCERT_SUBJECTS } from '@/constants/ncert-data';
 import { ICSE_SUBJECTS } from '@/constants/icse-data';
 import * as Print from 'expo-print';
@@ -1803,7 +1803,7 @@ IMPORTANT REQUIREMENTS:
 - Include key formulas, definitions, and examples where relevant`;
       }
       
-      const result = await generateText({ messages: [{ role: 'user', content: prompt }] });
+      const result = await robustGenerateText({ messages: [{ role: 'user', content: prompt }] });
       
       return result;
     },
