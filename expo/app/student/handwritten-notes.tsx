@@ -37,14 +37,93 @@ interface NoteSection {
 const BookPageContent = ({ section, pageNum, totalPages }: { section: NoteSection; pageNum: number; totalPages: number }) => {
   const colorScheme = NOTE_COLORS[section.colorIndex % NOTE_COLORS.length];
 
+  const renderLine = (line: string, lineIdx: number) => {
+    const trimmed = line.trim();
+    if (!trimmed) return <View key={lineIdx} style={bookStyles.emptyLine} />;
+
+    const isSubHeader = /^#{2,3}\s/.test(trimmed) || /^[A-Z][A-Z\s&]{2,}:/.test(trimmed);
+    if (isSubHeader) {
+      const headerText = trimmed.replace(/^#{2,3}\s*/, '').replace(/:$/, '').trim();
+      return (
+        <View key={lineIdx} style={bookStyles.subHeaderLine}>
+          <View style={[bookStyles.subHeaderBar, { backgroundColor: colorScheme.accent }]} />
+          <Text style={[bookStyles.subHeaderText, { color: colorScheme.title }]}>{headerText}</Text>
+        </View>
+      );
+    }
+
+    const isImportant = /^[*!]\s/.test(trimmed) || trimmed.includes('IMPORTANT') || trimmed.startsWith('Remember') || trimmed.startsWith('Note:') || trimmed.startsWith('Key:');
+    if (isImportant) {
+      return (
+        <View key={lineIdx} style={[bookStyles.importantLine, { backgroundColor: colorScheme.highlight, borderLeftColor: colorScheme.accent }]}>
+          <Highlighter size={12} color={colorScheme.accent} />
+          <Text style={[bookStyles.importantText, { color: colorScheme.accent }]}>
+            {trimmed.replace(/^[*!]\s*/, '')}
+          </Text>
+        </View>
+      );
+    }
+
+    const isNumbered = /^\d+[.):]\s/.test(trimmed);
+    if (isNumbered) {
+      const numMatch = trimmed.match(/^(\d+[.):]?)\s+(.*)/);
+      if (numMatch) {
+        return (
+          <View key={lineIdx} style={bookStyles.numberedLine}>
+            <View style={[bookStyles.numberBadge, { backgroundColor: colorScheme.accent + '18' }]}>
+              <Text style={[bookStyles.numberText, { color: colorScheme.accent }]}>{numMatch[1]}</Text>
+            </View>
+            <Text style={[bookStyles.numberedContent, { color: colorScheme.text }]}>{numMatch[2]}</Text>
+          </View>
+        );
+      }
+    }
+
+    const isBullet = /^[-\u2022\u2192\u25CF\u25B8]\s/.test(trimmed);
+    if (isBullet) {
+      return (
+        <View key={lineIdx} style={bookStyles.bulletLine}>
+          <View style={[bookStyles.bulletDot, { backgroundColor: colorScheme.accent }]} />
+          <Text style={[bookStyles.bulletText, { color: colorScheme.text }]}>
+            {trimmed.replace(/^[-\u2022\u2192\u25CF\u25B8]\s*/, '')}
+          </Text>
+        </View>
+      );
+    }
+
+    const isFormula = (trimmed.includes('=') && !trimmed.includes('==') && trimmed.length < 120) || /[\u00B2\u00B3\u221A\u03C0\u2211\u222B\u0394\u03B8\u03B1\u03B2\u03B3\u00B1\u00D7\u00F7\u2248\u2260\u2264\u2265\u221E]/.test(trimmed);
+    if (isFormula) {
+      return (
+        <View key={lineIdx} style={[bookStyles.formulaLine, { backgroundColor: colorScheme.accent + '0D', borderColor: colorScheme.accent + '25' }]}>
+          <Text style={[bookStyles.formulaText, { color: colorScheme.accent }]}>{trimmed}</Text>
+        </View>
+      );
+    }
+
+    const isArrow = trimmed.includes('\u2192') && trimmed.length < 100;
+    if (isArrow) {
+      return (
+        <View key={lineIdx} style={[bookStyles.arrowLine, { backgroundColor: colorScheme.accent + '08' }]}>
+          <Text style={[bookStyles.arrowText, { color: colorScheme.text }]}>{trimmed}</Text>
+        </View>
+      );
+    }
+
+    return (
+      <Text key={lineIdx} style={[bookStyles.contentText, { color: colorScheme.text }]}>
+        {trimmed}
+      </Text>
+    );
+  };
+
   return (
     <View style={[bookStyles.page, { backgroundColor: colorScheme.bg, borderColor: colorScheme.border }]}>
       <View style={[bookStyles.pageSpine, { backgroundColor: colorScheme.accent + '15' }]} />
       <View style={[bookStyles.marginLine, { borderLeftColor: colorScheme.accent + '30' }]} />
 
       <View style={bookStyles.ruledLines}>
-        {Array.from({ length: 20 }).map((_, i) => (
-          <View key={i} style={[bookStyles.ruledLine, { borderBottomColor: colorScheme.accent + '10' }]} />
+        {Array.from({ length: 28 }).map((_, i) => (
+          <View key={i} style={[bookStyles.ruledLine, { borderBottomColor: colorScheme.accent + '08' }]} />
         ))}
       </View>
 
@@ -63,50 +142,8 @@ const BookPageContent = ({ section, pageNum, totalPages }: { section: NoteSectio
           showsVerticalScrollIndicator={false}
           nestedScrollEnabled
         >
-          {section.content.split('\n').map((line, lineIdx) => {
-            const trimmed = line.trim();
-            if (!trimmed) return <View key={lineIdx} style={bookStyles.emptyLine} />;
-
-            const isImportant = trimmed.startsWith('*') || trimmed.startsWith('!') || trimmed.includes('IMPORTANT') || trimmed.includes('Remember');
-            const isBullet = trimmed.startsWith('-') || trimmed.startsWith('•') || trimmed.startsWith('→');
-            const isFormula = trimmed.includes('=') || trimmed.includes('→') || /[²³√π∑∫]/.test(trimmed);
-
-            if (isImportant) {
-              return (
-                <View key={lineIdx} style={[bookStyles.importantLine, { backgroundColor: colorScheme.highlight, borderLeftColor: colorScheme.accent }]}>
-                  <Highlighter size={11} color={colorScheme.accent} />
-                  <Text style={[bookStyles.importantText, { color: colorScheme.accent }]}>
-                    {trimmed.replace(/^\*\s*|^!\s*/, '')}
-                  </Text>
-                </View>
-              );
-            }
-
-            if (isFormula) {
-              return (
-                <View key={lineIdx} style={[bookStyles.formulaLine, { backgroundColor: colorScheme.accent + '10', borderColor: colorScheme.accent + '25' }]}>
-                  <Text style={[bookStyles.formulaText, { color: colorScheme.accent }]}>{trimmed}</Text>
-                </View>
-              );
-            }
-
-            if (isBullet) {
-              return (
-                <View key={lineIdx} style={bookStyles.bulletLine}>
-                  <View style={[bookStyles.bulletDot, { backgroundColor: colorScheme.accent }]} />
-                  <Text style={[bookStyles.bulletText, { color: colorScheme.text }]}>
-                    {trimmed.replace(/^[-•→]\s*/, '')}
-                  </Text>
-                </View>
-              );
-            }
-
-            return (
-              <Text key={lineIdx} style={[bookStyles.contentText, { color: colorScheme.text }]}>
-                {trimmed}
-              </Text>
-            );
-          })}
+          {section.content.split('\n').map((line, lineIdx) => renderLine(line, lineIdx))}
+          <View style={{ height: 16 }} />
         </ScrollView>
       </View>
 
@@ -423,7 +460,7 @@ const bookStyles = StyleSheet.create({
   },
   bookBody: {
     position: 'relative' as const,
-    minHeight: 420,
+    minHeight: 560,
   },
   bookShadowLeft: {
     position: 'absolute' as const,
@@ -444,12 +481,12 @@ const bookStyles = StyleSheet.create({
     borderBottomRightRadius: 2,
   },
   pageWrapper: {
-    minHeight: 420,
+    minHeight: 560,
   },
   page: {
     borderRadius: 6,
     borderWidth: 1,
-    minHeight: 420,
+    minHeight: 560,
     position: 'relative' as const,
     overflow: 'hidden',
     ...Platform.select({
@@ -481,16 +518,16 @@ const bookStyles = StyleSheet.create({
     bottom: 50,
   },
   ruledLine: {
-    height: 28,
-    borderBottomWidth: 1,
+    height: 24,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   pageInner: {
     flex: 1,
     paddingTop: 16,
     paddingBottom: 50,
-    paddingLeft: 34,
-    paddingRight: 16,
-    minHeight: 360,
+    paddingLeft: 36,
+    paddingRight: 18,
+    minHeight: 500,
   },
   pageTitleArea: {
     marginBottom: 14,
@@ -502,7 +539,7 @@ const bookStyles = StyleSheet.create({
     alignSelf: 'flex-start' as const,
   },
   pageTitle: {
-    fontSize: 17,
+    fontSize: 18,
     fontWeight: '800' as const,
     letterSpacing: -0.2,
   },
@@ -513,60 +550,114 @@ const bookStyles = StyleSheet.create({
   },
   pageContentScroll: {
     flex: 1,
-    maxHeight: 320,
+    maxHeight: 460,
   },
   emptyLine: {
-    height: 6,
+    height: 10,
   },
   contentText: {
-    fontSize: 13.5,
-    lineHeight: 22,
+    fontSize: 14.5,
+    lineHeight: 24,
     fontWeight: '400' as const,
-    marginBottom: 2,
+    marginBottom: 4,
+  },
+  subHeaderLine: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 8,
+    marginTop: 12,
+    marginBottom: 6,
+  },
+  subHeaderBar: {
+    width: 3,
+    height: 18,
+    borderRadius: 2,
+  },
+  subHeaderText: {
+    fontSize: 15,
+    fontWeight: '800' as const,
+    letterSpacing: -0.2,
   },
   importantLine: {
     flexDirection: 'row' as const,
     alignItems: 'flex-start' as const,
-    gap: 7,
-    padding: 9,
-    borderRadius: 6,
+    gap: 8,
+    padding: 10,
+    borderRadius: 8,
     borderLeftWidth: 3,
-    marginVertical: 4,
+    marginVertical: 5,
   },
   importantText: {
-    fontSize: 12.5,
+    fontSize: 13.5,
     fontWeight: '700' as const,
-    lineHeight: 20,
+    lineHeight: 21,
     flex: 1,
   },
+  numberedLine: {
+    flexDirection: 'row' as const,
+    alignItems: 'flex-start' as const,
+    gap: 8,
+    marginVertical: 3,
+  },
+  numberBadge: {
+    minWidth: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: 'center' as const,
+    alignItems: 'center' as const,
+    marginTop: 1,
+    paddingHorizontal: 4,
+  },
+  numberText: {
+    fontSize: 12,
+    fontWeight: '800' as const,
+  },
+  numberedContent: {
+    fontSize: 14.5,
+    lineHeight: 24,
+    flex: 1,
+    fontWeight: '400' as const,
+  },
   formulaLine: {
-    padding: 9,
-    borderRadius: 6,
+    padding: 10,
+    borderRadius: 8,
     borderWidth: 1,
-    marginVertical: 4,
+    marginVertical: 5,
     alignItems: 'center' as const,
   },
   formulaText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600' as const,
     fontStyle: 'italic' as const,
-    lineHeight: 20,
+    lineHeight: 22,
+    textAlign: 'center' as const,
+  },
+  arrowLine: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+    marginVertical: 3,
+  },
+  arrowText: {
+    fontSize: 14,
+    lineHeight: 22,
+    fontWeight: '500' as const,
   },
   bulletLine: {
     flexDirection: 'row' as const,
     alignItems: 'flex-start' as const,
-    gap: 8,
-    paddingVertical: 1,
+    gap: 10,
+    paddingVertical: 3,
   },
   bulletDot: {
-    width: 5,
-    height: 5,
+    width: 6,
+    height: 6,
     borderRadius: 3,
-    marginTop: 7,
+    marginTop: 8,
   },
   bulletText: {
-    fontSize: 13.5,
-    lineHeight: 22,
+    fontSize: 14.5,
+    lineHeight: 24,
     flex: 1,
     fontWeight: '400' as const,
   },
@@ -706,47 +797,105 @@ const bookStyles = StyleSheet.create({
   },
 });
 
+function cleanMarkdown(text: string): string {
+  return text
+    .replace(/```[a-z]*\n?/g, '')
+    .replace(/```/g, '')
+    .replace(/\*\*\*(.*?)\*\*\*/g, '$1')
+    .replace(/__(.*?)__/g, '$1')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    .replace(/^>\s?/gm, '')
+    .trim();
+}
+
+function formatContentLine(line: string): string {
+  return line
+    .replace(/\*\*(.*?)\*\*/g, '$1')
+    .replace(/\*(.*?)\*/g, '$1')
+    .replace(/`([^`]+)`/g, '$1');
+}
+
 function parseNoteSections(text: string): NoteSection[] {
   const sections: NoteSection[] = [];
-  const blocks = text.split(/\n(?=(?:#{1,3}\s|[A-Z][A-Z\s&]+:|\*\*[A-Z]))/);
   let colorIdx = 0;
+
+  const cleaned = cleanMarkdown(text);
+  const blocks = cleaned.split(/\n(?=#{1,3}\s|[A-Z][A-Z\s&/,]{3,}:|\*\*[A-Z])/);
 
   for (const block of blocks) {
     const trimmed = block.trim();
     if (!trimmed) continue;
 
-    const headerMatch = trimmed.match(/^(?:#{1,3}\s*|\*\*)(.*?)(?:\*\*)?$/m);
+    const lines = trimmed.split('\n');
+    let title = '';
+    let contentStartIdx = 0;
+
+    const firstLine = lines[0].trim();
+    const headerMatch = firstLine.match(/^#{1,3}\s+(.+)$/);
+    const boldHeaderMatch = firstLine.match(/^\*\*(.+?)\*\*\s*$/);
+    const capsHeaderMatch = firstLine.match(/^([A-Z][A-Z\s&/,]{3,}):?\s*$/);
+
     if (headerMatch) {
-      const title = headerMatch[1].replace(/\*\*/g, '').replace(/#/g, '').trim();
-      const content = trimmed.substring(headerMatch[0].length).trim()
-        .replace(/\*\*/g, '')
-        .replace(/#{1,3}\s*/g, '')
-        .replace(/```[a-z]*\n?/g, '')
-        .replace(/```/g, '')
-        .trim();
-      if (content) {
-        sections.push({ title, content, colorIndex: colorIdx });
-        colorIdx++;
-      }
-    } else {
-      const cleaned = trimmed
-        .replace(/\*\*/g, '')
-        .replace(/#{1,3}\s*/g, '')
-        .replace(/```[a-z]*\n?/g, '')
-        .replace(/```/g, '')
-        .trim();
-      if (cleaned.length > 10) {
-        sections.push({ title: '', content: cleaned, colorIndex: colorIdx });
+      title = headerMatch[1].replace(/\*\*/g, '').replace(/#/g, '').trim();
+      contentStartIdx = 1;
+    } else if (boldHeaderMatch) {
+      title = boldHeaderMatch[1].trim();
+      contentStartIdx = 1;
+    } else if (capsHeaderMatch) {
+      title = capsHeaderMatch[1].trim();
+      contentStartIdx = 1;
+    }
+
+    const contentLines = lines.slice(contentStartIdx)
+      .map(l => formatContentLine(l))
+      .filter(l => l.trim().length > 0);
+
+    const content = contentLines.join('\n');
+
+    if (content.length > 5) {
+      sections.push({ title, content, colorIndex: colorIdx });
+      colorIdx++;
+    } else if (title && contentStartIdx < lines.length) {
+      const allContent = lines.map(l => formatContentLine(l)).filter(l => l.trim()).join('\n');
+      if (allContent.length > 5) {
+        sections.push({ title: '', content: allContent, colorIndex: colorIdx });
         colorIdx++;
       }
     }
   }
 
-  if (sections.length === 0 && text.trim().length > 10) {
-    const lines = text.split('\n\n').filter(l => l.trim());
-    for (const line of lines) {
-      sections.push({ title: '', content: line.replace(/\*\*/g, '').replace(/#/g, '').trim(), colorIndex: colorIdx });
-      colorIdx++;
+  if (sections.length === 0 && cleaned.length > 10) {
+    const paragraphs = cleaned.split(/\n\n+/).filter(l => l.trim());
+    for (const para of paragraphs) {
+      const paraLines = para.split('\n');
+      let pTitle = '';
+      let pContent = para;
+      if (paraLines.length > 1 && paraLines[0].trim().length < 80) {
+        pTitle = formatContentLine(paraLines[0]).trim();
+        pContent = paraLines.slice(1).map(l => formatContentLine(l)).join('\n');
+      }
+      if (pContent.trim().length > 5) {
+        sections.push({ title: pTitle, content: pContent.trim(), colorIndex: colorIdx });
+        colorIdx++;
+      }
+    }
+  }
+
+  if (sections.length === 1 && sections[0].content.split('\n').length > 40) {
+    const bigContent = sections[0].content;
+    const subBlocks = bigContent.split(/\n(?=[A-Z][a-z].*:|\d+\.\s+[A-Z])/);
+    if (subBlocks.length > 1) {
+      sections.length = 0;
+      colorIdx = 0;
+      for (const sub of subBlocks) {
+        const subLines = sub.trim().split('\n');
+        const subTitle = subLines[0].replace(/:$/, '').trim();
+        const subContent = subLines.slice(1).join('\n').trim();
+        if (subContent.length > 5) {
+          sections.push({ title: subTitle, content: subContent, colorIndex: colorIdx });
+          colorIdx++;
+        }
+      }
     }
   }
 
