@@ -368,6 +368,44 @@ const CLOUD_POSITIONS = [
   { x: 80, y: 90, size: 28, opacity: 0.4 },
 ];
 
+const FOREST_TREES_BG = [
+  { x: 15, height: 120, width: 28, shade: '#1a4d1a' },
+  { x: 60, height: 140, width: 32, shade: '#1e5c1e' },
+  { x: 110, height: 100, width: 24, shade: '#174d17' },
+  { x: 155, height: 130, width: 30, shade: '#1a5a1a' },
+  { x: 200, height: 115, width: 26, shade: '#1b5218' },
+  { x: 245, height: 145, width: 34, shade: '#1e5e1e' },
+  { x: 290, height: 105, width: 25, shade: '#1a4e1a' },
+];
+
+const FOREST_TREES_MID = [
+  { x: 35, height: 160, width: 36, shade: '#236b23' },
+  { x: 95, height: 175, width: 40, shade: '#287028' },
+  { x: 165, height: 150, width: 34, shade: '#216821' },
+  { x: 230, height: 170, width: 38, shade: '#257025' },
+  { x: 300, height: 155, width: 35, shade: '#236e23' },
+];
+
+const FOREST_LEAVES = [
+  { x: 40, y: 50, size: 12, rotation: '15deg', emoji: '\u{1F343}' },
+  { x: 130, y: 80, size: 10, rotation: '-20deg', emoji: '\u{1F342}' },
+  { x: 220, y: 35, size: 11, rotation: '45deg', emoji: '\u{1F343}' },
+  { x: 80, y: 120, size: 9, rotation: '-10deg', emoji: '\u{1F342}' },
+  { x: 190, y: 95, size: 13, rotation: '30deg', emoji: '\u{1F343}' },
+  { x: 270, y: 60, size: 10, rotation: '-35deg', emoji: '\u{1F342}' },
+];
+
+const FOREST_FIREFLIES = [
+  { x: 50, y: 70 },
+  { x: 140, y: 110 },
+  { x: 230, y: 55 },
+  { x: 90, y: 160 },
+  { x: 200, y: 140 },
+  { x: 310, y: 90 },
+  { x: 170, y: 200 },
+  { x: 60, y: 250 },
+];
+
 const PIPE_CAP_HEIGHT = 20;
 const PIPE_CAP_OVERHANG = 6;
 const GROUND_HEIGHT = 40;
@@ -393,6 +431,19 @@ function JumpingFoxGame({ onFinish }: { onFinish: (won: boolean) => void; colors
   const startPulse = useRef(new Animated.Value(1)).current;
   const gameLoop = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  const bgTreeSway = useRef(new Animated.Value(0)).current;
+  const midTreeSway = useRef(new Animated.Value(0)).current;
+  const leafFloat1 = useRef(new Animated.Value(0)).current;
+  const leafFloat2 = useRef(new Animated.Value(0)).current;
+  const leafFall = useRef(new Animated.Value(0)).current;
+  const fireflyGlow1 = useRef(new Animated.Value(0)).current;
+  const fireflyGlow2 = useRef(new Animated.Value(0)).current;
+  const fireflyGlow3 = useRef(new Animated.Value(0)).current;
+  const mistOpacity = useRef(new Animated.Value(0.15)).current;
+  const sunRayRotate = useRef(new Animated.Value(0)).current;
+  const bgParallax = useRef(new Animated.Value(0)).current;
+  const midParallax = useRef(new Animated.Value(0)).current;
+
   useEffect(() => {
     if (!started) {
       Animated.loop(
@@ -414,7 +465,69 @@ function JumpingFoxGame({ onFinish }: { onFinish: (won: boolean) => void; colors
     Animated.loop(
       Animated.timing(cloudAnim, { toValue: 1, duration: 20000, useNativeDriver: true })
     ).start();
-  }, [cloudAnim]);
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(bgTreeSway, { toValue: 1, duration: 4000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(bgTreeSway, { toValue: -1, duration: 4000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(bgTreeSway, { toValue: 0, duration: 3000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      ])
+    ).start();
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(midTreeSway, { toValue: 1, duration: 3500, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(midTreeSway, { toValue: -1, duration: 3500, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(midTreeSway, { toValue: 0, duration: 2500, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      ])
+    ).start();
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(leafFloat1, { toValue: 1, duration: 3000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(leafFloat1, { toValue: 0, duration: 3000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      ])
+    ).start();
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(leafFloat2, { toValue: 1, duration: 2500, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(leafFloat2, { toValue: 0, duration: 2500, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      ])
+    ).start();
+    Animated.loop(
+      Animated.timing(leafFall, { toValue: 1, duration: 6000, useNativeDriver: true })
+    ).start();
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(fireflyGlow1, { toValue: 1, duration: 1500, useNativeDriver: true }),
+        Animated.timing(fireflyGlow1, { toValue: 0.1, duration: 1500, useNativeDriver: true }),
+      ])
+    ).start();
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(fireflyGlow2, { toValue: 1, duration: 2000, useNativeDriver: true }),
+        Animated.timing(fireflyGlow2, { toValue: 0, duration: 2000, useNativeDriver: true }),
+      ])
+    ).start();
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(fireflyGlow3, { toValue: 1, duration: 1800, useNativeDriver: true }),
+        Animated.timing(fireflyGlow3, { toValue: 0.2, duration: 1200, useNativeDriver: true }),
+      ])
+    ).start();
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(mistOpacity, { toValue: 0.35, duration: 5000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(mistOpacity, { toValue: 0.1, duration: 5000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      ])
+    ).start();
+    Animated.loop(
+      Animated.timing(sunRayRotate, { toValue: 1, duration: 15000, useNativeDriver: true })
+    ).start();
+    Animated.loop(
+      Animated.timing(bgParallax, { toValue: 1, duration: 30000, useNativeDriver: true })
+    ).start();
+    Animated.loop(
+      Animated.timing(midParallax, { toValue: 1, duration: 20000, useNativeDriver: true })
+    ).start();
+  }, [cloudAnim, bgTreeSway, midTreeSway, leafFloat1, leafFloat2, leafFall, fireflyGlow1, fireflyGlow2, fireflyGlow3, mistOpacity, sunRayRotate, bgParallax, midParallax]);
 
   const jump = useCallback(() => {
     if (gameOver) return;
@@ -530,6 +643,21 @@ function JumpingFoxGame({ onFinish }: { onFinish: (won: boolean) => void; colors
     outputRange: [0, -GAME_WIDTH],
   });
 
+  const bgSwayInterp = bgTreeSway.interpolate({ inputRange: [-1, 0, 1], outputRange: [-2, 0, 2] });
+  const midSwayInterp = midTreeSway.interpolate({ inputRange: [-1, 0, 1], outputRange: [-3, 0, 3] });
+  const leafX1 = leafFloat1.interpolate({ inputRange: [0, 1], outputRange: [-8, 8] });
+  const leafX2 = leafFloat2.interpolate({ inputRange: [0, 1], outputRange: [6, -6] });
+  const leafFallY = leafFall.interpolate({ inputRange: [0, 1], outputRange: [-20, GAME_HEIGHT + 20] });
+  const sunRayInterp = sunRayRotate.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
+  const bgParallaxX = bgParallax.interpolate({ inputRange: [0, 1], outputRange: [0, -GAME_WIDTH * 0.3] });
+  const midParallaxX = midParallax.interpolate({ inputRange: [0, 1], outputRange: [0, -GAME_WIDTH * 0.5] });
+
+  const getFireflyAnim = (idx: number) => {
+    if (idx % 3 === 0) return fireflyGlow1;
+    if (idx % 3 === 1) return fireflyGlow2;
+    return fireflyGlow3;
+  };
+
   return (
     <View style={flappyStyles.container}>
       <TouchableOpacity
@@ -538,10 +666,16 @@ function JumpingFoxGame({ onFinish }: { onFinish: (won: boolean) => void; colors
         style={[flappyStyles.gameArea, { width: GAME_WIDTH, height: GAME_HEIGHT }]}
       >
         <LinearGradient
-          colors={['#87CEEB', '#B8860B', '#8B7355', '#6B4423']}
-          locations={[0, 0.4, 0.7, 1]}
+          colors={['#0a1f0a', '#0f2b0f', '#143814', '#1a4d1a', '#1e5c1e', '#2d7a2d']}
+          locations={[0, 0.15, 0.3, 0.5, 0.7, 1]}
           style={StyleSheet.absoluteFillObject}
         />
+
+        <Animated.View style={[flappyStyles.sunRayLayer, { transform: [{ rotate: sunRayInterp as any }] }]}>
+          <View style={flappyStyles.sunRay1} />
+          <View style={flappyStyles.sunRay2} />
+          <View style={flappyStyles.sunRay3} />
+        </Animated.View>
 
         <View style={flappyStyles.sunWrap}>
           <View style={flappyStyles.sunOuter}>
@@ -549,31 +683,164 @@ function JumpingFoxGame({ onFinish }: { onFinish: (won: boolean) => void; colors
           </View>
         </View>
 
+        <Animated.View style={[flappyStyles.forestBgLayer, { transform: [{ translateX: bgParallaxX as any }] }]}>
+          {FOREST_TREES_BG.map((tree, i) => (
+            <Animated.View key={`bg-tree-${i}`} style={[
+              flappyStyles.bgTree,
+              {
+                left: tree.x,
+                bottom: GROUND_HEIGHT - 5,
+                height: tree.height,
+                width: tree.width,
+                transform: [{ translateX: bgSwayInterp as any }],
+              },
+            ]}>
+              <View style={[
+                flappyStyles.bgTreeCanopy,
+                { backgroundColor: tree.shade, width: tree.width * 2.2, height: tree.height * 0.6, borderRadius: tree.width * 1.1 },
+              ]} />
+              <View style={[
+                flappyStyles.bgTreeTrunk,
+                { width: tree.width * 0.3, height: tree.height * 0.5, backgroundColor: '#3d2b1f' },
+              ]} />
+            </Animated.View>
+          ))}
+          {FOREST_TREES_BG.map((tree, i) => (
+            <Animated.View key={`bg-tree-dup-${i}`} style={[
+              flappyStyles.bgTree,
+              {
+                left: tree.x + GAME_WIDTH * 0.8,
+                bottom: GROUND_HEIGHT - 5,
+                height: tree.height,
+                width: tree.width,
+                transform: [{ translateX: bgSwayInterp as any }],
+              },
+            ]}>
+              <View style={[
+                flappyStyles.bgTreeCanopy,
+                { backgroundColor: tree.shade, width: tree.width * 2.2, height: tree.height * 0.6, borderRadius: tree.width * 1.1 },
+              ]} />
+              <View style={[
+                flappyStyles.bgTreeTrunk,
+                { width: tree.width * 0.3, height: tree.height * 0.5, backgroundColor: '#3d2b1f' },
+              ]} />
+            </Animated.View>
+          ))}
+        </Animated.View>
+
+        <Animated.View style={[flappyStyles.forestMidLayer, { transform: [{ translateX: midParallaxX as any }] }]}>
+          {FOREST_TREES_MID.map((tree, i) => (
+            <Animated.View key={`mid-tree-${i}`} style={[
+              flappyStyles.midTree,
+              {
+                left: tree.x,
+                bottom: GROUND_HEIGHT - 3,
+                height: tree.height,
+                width: tree.width,
+                transform: [{ translateX: midSwayInterp as any }],
+              },
+            ]}>
+              <View style={[
+                flappyStyles.midTreeCanopy,
+                { backgroundColor: tree.shade, width: tree.width * 2, height: tree.height * 0.55, borderRadius: tree.width },
+              ]} />
+              <View style={[
+                flappyStyles.midTreeTrunk,
+                { width: tree.width * 0.28, height: tree.height * 0.55, backgroundColor: '#4a3728' },
+              ]} />
+            </Animated.View>
+          ))}
+          {FOREST_TREES_MID.map((tree, i) => (
+            <Animated.View key={`mid-tree-dup-${i}`} style={[
+              flappyStyles.midTree,
+              {
+                left: tree.x + GAME_WIDTH * 0.7,
+                bottom: GROUND_HEIGHT - 3,
+                height: tree.height,
+                width: tree.width,
+                transform: [{ translateX: midSwayInterp as any }],
+              },
+            ]}>
+              <View style={[
+                flappyStyles.midTreeCanopy,
+                { backgroundColor: tree.shade, width: tree.width * 2, height: tree.height * 0.55, borderRadius: tree.width },
+              ]} />
+              <View style={[
+                flappyStyles.midTreeTrunk,
+                { width: tree.width * 0.28, height: tree.height * 0.55, backgroundColor: '#4a3728' },
+              ]} />
+            </Animated.View>
+          ))}
+        </Animated.View>
+
+        <Animated.View style={[flappyStyles.mistLayer, { opacity: mistOpacity }]} />
+
         <Animated.View style={[flappyStyles.cloudLayer, { transform: [{ translateX: cloudTranslate }] }]}>
           {CLOUD_POSITIONS.map((cloud, i) => (
             <View key={i} style={[
               flappyStyles.cloud,
-              { left: cloud.x, top: cloud.y, width: cloud.size, height: cloud.size * 0.55, opacity: cloud.opacity },
+              { left: cloud.x, top: cloud.y, width: cloud.size, height: cloud.size * 0.55, opacity: cloud.opacity * 0.4 },
             ]} />
           ))}
           {CLOUD_POSITIONS.map((cloud, i) => (
             <View key={`dup-${i}`} style={[
               flappyStyles.cloud,
-              { left: cloud.x + GAME_WIDTH, top: cloud.y, width: cloud.size, height: cloud.size * 0.55, opacity: cloud.opacity },
+              { left: cloud.x + GAME_WIDTH, top: cloud.y, width: cloud.size, height: cloud.size * 0.55, opacity: cloud.opacity * 0.4 },
             ]} />
           ))}
         </Animated.View>
 
+        {FOREST_LEAVES.map((leaf, i) => (
+          <Animated.View
+            key={`leaf-${i}`}
+            style={[
+              flappyStyles.floatingLeaf,
+              {
+                left: leaf.x,
+                transform: [
+                  { translateX: (i % 2 === 0 ? leafX1 : leafX2) as any },
+                  { translateY: leafFallY as any },
+                  { rotate: leaf.rotation },
+                ],
+                opacity: 0.7,
+              },
+            ]}
+          >
+            <Text style={{ fontSize: leaf.size }}>{leaf.emoji}</Text>
+          </Animated.View>
+        ))}
+
+        {FOREST_FIREFLIES.map((ff, i) => (
+          <Animated.View
+            key={`ff-${i}`}
+            style={[
+              flappyStyles.firefly,
+              {
+                left: ff.x,
+                top: ff.y,
+                opacity: getFireflyAnim(i),
+              },
+            ]}
+          >
+            <View style={flappyStyles.fireflyCore} />
+            <View style={flappyStyles.fireflyGlow} />
+          </Animated.View>
+        ))}
+
         <View style={flappyStyles.scoreOverlay}>
-          <Animated.Text style={[flappyStyles.scoreOverlayText, { transform: [{ scale: scoreFlash }] }]}>
-            {score}
-          </Animated.Text>
+          <View style={flappyStyles.scoreBadge}>
+            <Text style={flappyStyles.scoreEmoji}>🌿</Text>
+            <Animated.Text style={[flappyStyles.scoreOverlayText, { transform: [{ scale: scoreFlash }] }]}>
+              {score}
+            </Animated.Text>
+            <Text style={flappyStyles.scoreTarget}>/{TARGET_SCORE}</Text>
+          </View>
         </View>
 
         {pipes.map((pipe, i) => (
           <View key={i}>
             <LinearGradient
-              colors={['#6B6B6B', '#8B8682', '#A0978E']}
+              colors={['#3d2b1f', '#5a3f2b', '#4a3728']}
               style={[
                 flappyStyles.pipeBody,
                 {
@@ -584,6 +851,16 @@ function JumpingFoxGame({ onFinish }: { onFinish: (won: boolean) => void; colors
                 },
               ]}
             />
+            <View style={[
+              flappyStyles.pipeVines,
+              {
+                left: pipe.x - 3,
+                top: Math.max(pipe.gapY - PIPE_CAP_HEIGHT - 15, 0),
+                width: PIPE_WIDTH + 6,
+              },
+            ]}>
+              <Text style={flappyStyles.vineText}>🌿🍃🌿</Text>
+            </View>
             <View style={[
               flappyStyles.pipeCap,
               {
@@ -603,8 +880,18 @@ function JumpingFoxGame({ onFinish }: { onFinish: (won: boolean) => void; colors
                 height: PIPE_CAP_HEIGHT,
               },
             ]} />
+            <View style={[
+              flappyStyles.pipeVinesBottom,
+              {
+                left: pipe.x - 3,
+                top: pipe.gapY + PIPE_GAP + PIPE_CAP_HEIGHT,
+                width: PIPE_WIDTH + 6,
+              },
+            ]}>
+              <Text style={flappyStyles.vineText}>🌿🍃🌿</Text>
+            </View>
             <LinearGradient
-              colors={['#A0978E', '#8B8682', '#6B6B6B']}
+              colors={['#4a3728', '#5a3f2b', '#3d2b1f']}
               style={[
                 flappyStyles.pipeBody,
                 {
@@ -615,6 +902,24 @@ function JumpingFoxGame({ onFinish }: { onFinish: (won: boolean) => void; colors
                 },
               ]}
             />
+            <View style={[
+              flappyStyles.pipeBark,
+              {
+                left: pipe.x + PIPE_WIDTH * 0.15,
+                top: 10,
+                height: Math.max(pipe.gapY - PIPE_CAP_HEIGHT - 20, 0),
+                width: 3,
+              },
+            ]} />
+            <View style={[
+              flappyStyles.pipeBark,
+              {
+                left: pipe.x + PIPE_WIDTH * 0.6,
+                top: pipe.gapY + PIPE_GAP + PIPE_CAP_HEIGHT + 10,
+                height: Math.max(GAME_HEIGHT - pipe.gapY - PIPE_GAP - PIPE_CAP_HEIGHT - GROUND_HEIGHT - 20, 0),
+                width: 3,
+              },
+            ]} />
           </View>
         ))}
 
@@ -639,12 +944,22 @@ function JumpingFoxGame({ onFinish }: { onFinish: (won: boolean) => void; colors
               <View style={flappyStyles.foxPupil} />
             </View>
             <View style={flappyStyles.foxNose} />
+            <View style={flappyStyles.foxCheek} />
           </View>
         </Animated.View>
 
         <View style={[flappyStyles.groundLayer, { width: GAME_WIDTH * 2 }]}>
+          <View style={[flappyStyles.grassBlade, { width: GAME_WIDTH * 2 }]} />
           <View style={[flappyStyles.grassStripe, { width: GAME_WIDTH * 2 }]} />
           <View style={[flappyStyles.dirtLayer, { width: GAME_WIDTH * 2 }]} />
+          <View style={flappyStyles.groundDetails}>
+            {[0, 40, 85, 130, 180, 225, 280].map((x, i) => (
+              <View key={`mushroom-${i}`} style={[flappyStyles.mushroom, { left: x }]}>
+                <View style={flappyStyles.mushroomCap} />
+                <View style={flappyStyles.mushroomStem} />
+              </View>
+            ))}
+          </View>
         </View>
 
         {!started && !gameOver && (
@@ -656,7 +971,7 @@ function JumpingFoxGame({ onFinish }: { onFinish: (won: boolean) => void; colors
                 </View>
               </Animated.View>
               <Text style={flappyStyles.startTitle}>Jumping Fox</Text>
-              <Text style={flappyStyles.startSubtitle}>Jump over {TARGET_SCORE} boulders to win!</Text>
+              <Text style={flappyStyles.startSubtitle}>Jump through {TARGET_SCORE} forest trees to win!</Text>
               <View style={flappyStyles.tapIndicator}>
                 <Text style={flappyStyles.tapText}>Tap anywhere to jump</Text>
               </View>
@@ -1786,30 +2101,117 @@ const flappyStyles = StyleSheet.create({
     borderRadius: 16,
     overflow: 'hidden',
     ...Platform.select({
-      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 12 },
-      android: { elevation: 6 },
-      web: { boxShadow: '0 4px 16px rgba(0,0,0,0.2)' },
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 16 },
+      android: { elevation: 8 },
+      web: { boxShadow: '0 4px 20px rgba(0,0,0,0.3)' },
     }),
+  },
+  sunRayLayer: {
+    position: 'absolute',
+    top: -60,
+    right: -30,
+    width: 160,
+    height: 160,
+    zIndex: 0,
+  },
+  sunRay1: {
+    position: 'absolute',
+    top: 70,
+    left: 75,
+    width: 4,
+    height: 60,
+    backgroundColor: 'rgba(255,236,130,0.12)',
+    borderRadius: 2,
+    transform: [{ rotate: '0deg' }],
+  },
+  sunRay2: {
+    position: 'absolute',
+    top: 70,
+    left: 75,
+    width: 4,
+    height: 60,
+    backgroundColor: 'rgba(255,236,130,0.08)',
+    borderRadius: 2,
+    transform: [{ rotate: '60deg' }],
+  },
+  sunRay3: {
+    position: 'absolute',
+    top: 70,
+    left: 75,
+    width: 4,
+    height: 60,
+    backgroundColor: 'rgba(255,236,130,0.06)',
+    borderRadius: 2,
+    transform: [{ rotate: '120deg' }],
   },
   sunWrap: {
     position: 'absolute',
-    top: 15,
-    right: 30,
-    zIndex: 1,
+    top: 12,
+    right: 25,
+    zIndex: 2,
   },
   sunOuter: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 236, 130, 0.35)',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255, 236, 130, 0.25)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   sunInner: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: '#FFE066',
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: 'rgba(255, 224, 102, 0.6)',
+  },
+  forestBgLayer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 1,
+  },
+  bgTree: {
+    position: 'absolute',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+  },
+  bgTreeCanopy: {
+    position: 'absolute',
+    top: 0,
+  },
+  bgTreeTrunk: {
+    borderRadius: 3,
+  },
+  forestMidLayer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 2,
+  },
+  midTree: {
+    position: 'absolute',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+  },
+  midTreeCanopy: {
+    position: 'absolute',
+    top: 0,
+  },
+  midTreeTrunk: {
+    borderRadius: 3,
+  },
+  mistLayer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(200, 230, 200, 0.15)',
+    zIndex: 3,
   },
   cloudLayer: {
     position: 'absolute',
@@ -1817,41 +2219,108 @@ const flappyStyles = StyleSheet.create({
     left: 0,
     width: GAME_WIDTH * 2,
     height: 140,
-    zIndex: 1,
+    zIndex: 3,
   },
   cloud: {
     position: 'absolute',
-    backgroundColor: 'rgba(255,255,255,0.8)',
+    backgroundColor: 'rgba(200,230,200,0.3)',
     borderRadius: 20,
+  },
+  floatingLeaf: {
+    position: 'absolute',
+    top: -20,
+    zIndex: 12,
+  },
+  firefly: {
+    position: 'absolute',
+    width: 8,
+    height: 8,
+    zIndex: 11,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fireflyCore: {
+    width: 3,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: '#fde68a',
+  },
+  fireflyGlow: {
+    position: 'absolute',
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: 'rgba(253, 230, 138, 0.3)',
   },
   scoreOverlay: {
     position: 'absolute',
-    top: 16,
+    top: 12,
     left: 0,
     right: 0,
     alignItems: 'center',
     zIndex: 15,
   },
+  scoreBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 20,
+    gap: 4,
+  },
+  scoreEmoji: {
+    fontSize: 16,
+  },
   scoreOverlayText: {
-    fontSize: 42,
+    fontSize: 28,
     fontWeight: '900' as const,
     color: '#fff',
-    textShadowColor: 'rgba(0,0,0,0.35)',
-    textShadowOffset: { width: 2, height: 2 },
-    textShadowRadius: 4,
+    textShadowColor: 'rgba(0,0,0,0.4)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 3,
+  },
+  scoreTarget: {
+    fontSize: 16,
+    fontWeight: '700' as const,
+    color: 'rgba(255,255,255,0.6)',
   },
   pipeBody: {
     position: 'absolute',
     borderLeftWidth: 2,
     borderRightWidth: 2,
-    borderColor: 'rgba(0,0,0,0.15)',
+    borderColor: 'rgba(0,0,0,0.2)',
+  },
+  pipeVines: {
+    position: 'absolute',
+    height: 18,
+    zIndex: 6,
+    alignItems: 'center',
+    overflow: 'hidden',
+  },
+  pipeVinesBottom: {
+    position: 'absolute',
+    height: 18,
+    zIndex: 6,
+    alignItems: 'center',
+    overflow: 'hidden',
+  },
+  vineText: {
+    fontSize: 10,
+    letterSpacing: -2,
   },
   pipeCap: {
     position: 'absolute',
-    backgroundColor: '#7B7168',
+    backgroundColor: '#2d5a27',
     borderRadius: 6,
     borderWidth: 2,
-    borderColor: 'rgba(0,0,0,0.2)',
+    borderColor: '#1a4d1a',
+    zIndex: 5,
+  },
+  pipeBark: {
+    position: 'absolute',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 1,
     zIndex: 5,
   },
   bird: {
@@ -1937,6 +2406,15 @@ const flappyStyles = StyleSheet.create({
     borderRadius: 2,
     backgroundColor: '#1a1a2e',
   },
+  foxCheek: {
+    position: 'absolute',
+    right: 8,
+    top: 14,
+    width: 5,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255, 182, 130, 0.6)',
+  },
   groundLayer: {
     position: 'absolute',
     bottom: 0,
@@ -1944,13 +2422,43 @@ const flappyStyles = StyleSheet.create({
     height: GROUND_HEIGHT,
     zIndex: 8,
   },
+  grassBlade: {
+    height: 4,
+    backgroundColor: '#3d8b37',
+  },
   grassStripe: {
-    height: 8,
-    backgroundColor: '#A0978E',
+    height: 6,
+    backgroundColor: '#2d6a27',
   },
   dirtLayer: {
     flex: 1,
-    backgroundColor: '#6B5B4F',
+    backgroundColor: '#3d2b1f',
+  },
+  groundDetails: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  mushroom: {
+    position: 'absolute',
+    top: -4,
+    alignItems: 'center',
+  },
+  mushroomCap: {
+    width: 8,
+    height: 5,
+    borderTopLeftRadius: 4,
+    borderTopRightRadius: 4,
+    backgroundColor: '#ef4444',
+  },
+  mushroomStem: {
+    width: 3,
+    height: 4,
+    backgroundColor: '#fef3c7',
+    borderBottomLeftRadius: 1,
+    borderBottomRightRadius: 1,
   },
   tapPrompt: {
     position: 'absolute',
@@ -1960,7 +2468,7 @@ const flappyStyles = StyleSheet.create({
     bottom: 0,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.25)',
+    backgroundColor: 'rgba(10,31,10,0.5)',
     zIndex: 20,
   },
   startCard: {
@@ -1971,32 +2479,34 @@ const flappyStyles = StyleSheet.create({
     width: '75%',
     gap: 10,
     ...Platform.select({
-      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.2, shadowRadius: 16 },
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.25, shadowRadius: 16 },
       android: { elevation: 8 },
-      web: { boxShadow: '0 6px 20px rgba(0,0,0,0.2)' },
+      web: { boxShadow: '0 6px 24px rgba(0,0,0,0.25)' },
     }),
   },
   startIconCircle: {
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: '#F97316',
+    backgroundColor: '#2d5a27',
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 3,
+    borderColor: '#3d8b37',
   },
   startTitle: {
     fontSize: 22,
     fontWeight: '800' as const,
-    color: '#1e293b',
+    color: '#1a3a15',
   },
   startSubtitle: {
     fontSize: 14,
-    color: '#64748b',
+    color: '#4a7a44',
     fontWeight: '500' as const,
   },
   tapIndicator: {
     marginTop: 6,
-    backgroundColor: '#F97316',
+    backgroundColor: '#2d5a27',
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 14,
@@ -2014,7 +2524,7 @@ const flappyStyles = StyleSheet.create({
     bottom: 0,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: 'rgba(10,31,10,0.55)',
     zIndex: 20,
   },
   gameOverCard: {
@@ -2025,9 +2535,9 @@ const flappyStyles = StyleSheet.create({
     width: '70%',
     gap: 8,
     ...Platform.select({
-      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.2, shadowRadius: 16 },
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.25, shadowRadius: 16 },
       android: { elevation: 8 },
-      web: { boxShadow: '0 6px 20px rgba(0,0,0,0.2)' },
+      web: { boxShadow: '0 6px 24px rgba(0,0,0,0.25)' },
     }),
   },
   gameOverEmoji: {
@@ -2036,7 +2546,7 @@ const flappyStyles = StyleSheet.create({
   gameOverTitle: {
     fontSize: 24,
     fontWeight: '800' as const,
-    color: '#1e293b',
+    color: '#1a3a15',
   },
   gameOverScoreWrap: {
     alignItems: 'center',
