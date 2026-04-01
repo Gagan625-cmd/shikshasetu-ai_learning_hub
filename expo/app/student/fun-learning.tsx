@@ -9,9 +9,10 @@ import {
   Dimensions,
   Alert,
   Platform,
+  Easing,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, Gamepad2, Brain, Lock, Trophy, Zap, ChevronRight, Star, X, Check, Grid3x3, GraduationCap } from 'lucide-react-native';
+import { ArrowLeft, Brain, Lock, Trophy, Zap, ChevronRight, Star, X, Check, Grid3x3, GraduationCap } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useApp } from '@/contexts/app-context';
@@ -62,8 +63,9 @@ const BIRD_SIZE = 30;
 const GAME_HEIGHT = 400;
 const GAME_WIDTH = SCREEN_WIDTH - 48;
 
-function PacmanGame({ onFinish, colors: themeColors }: { onFinish: (won: boolean) => void; colors: any }) {
+function PacmanGame({ onFinish, colors: _themeColors }: { onFinish: (won: boolean) => void; colors: any }) {
   const [pacPos, setPacPos] = useState({ row: 1, col: 1 });
+  const [facingDir, setFacingDir] = useState<'left' | 'right' | 'up' | 'down'>('right');
   const [ghostPos, setGhostPos] = useState({ row: 7, col: 7 });
   const [ghost2Pos, setGhost2Pos] = useState({ row: 5, col: 11 });
   const [ghost3Pos, setGhost3Pos] = useState({ row: 11, col: 3 });
@@ -81,9 +83,49 @@ function PacmanGame({ onFinish, colors: themeColors }: { onFinish: (won: boolean
   const [score, setScore] = useState(0);
   const [gameOver, setGameOver] = useState(false);
   const ghostInterval = useRef<ReturnType<typeof setInterval> | null>(null);
+  const leafAnim1 = useRef(new Animated.Value(0)).current;
+  const leafAnim2 = useRef(new Animated.Value(0)).current;
+  const foxBounce = useRef(new Animated.Value(1)).current;
+  const firefly1 = useRef(new Animated.Value(0)).current;
+  const firefly2 = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(leafAnim1, { toValue: 1, duration: 3000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(leafAnim1, { toValue: 0, duration: 3000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      ])
+    ).start();
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(leafAnim2, { toValue: 1, duration: 4000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(leafAnim2, { toValue: 0, duration: 4000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      ])
+    ).start();
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(firefly1, { toValue: 1, duration: 2000, useNativeDriver: true }),
+        Animated.timing(firefly1, { toValue: 0, duration: 2000, useNativeDriver: true }),
+      ])
+    ).start();
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(firefly2, { toValue: 1, duration: 2500, useNativeDriver: true }),
+        Animated.timing(firefly2, { toValue: 0, duration: 2500, useNativeDriver: true }),
+      ])
+    ).start();
+  }, [leafAnim1, leafAnim2, firefly1, firefly2]);
 
   const movePacman = useCallback((dr: number, dc: number) => {
     if (gameOver) return;
+    if (dc > 0) setFacingDir('right');
+    else if (dc < 0) setFacingDir('left');
+    else if (dr < 0) setFacingDir('up');
+    else if (dr > 0) setFacingDir('down');
+    Animated.sequence([
+      Animated.timing(foxBounce, { toValue: 1.2, duration: 80, useNativeDriver: true }),
+      Animated.timing(foxBounce, { toValue: 1, duration: 80, useNativeDriver: true }),
+    ]).start();
     setPacPos(prev => {
       const nr = prev.row + dr;
       const nc = prev.col + dc;
@@ -104,7 +146,7 @@ function PacmanGame({ onFinish, colors: themeColors }: { onFinish: (won: boolean
       }
       return { row: nr, col: nc };
     });
-  }, [gameOver, dots, onFinish]);
+  }, [gameOver, dots, onFinish, foxBounce]);
 
   const moveGhostSmart = useCallback((ghostPrev: { row: number; col: number }, target: { row: number; col: number }) => {
     const directions = [
@@ -175,15 +217,23 @@ function PacmanGame({ onFinish, colors: themeColors }: { onFinish: (won: boolean
 
   const mazeWidth = GRID_SIZE * CELL_SIZE;
 
+  const leafTranslate1 = leafAnim1.interpolate({ inputRange: [0, 1], outputRange: [-3, 3] });
+  const leafTranslate2 = leafAnim2.interpolate({ inputRange: [0, 1], outputRange: [2, -2] });
+
+  const foxRotation = facingDir === 'left' ? '180deg' : facingDir === 'up' ? '-90deg' : facingDir === 'down' ? '90deg' : '0deg';
+
   return (
     <View style={pacStyles.container}>
-      <View style={pacStyles.scoreRow}>
-        <Text style={[pacStyles.scoreText, { color: themeColors.text }]}>Score: {score}/{TOTAL_DOTS}</Text>
-        {gameOver && (
-          <View style={[pacStyles.gameOverBadge, { backgroundColor: score === TOTAL_DOTS ? '#10b981' : '#ef4444' }]}>
-            <Text style={pacStyles.gameOverText}>{score === TOTAL_DOTS ? 'You Win!' : 'Game Over'}</Text>
-          </View>
-        )}
+      <View style={pacStyles.forestHeader}>
+        <Text style={pacStyles.forestTitle}>🌲 Forest Maze 🌲</Text>
+        <View style={pacStyles.scoreRow}>
+          <Text style={pacStyles.scoreText}>🍎 {score}/{TOTAL_DOTS}</Text>
+          {gameOver && (
+            <View style={[pacStyles.gameOverBadge, { backgroundColor: score === TOTAL_DOTS ? '#10b981' : '#ef4444' }]}>
+              <Text style={pacStyles.gameOverText}>{score === TOTAL_DOTS ? '🎉 You Win!' : '💀 Game Over'}</Text>
+            </View>
+          )}
+        </View>
       </View>
       <View style={[pacStyles.maze, { width: mazeWidth, height: mazeWidth }]}>
         {PACMAN_MAZE.map((row, r) =>
@@ -197,54 +247,88 @@ function PacmanGame({ onFinish, colors: themeColors }: { onFinish: (won: boolean
                   height: CELL_SIZE,
                   left: c * CELL_SIZE,
                   top: r * CELL_SIZE,
-                  backgroundColor: cell === 1 ? '#1e40af' : '#0a0a2e',
+                  backgroundColor: cell === 1 ? '#2d5a27' : '#1a3a15',
                 },
               ]}
             >
+              {cell === 1 && (
+                <View style={pacStyles.treeTrunk}>
+                  <View style={pacStyles.treeLeaves} />
+                </View>
+              )}
               {cell === 0 && dots.has(`${r}-${c}`) && (
-                <View style={pacStyles.dot} />
+                <View style={pacStyles.berry} />
               )}
             </View>
           ))
         )}
-        <View
+
+        <Animated.View style={[pacStyles.forestLeaf, { left: 20, top: 15, transform: [{ translateX: leafTranslate1 }], opacity: 0.6 }]}>
+          <Text style={{ fontSize: 10 }}>🍃</Text>
+        </Animated.View>
+        <Animated.View style={[pacStyles.forestLeaf, { right: 25, top: 40, transform: [{ translateX: leafTranslate2 }], opacity: 0.5 }]}>
+          <Text style={{ fontSize: 8 }}>🍂</Text>
+        </Animated.View>
+        <Animated.View style={[pacStyles.forestLeaf, { left: 50, bottom: 30, transform: [{ translateX: leafTranslate1 }], opacity: 0.4 }]}>
+          <Text style={{ fontSize: 9 }}>🍃</Text>
+        </Animated.View>
+
+        <Animated.View style={[pacStyles.fireflyDot, { left: '30%', top: '20%', opacity: firefly1 }]} />
+        <Animated.View style={[pacStyles.fireflyDot, { left: '70%', top: '60%', opacity: firefly2 }]} />
+        <Animated.View style={[pacStyles.fireflyDot, { left: '50%', top: '80%', opacity: firefly1 }]} />
+
+        <Animated.View
           style={[
-            pacStyles.pacman,
+            pacStyles.foxCharacter,
             {
-              left: pacPos.col * CELL_SIZE + CELL_SIZE / 2 - 10,
-              top: pacPos.row * CELL_SIZE + CELL_SIZE / 2 - 10,
+              left: pacPos.col * CELL_SIZE + CELL_SIZE / 2 - 11,
+              top: pacPos.row * CELL_SIZE + CELL_SIZE / 2 - 11,
+              transform: [{ scale: foxBounce }, { rotate: foxRotation }],
             },
           ]}
-        />
+        >
+          <View style={pacStyles.foxMazeBody}>
+            <View style={pacStyles.foxMazeEarL} />
+            <View style={pacStyles.foxMazeEarR} />
+            <View style={pacStyles.foxMazeEye} />
+            <View style={pacStyles.foxMazeNose} />
+            <View style={pacStyles.foxMazeTail} />
+          </View>
+        </Animated.View>
+
         <View
           style={[
-            pacStyles.ghost,
+            pacStyles.wolf,
             {
               left: ghostPos.col * CELL_SIZE + CELL_SIZE / 2 - 10,
               top: ghostPos.row * CELL_SIZE + CELL_SIZE / 2 - 10,
             },
           ]}
-        />
+        >
+          <Text style={pacStyles.wolfEmoji}>🐺</Text>
+        </View>
         <View
           style={[
-            pacStyles.ghost,
+            pacStyles.wolf,
             {
               left: ghost2Pos.col * CELL_SIZE + CELL_SIZE / 2 - 10,
               top: ghost2Pos.row * CELL_SIZE + CELL_SIZE / 2 - 10,
-              backgroundColor: '#a855f7',
             },
           ]}
-        />
+        >
+          <Text style={pacStyles.wolfEmoji}>🐍</Text>
+        </View>
         <View
           style={[
-            pacStyles.ghost,
+            pacStyles.wolf,
             {
               left: ghost3Pos.col * CELL_SIZE + CELL_SIZE / 2 - 10,
               top: ghost3Pos.row * CELL_SIZE + CELL_SIZE / 2 - 10,
-              backgroundColor: '#06b6d4',
             },
           ]}
-        />
+        >
+          <Text style={pacStyles.wolfEmoji}>🦉</Text>
+        </View>
       </View>
       {!gameOver && (
         <View style={pacStyles.controls}>
@@ -1013,7 +1097,7 @@ export default function FunLearning() {
       }, 500);
     } else {
       setTimeout(() => {
-        Alert.alert('Congratulations!', 'You completed Pacman! No XP lost.', [
+        Alert.alert('Congratulations!', 'You collected all the berries! No XP lost.', [
           { text: 'OK', onPress: () => switchScreen('home') },
         ]);
       }, 500);
@@ -1117,7 +1201,7 @@ export default function FunLearning() {
         style={[homeStyles.gameCard, { backgroundColor: colors.cardBg, borderColor: colors.border }]}
         onPress={() => {
           if (pacmanPlayed) {
-            Alert.alert('Already Played', 'You already played Pacman today. Come back tomorrow!');
+            Alert.alert('Already Played', 'You already played Fox in Forest today. Come back tomorrow!');
             return;
           }
           switchScreen('pacman');
@@ -1125,15 +1209,15 @@ export default function FunLearning() {
         activeOpacity={0.8}
       >
         <LinearGradient
-          colors={['#fbbf24', '#f59e0b']}
+          colors={['#2d5a27', '#3d8b37']}
           style={homeStyles.gameIconBg}
         >
-          <Gamepad2 size={28} color="#fff" strokeWidth={2.5} />
+          <Text style={{ fontSize: 24 }}>🦊</Text>
         </LinearGradient>
         <View style={homeStyles.gameCardContent}>
-          <Text style={[homeStyles.gameCardTitle, { color: colors.text }]}>Pacman</Text>
+          <Text style={[homeStyles.gameCardTitle, { color: colors.text }]}>Fox in Forest</Text>
           <Text style={[homeStyles.gameCardDesc, { color: colors.textSecondary }]}>
-            Eat all dots, avoid 3 ghosts!
+            Collect berries, avoid predators!
           </Text>
         </View>
         {pacmanPlayed ? (
@@ -1290,7 +1374,7 @@ export default function FunLearning() {
           <ArrowLeft size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={[styles.navTitle, { color: colors.text }]}>
-          {screen === 'home' ? 'Fun with Learning' : screen === 'pacman' ? 'Pacman' : screen === 'flappy' ? 'Jumping Fox' : screen === 'tictactoe' ? 'Tic-Tac-Toe' : 'GK Quiz'}
+          {screen === 'home' ? 'Fun with Learning' : screen === 'pacman' ? 'Fox in Forest' : screen === 'flappy' ? 'Jumping Fox' : screen === 'tictactoe' ? 'Tic-Tac-Toe' : 'GK Quiz'}
         </Text>
         <View style={{ width: 40 }} />
       </View>
@@ -1497,15 +1581,28 @@ const pacStyles = StyleSheet.create({
   container: {
     alignItems: 'center',
   },
+  forestHeader: {
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  forestTitle: {
+    fontSize: 20,
+    fontWeight: '800' as const,
+    color: '#2d5a27',
+    marginBottom: 8,
+    textShadowColor: 'rgba(45, 90, 39, 0.3)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
+  },
   scoreRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    marginBottom: 16,
   },
   scoreText: {
     fontSize: 18,
     fontWeight: '700' as const,
+    color: '#4a2c0a',
   },
   gameOverBadge: {
     paddingHorizontal: 12,
@@ -1519,36 +1616,137 @@ const pacStyles = StyleSheet.create({
   },
   maze: {
     position: 'relative',
-    borderRadius: 8,
+    borderRadius: 12,
     overflow: 'hidden',
-    backgroundColor: '#0a0a2e',
+    backgroundColor: '#1a3a15',
+    borderWidth: 3,
+    borderColor: '#2d5a27',
   },
   cell: {
     position: 'absolute',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  dot: {
+  treeTrunk: {
+    width: 4,
+    height: 8,
+    backgroundColor: '#5a3a1a',
+    borderRadius: 1,
+    alignItems: 'center',
+  },
+  treeLeaves: {
+    position: 'absolute',
+    top: -5,
+    width: 12,
+    height: 10,
+    backgroundColor: '#3d8b37',
+    borderRadius: 6,
+  },
+  berry: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: '#ef4444',
+    borderWidth: 1,
+    borderColor: '#b91c1c',
+  },
+  forestLeaf: {
+    position: 'absolute',
+    zIndex: 15,
+  },
+  fireflyDot: {
+    position: 'absolute',
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#fde68a',
+    zIndex: 14,
+  },
+  foxCharacter: {
+    position: 'absolute',
+    width: 22,
+    height: 22,
+    zIndex: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  foxMazeBody: {
+    width: 20,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#F97316',
+    borderWidth: 1.5,
+    borderColor: '#C2410C',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  foxMazeEarL: {
+    position: 'absolute',
+    left: 1,
+    top: -4,
     width: 6,
+    height: 7,
+    backgroundColor: '#F97316',
+    borderTopLeftRadius: 4,
+    borderTopRightRadius: 1,
+    transform: [{ rotate: '-10deg' }],
+    borderWidth: 1,
+    borderColor: '#C2410C',
+  },
+  foxMazeEarR: {
+    position: 'absolute',
+    right: 2,
+    top: -4,
+    width: 6,
+    height: 7,
+    backgroundColor: '#F97316',
+    borderTopLeftRadius: 1,
+    borderTopRightRadius: 4,
+    transform: [{ rotate: '10deg' }],
+    borderWidth: 1,
+    borderColor: '#C2410C',
+  },
+  foxMazeEye: {
+    position: 'absolute',
+    right: 4,
+    top: 4,
+    width: 5,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#333',
+  },
+  foxMazeNose: {
+    position: 'absolute',
+    right: 1,
+    top: 8,
+    width: 3,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: '#1a1a2e',
+  },
+  foxMazeTail: {
+    position: 'absolute',
+    left: -7,
+    bottom: 2,
+    width: 10,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#fbbf24',
+    backgroundColor: '#EA580C',
+    transform: [{ rotate: '-15deg' }],
   },
-  pacman: {
+  wolf: {
     position: 'absolute',
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: '#fbbf24',
     zIndex: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  ghost: {
-    position: 'absolute',
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: '#ef4444',
-    zIndex: 10,
+  wolfEmoji: {
+    fontSize: 16,
   },
   controls: {
     marginTop: 20,
@@ -1563,9 +1761,11 @@ const pacStyles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 16,
-    backgroundColor: '#1e293b',
+    backgroundColor: '#2d5a27',
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#3d8b37',
   },
   controlText: {
     fontSize: 24,

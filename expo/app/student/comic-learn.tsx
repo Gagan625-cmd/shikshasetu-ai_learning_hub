@@ -262,8 +262,8 @@ Make it the BEST comic lesson ever - students should laugh, learn deeply, and re
                 isLeft && styles.speechBubbleLeft,
                 !isLeft && !isCenter && styles.speechBubbleRight,
               ]}>
-                <Text style={[styles.characterName, { color: colors.accent }]}>{panel.character}</Text>
-                <Text style={[styles.dialogue, { color: colors.text }]}>{panel.dialogue}</Text>
+                <Text style={[styles.characterName, { color: isDark ? '#6366f1' : colors.accent }]}>{panel.character}</Text>
+                <Text style={[styles.dialogue, { color: '#1e293b' }]}>{panel.dialogue}</Text>
               </View>
               
               <View style={[
@@ -276,13 +276,13 @@ Make it the BEST comic lesson ever - students should laugh, learn deeply, and re
           </View>
 
           <View style={styles.actionContainer}>
-            <Text style={[styles.actionText, { color: colors.textSecondary }]}>✨ {panel.action}</Text>
+            <Text style={[styles.actionText, { color: isDark ? '#374151' : '#64748b' }]}>✨ {panel.action}</Text>
           </View>
 
           {panel.keyPoint ? (
             <View style={styles.keyPointContainer}>
               <Text style={styles.keyPointLabel}>💡 Key Point</Text>
-              <Text style={[styles.keyPointText, { color: colors.text }]}>{panel.keyPoint}</Text>
+              <Text style={[styles.keyPointText, { color: '#1e293b' }]}>{panel.keyPoint}</Text>
             </View>
           ) : null}
 
