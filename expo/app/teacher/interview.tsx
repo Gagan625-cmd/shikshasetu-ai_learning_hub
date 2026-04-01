@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
-import { ChevronLeft, Video, Sparkles, Send, Camera, Globe, Lock, Mic, MicOff, ChevronRight, CheckCircle, Type } from 'lucide-react-native';
-import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Platform, TextInput, Animated } from 'react-native';
+import { ChevronLeft, Video, Sparkles, Send, Camera, Globe, Lock, Mic, MicOff, ChevronRight, CheckCircle, Type, Square, Clock } from 'lucide-react-native';
+import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Platform, TextInput, Animated, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import { CameraView, useCameraPermissions } from 'expo-camera';
@@ -13,8 +13,6 @@ import { ICSE_SUBJECTS } from '@/constants/icse-data';
 import { useSubscription } from '@/contexts/subscription-context';
 import { useTheme } from '@/contexts/theme-context';
 import { LinearGradient } from 'expo-linear-gradient';
-
-
 
 const INTERVIEW_TOPICS = [
   { id: 'subject', label: 'Subject Expert', icon: '📚' },
@@ -29,6 +27,13 @@ const INTERVIEW_TOPICS = [
 
 const MAX_QUESTIONS = 5;
 
+interface AnswerRecord {
+  text: string;
+  audioUri: string | null;
+  videoUri: string | null;
+  duration: number;
+}
+
 export default function TeacherInterview() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -37,15 +42,19 @@ export default function TeacherInterview() {
   const { colors } = useTheme();
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const [hasAudioPermission, setHasAudioPermission] = useState(false);
-  const [isRecording, setIsRecording] = useState(false);
+  const [isCameraRecording, setIsCameraRecording] = useState(false);
   const [isVoiceRecording, setIsVoiceRecording] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [isProcessingVoice, setIsProcessingVoice] = useState(false);
-  
+  const [isAIThinking, setIsAIThinking] = useState(false);
+  const [recordingTimer, setRecordingTimer] = useState(0);
   const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const isMountedRef = useRef(true);
   const isRecordingInProgressRef = useRef(false);
-  
+  const cameraRef = useRef<CameraView>(null);
+  const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const videoRecordingPromiseRef = useRef<Promise<{ uri: string } | undefined> | null>(null);
+
   const [interviewLanguage, setInterviewLanguage] = useState<string>('english');
   const [interviewTopic, setInterviewTopic] = useState<string>('subject');
   const [selectedBoard, setSelectedBoard] = useState<'NCERT' | 'ICSE'>('NCERT');
@@ -56,13 +65,15 @@ export default function TeacherInterview() {
   const [inputText, setInputText] = useState('');
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [questions, setQuestions] = useState<string[]>([]);
-  const [answers, setAnswers] = useState<{ text: string; voice: string; hasVideo: boolean }[]>([]);
+  const [answers, setAnswers] = useState<AnswerRecord[]>([]);
   const [isInterviewEnded, setIsInterviewEnded] = useState(false);
   const [activeInputMethod, setActiveInputMethod] = useState<'text' | 'voice' | 'video'>('text');
-  
+  const [cameraReady, setCameraReady] = useState(false);
+
   const slideAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(1)).current;
-  
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+
   const [evaluation, setEvaluation] = useState<{
     strengths: string[];
     weaknesses: string[];
@@ -80,59 +91,61 @@ export default function TeacherInterview() {
   const animateSlideRef = useRef<() => void>(() => {});
 
   const tools = useMemo(() => ({
-    askQuestion: createRorkTool({
-      description: "Present the next interview question to the candidate",
+    evaluateAndAskNext: createRorkTool({
+      description: "Evaluate the previous answer (if any) and present the next question in one step. Use this for questions 1-5.",
       zodSchema: z.object({
+        previousScore: z.number().min(0).max(10).describe("Score for previous answer (0 if first question)"),
+        previousFeedback: z.string().describe("Brief feedback for previous answer (empty if first question)"),
         questionNumber: z.number().min(1).max(5).describe("Question number (1-5)"),
         question: z.string().describe("The interview question to ask"),
-        category: z.string().describe("Category of the question (e.g., Technical, Behavioral, Analytical)"),
+        category: z.string().describe("Category: Technical, Behavioral, Analytical, Conceptual, Problem-solving"),
       }),
       execute(input) {
-        console.log('New question received:', input.questionNumber, input.question);
+        console.log('[Interview] Q' + input.questionNumber + ':', input.question);
+        if (input.previousScore > 0 && input.questionNumber > 1) {
+          setEvaluation(prev => ({
+            ...prev,
+            questionScores: [
+              ...(prev.questionScores || []),
+              { question: input.questionNumber - 1, score: input.previousScore, feedback: input.previousFeedback }
+            ]
+          }));
+        }
         setQuestions(prev => {
           const newQuestions = [...prev];
           newQuestions[input.questionNumber - 1] = input.question;
           return newQuestions;
         });
         setCurrentQuestionIndex(input.questionNumber - 1);
+        setIsAIThinking(false);
         animateSlideRef.current();
-        return `Question ${input.questionNumber} presented: ${input.question}`;
+        return `Question ${input.questionNumber} presented`;
       },
     }),
-    evaluateAnswer: createRorkTool({
-      description: "Evaluate a single answer with score and feedback",
+    provideEvaluation: createRorkTool({
+      description: "Provide final evaluation after all questions answered. Evaluate the last answer too.",
       zodSchema: z.object({
-        questionNumber: z.number().min(1).max(5).describe("Question number being evaluated"),
-        score: z.number().min(1).max(10).describe("Score out of 10"),
-        feedback: z.string().describe("Brief feedback on the answer"),
+        lastAnswerScore: z.number().min(1).max(10).describe("Score for the last answer"),
+        lastAnswerFeedback: z.string().describe("Feedback for the last answer"),
+        strengths: z.array(z.string()).describe("3-5 candidate strengths"),
+        weaknesses: z.array(z.string()).describe("2-4 areas needing improvement"),
+        recommendations: z.array(z.string()).describe("3-5 specific recommendations"),
+        overallScore: z.number().min(1).max(100).describe("Overall score out of 100"),
       }),
       execute(input) {
+        console.log('[Interview] Final evaluation, score:', input.overallScore);
         setEvaluation(prev => ({
           ...prev,
           questionScores: [
             ...(prev.questionScores || []),
-            { question: input.questionNumber, score: input.score, feedback: input.feedback }
-          ]
-        }));
-        return `Answer ${input.questionNumber} evaluated`;
-      },
-    }),
-    provideEvaluation: createRorkTool({
-      description: "Provide comprehensive final evaluation after all questions",
-      zodSchema: z.object({
-        strengths: z.array(z.string()).describe("List of candidate's strengths"),
-        weaknesses: z.array(z.string()).describe("List of areas needing improvement"),
-        recommendations: z.array(z.string()).describe("Specific recommendations"),
-        overallScore: z.number().min(1).max(100).describe("Overall score out of 100"),
-      }),
-      execute(input) {
-        setEvaluation(prev => ({
-          ...prev,
+            { question: MAX_QUESTIONS, score: input.lastAnswerScore, feedback: input.lastAnswerFeedback }
+          ],
           strengths: input.strengths,
           weaknesses: input.weaknesses,
           recommendations: input.recommendations,
           overallScore: input.overallScore,
         }));
+        setIsAIThinking(false);
         setIsInterviewEnded(true);
         return "Final evaluation completed";
       },
@@ -141,29 +154,49 @@ export default function TeacherInterview() {
 
   const { sendMessage, setMessages } = useRorkAgent({ tools });
 
+  useEffect(() => {
+    if (isVoiceRecording || isCameraRecording) {
+      const startTime = Date.now();
+      timerIntervalRef.current = setInterval(() => {
+        if (isMountedRef.current) {
+          setRecordingTimer(Math.floor((Date.now() - startTime) / 1000));
+        }
+      }, 1000);
+    } else {
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+        timerIntervalRef.current = null;
+      }
+      setRecordingTimer(0);
+    }
+    return () => {
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+      }
+    };
+  }, [isVoiceRecording, isCameraRecording]);
+
+  useEffect(() => {
+    if (isVoiceRecording || isCameraRecording) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, { toValue: 1.3, duration: 600, useNativeDriver: true }),
+          Animated.timing(pulseAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
+        ])
+      ).start();
+    } else {
+      pulseAnim.stopAnimation();
+      pulseAnim.setValue(1);
+    }
+  }, [isVoiceRecording, isCameraRecording, pulseAnim]);
+
   const animateSlide = useCallback(() => {
     Animated.sequence([
-      Animated.timing(fadeAnim, {
-        toValue: 0,
-        duration: 150,
-        useNativeDriver: true,
-      }),
-      Animated.timing(slideAnim, {
-        toValue: 1,
-        duration: 0,
-        useNativeDriver: true,
-      }),
+      Animated.timing(fadeAnim, { toValue: 0, duration: 100, useNativeDriver: true }),
+      Animated.timing(slideAnim, { toValue: 1, duration: 0, useNativeDriver: true }),
       Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-        Animated.timing(slideAnim, {
-          toValue: 0,
-          duration: 300,
-          useNativeDriver: true,
-        }),
+        Animated.timing(fadeAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
+        Animated.timing(slideAnim, { toValue: 0, duration: 200, useNativeDriver: true }),
       ]),
     ]).start();
   }, [fadeAnim, slideAnim]);
@@ -172,43 +205,34 @@ export default function TeacherInterview() {
 
   useEffect(() => {
     isMountedRef.current = true;
-    
     const initAudio = async () => {
       if (Platform.OS !== 'web') {
         try {
-          await setAudioModeAsync({
-            allowsRecording: false,
-            playsInSilentMode: true,
-          });
+          await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true });
         } catch (err) {
           console.log('Audio init error:', err);
         }
       }
     };
-    initAudio();
-    
+    void initAudio();
     return () => {
       isMountedRef.current = false;
       isRecordingInProgressRef.current = false;
-      
+      if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
       const cleanup = async () => {
         try {
           const status = audioRecorder.getStatus();
-          if (status.isRecording) {
-            await audioRecorder.stop();
-          }
-        } catch (err) {
-          console.log('Cleanup error:', err);
-        }
+          if (status.isRecording) await audioRecorder.stop();
+        } catch (err) { console.log('Cleanup error:', err); }
       };
-      cleanup();
+      void cleanup();
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const requestPermissions = async () => {
     try {
       await requestCameraPermission();
-      
       if (Platform.OS !== 'web') {
         const audioStatus = await AudioModule.requestRecordingPermissionsAsync();
         setHasAudioPermission(audioStatus.granted);
@@ -217,6 +241,52 @@ export default function TeacherInterview() {
       }
     } catch (err) {
       console.error('Failed to request permissions:', err);
+    }
+  };
+
+  const formatTime = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const startVideoRecording = async () => {
+    if (Platform.OS === 'web' || !cameraRef.current || !cameraReady) {
+      console.log('[Interview] Cannot start video recording - camera not ready or web platform');
+      setIsCameraRecording(true);
+      return;
+    }
+    try {
+      console.log('[Interview] Starting video recording...');
+      setIsCameraRecording(true);
+      videoRecordingPromiseRef.current = cameraRef.current.recordAsync({ maxDuration: 300 });
+      console.log('[Interview] Video recording started');
+    } catch (err) {
+      console.error('[Interview] Failed to start video recording:', err);
+      setIsCameraRecording(true);
+    }
+  };
+
+  const stopVideoRecording = async (): Promise<string | null> => {
+    if (Platform.OS === 'web' || !cameraRef.current) {
+      setIsCameraRecording(false);
+      return null;
+    }
+    try {
+      console.log('[Interview] Stopping video recording...');
+      cameraRef.current.stopRecording();
+      const result = await videoRecordingPromiseRef.current;
+      videoRecordingPromiseRef.current = null;
+      setIsCameraRecording(false);
+      if (result?.uri) {
+        console.log('[Interview] Video saved:', result.uri);
+        return result.uri;
+      }
+      return null;
+    } catch (err) {
+      console.error('[Interview] Failed to stop video recording:', err);
+      setIsCameraRecording(false);
+      return null;
     }
   };
 
@@ -235,39 +305,34 @@ export default function TeacherInterview() {
       const topicLabel = selectedTopicData?.label || interviewTopic;
       contextInfo = `for ${topicLabel} position`;
     }
-    
+
     const languageName = LANGUAGES.find(l => l.id === interviewLanguage)?.name || 'English';
-    
-    const systemPrompt = `You are an AI interviewer for ShikshaSetu conducting a professional interview ${contextInfo}.
 
-Interview Language: ${languageName}
-Conduct the ENTIRE interview in ${languageName} language.
+    const systemPrompt = `You are an AI interviewer conducting a professional interview ${contextInfo}.
+Language: ${languageName}. Conduct the ENTIRE interview in ${languageName}.
 
-IMPORTANT INSTRUCTIONS:
-1. You will ask exactly 5 questions, one at a time
-2. Use the askQuestion tool to present each question - this will display it as a slide
-3. After the candidate answers (via text, voice, or video), evaluate using evaluateAnswer tool
-4. Then immediately ask the next question using askQuestion tool
-5. After question 5 is answered, provide final evaluation using provideEvaluation tool
+RULES:
+1. Ask exactly 5 questions using evaluateAndAskNext tool - one at a time
+2. For Q1: set previousScore=0 and previousFeedback=""
+3. For Q2-Q5: evaluate the previous answer AND ask next question in ONE tool call
+4. After Q5 is answered: use provideEvaluation tool (evaluate last answer + give final results)
+5. Mix question types: technical, problem-solving, situational, conceptual
+6. Be concise - no unnecessary text between tool calls
+7. Make questions progressively challenging
 
-Question Format:
-- Mix question types: technical knowledge, problem-solving, situational, conceptual
-- Make questions progressively challenging
-- Keep questions clear and concise
-
-Start now by greeting briefly in ${languageName} and then immediately use askQuestion tool to ask Question 1.`;
+Start NOW: greet briefly in ${languageName}, then IMMEDIATELY call evaluateAndAskNext for Q1.`;
 
     setHasStarted(true);
     setAnswers([]);
     setQuestions([]);
     setCurrentQuestionIndex(0);
-    setIsRecording(true);
-    
-    sendMessage(systemPrompt);
-  };
+    setIsAIThinking(true);
 
-  const stopVideoRecording = async () => {
-    setIsRecording(false);
+    if (Platform.OS !== 'web' && cameraRef.current && cameraReady) {
+      void startVideoRecording();
+    }
+
+    sendMessage(systemPrompt);
   };
 
   const startVoiceRecording = async () => {
@@ -275,101 +340,73 @@ Start now by greeting briefly in ${languageName} and then immediately use askQue
       console.log('Recording not available on web');
       return;
     }
-    
     if (isRecordingInProgressRef.current) {
       console.log('Recording already in progress');
       return;
     }
-    
     isRecordingInProgressRef.current = true;
     setIsProcessingVoice(true);
-    
     try {
-      console.log('Starting voice recording...');
-      
       const permissionResult = await AudioModule.getRecordingPermissionsAsync();
       if (!permissionResult.granted) {
         const newPermission = await AudioModule.requestRecordingPermissionsAsync();
         if (!newPermission.granted) {
-          console.log('Audio permission denied');
           isRecordingInProgressRef.current = false;
           setIsProcessingVoice(false);
           return;
         }
       }
-      
-      await setAudioModeAsync({
-        allowsRecording: true,
-        playsInSilentMode: true,
-      });
-      
+      await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
       await audioRecorder.prepareToRecordAsync();
       audioRecorder.record();
-      
       if (!isMountedRef.current) {
         await audioRecorder.stop();
         isRecordingInProgressRef.current = false;
         return;
       }
-      
       setIsVoiceRecording(true);
-      console.log('Voice recording started successfully');
+      console.log('[Interview] Voice recording started');
     } catch (err) {
-      console.error('Failed to start voice recording:', err);
+      console.error('[Interview] Failed to start voice recording:', err);
       setIsVoiceRecording(false);
     } finally {
-      if (isMountedRef.current) {
-        setIsProcessingVoice(false);
-      }
+      if (isMountedRef.current) setIsProcessingVoice(false);
     }
   };
 
-  const stopVoiceRecordingAndTranscribe = async () => {
+  const stopVoiceRecordingAndTranscribe = async (): Promise<{ uri: string | null; text: string }> => {
     const recorderStatus = audioRecorder.getStatus();
-    
     if (!recorderStatus.isRecording) {
       setIsVoiceRecording(false);
       isRecordingInProgressRef.current = false;
-      return;
+      return { uri: null, text: '' };
     }
-
     setIsVoiceRecording(false);
     setIsTranscribing(true);
-    
+    let audioUri: string | null = null;
+    let transcribedText = '';
     try {
-      console.log('Stopping voice recording...');
-      
       await audioRecorder.stop();
-      
       try {
-        await setAudioModeAsync({
-          allowsRecording: false,
-          playsInSilentMode: true,
-        });
-      } catch (err) {
-        console.log('Audio mode reset error:', err);
-      }
-      
-      const uri = audioRecorder.uri;
-      console.log('Recording URI:', uri);
-      
-      if (uri && isMountedRef.current) {
-        const uriParts = uri.split('.');
+        await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true });
+      } catch (err) { console.log('Audio mode reset error:', err); }
+
+      audioUri = audioRecorder.uri;
+      console.log('[Interview] Audio saved:', audioUri);
+
+      if (audioUri && isMountedRef.current) {
+        const uriParts = audioUri.split('.');
         const fileType = uriParts[uriParts.length - 1] || 'm4a';
-        
         const formData = new FormData();
         const audioFile = {
-          uri,
+          uri: audioUri,
           name: `recording.${fileType}`,
           type: fileType === 'caf' ? 'audio/x-caf' : `audio/${fileType}`,
         };
         formData.append('audio', audioFile as unknown as Blob);
-        
-        console.log('Sending audio for transcription...');
-        
+
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 30000);
-        
         try {
           const response = await fetch('https://toolkit.rork.com/stt/transcribe/', {
             method: 'POST',
@@ -377,76 +414,87 @@ Start now by greeting briefly in ${languageName} and then immediately use askQue
             signal: controller.signal,
           });
           clearTimeout(timeoutId);
-          
           if (response.ok && isMountedRef.current) {
             const data = await response.json();
-            console.log('Transcription result:', data);
+            console.log('[Interview] Transcription:', data.text);
             if (data.text) {
+              transcribedText = data.text;
               setInputText(prev => prev ? `${prev} ${data.text}` : data.text);
             }
-          } else {
-            console.error('Transcription failed:', response.status);
           }
         } catch (fetchErr: unknown) {
           clearTimeout(timeoutId);
           if (fetchErr instanceof Error && fetchErr.name === 'AbortError') {
-            console.error('Transcription request timed out');
+            console.error('[Interview] Transcription timed out');
           } else {
-            console.error('Transcription fetch error:', fetchErr);
+            console.error('[Interview] Transcription error:', fetchErr);
           }
         }
       }
     } catch (err) {
-      console.error('Failed to transcribe voice:', err);
+      console.error('[Interview] Failed to transcribe voice:', err);
     } finally {
       isRecordingInProgressRef.current = false;
-      if (isMountedRef.current) {
-        setIsTranscribing(false);
-      }
+      if (isMountedRef.current) setIsTranscribing(false);
     }
+    return { uri: audioUri, text: transcribedText };
   };
 
   const handleSubmitAnswer = async () => {
-    const currentAnswer = {
-      text: inputText.trim(),
-      voice: '',
-      hasVideo: isRecording,
-    };
-    
-    if (!currentAnswer.text) {
-      return;
+    const answerText = inputText.trim();
+    if (!answerText) return;
+
+    let audioUri: string | null = null;
+
+    if (isVoiceRecording) {
+      const result = await stopVoiceRecordingAndTranscribe();
+      audioUri = result.uri;
     }
-    
+
+    const currentAnswer: AnswerRecord = {
+      text: answerText,
+      audioUri,
+      videoUri: null,
+      duration: recordingTimer,
+    };
+
     setAnswers(prev => {
       const newAnswers = [...prev];
       newAnswers[currentQuestionIndex] = currentAnswer;
       return newAnswers;
     });
-    
-    const answerMessage = `Answer for Question ${currentQuestionIndex + 1}: ${currentAnswer.text}${currentAnswer.hasVideo ? ' (with video expression recorded)' : ''}`;
-    
+
     setInputText('');
-    
+    setIsAIThinking(true);
+
+    const mediaInfo: string[] = [];
+    if (audioUri) mediaInfo.push('voice recorded');
+    if (isCameraRecording) mediaInfo.push('video expression captured');
+    const mediaStr = mediaInfo.length > 0 ? ` [${mediaInfo.join(', ')}]` : '';
+
     if (currentQuestionIndex >= MAX_QUESTIONS - 1) {
-      sendMessage(`${answerMessage}\n\nThis was the final answer. Please evaluate this answer using evaluateAnswer tool, then provide the comprehensive final evaluation using provideEvaluation tool with overall score, strengths, weaknesses, and recommendations.`);
+      sendMessage(`Answer for Q${currentQuestionIndex + 1}: ${answerText}${mediaStr}\n\nThis is the FINAL answer. Use provideEvaluation tool NOW.`);
     } else {
-      sendMessage(`${answerMessage}\n\nPlease evaluate this answer briefly using evaluateAnswer tool, then immediately ask the next question (Question ${currentQuestionIndex + 2}) using askQuestion tool.`);
+      sendMessage(`Answer for Q${currentQuestionIndex + 1}: ${answerText}${mediaStr}\n\nEvaluate and ask next question using evaluateAndAskNext tool NOW.`);
     }
   };
 
   const handleEndInterview = async () => {
-    await stopVideoRecording();
-    
+    if (isCameraRecording) {
+      await stopVideoRecording();
+    }
+
     if (evaluation.overallScore) {
       setIsInterviewEnded(true);
       return;
     }
-    
+
+    setIsAIThinking(true);
     const answeredCount = answers.filter(a => a?.text).length;
-    sendMessage(`Interview ended early after ${answeredCount} questions. Please provide comprehensive final evaluation using provideEvaluation tool based on the answers given so far. Include overall score, strengths, weaknesses, and recommendations.`);
+    sendMessage(`Interview ended early after ${answeredCount} questions. Use provideEvaluation tool NOW with evaluation based on answers given.`);
   };
 
-  const canStart = (interviewTopic === 'subject' ? (selectedChapter && selectedSubject) : true) && 
+  const canStart = (interviewTopic === 'subject' ? (selectedChapter && selectedSubject) : true) &&
                    cameraPermission?.granted && hasAudioPermission;
 
   const currentQuestion = questions[currentQuestionIndex] || '';
@@ -462,45 +510,32 @@ Start now by greeting briefly in ${languageName} and then immediately use askQue
           <Text style={styles.premiumHeaderTitle}>Interview Assessment</Text>
           <View style={styles.backButton} />
         </View>
-        
         <LinearGradient colors={['#7e22ce', '#9333ea']} style={styles.premiumContainer}>
-          <ScrollView
-            style={styles.content}
-            contentContainerStyle={[styles.premiumContent, { paddingBottom: insets.bottom + 20 }]}
-            showsVerticalScrollIndicator={false}
-          >
+          <ScrollView style={styles.content} contentContainerStyle={[styles.premiumContent, { paddingBottom: insets.bottom + 20 }]} showsVerticalScrollIndicator={false}>
             <View style={styles.lockIconContainer}>
               <Lock size={72} color="#fbbf24" strokeWidth={2} />
             </View>
-            
             <Text style={styles.premiumTitle}>Premium Feature</Text>
-            <Text style={styles.premiumDescription}>
-              AI Interview Assessment is an advanced feature available exclusively for premium members.
-            </Text>
-
+            <Text style={styles.premiumDescription}>AI Interview Assessment is an advanced feature available exclusively for premium members.</Text>
             <View style={styles.premiumFeaturesList}>
               <View style={styles.premiumFeatureItem}>
                 <Video size={20} color="#fbbf24" />
-                <Text style={styles.premiumFeatureText}>Live video expression analysis</Text>
+                <Text style={styles.premiumFeatureText}>Live video recording & expression analysis</Text>
+              </View>
+              <View style={styles.premiumFeatureItem}>
+                <Mic size={20} color="#fbbf24" />
+                <Text style={styles.premiumFeatureText}>Voice recording with AI transcription</Text>
               </View>
               <View style={styles.premiumFeatureItem}>
                 <Sparkles size={20} color="#fbbf24" />
-                <Text style={styles.premiumFeatureText}>AI-powered voice assessment</Text>
-              </View>
-              <View style={styles.premiumFeatureItem}>
-                <Camera size={20} color="#fbbf24" />
-                <Text style={styles.premiumFeatureText}>Body language evaluation</Text>
+                <Text style={styles.premiumFeatureText}>AI-powered comprehensive assessment</Text>
               </View>
               <View style={styles.premiumFeatureItem}>
                 <Globe size={20} color="#fbbf24" />
                 <Text style={styles.premiumFeatureText}>Multi-language support</Text>
               </View>
             </View>
-
-            <TouchableOpacity
-              style={styles.upgradeButton}
-              onPress={() => router.push('/paywall' as any)}
-            >
+            <TouchableOpacity style={styles.upgradeButton} onPress={() => router.push('/paywall' as any)}>
               <Text style={styles.upgradeButtonText}>Upgrade to Premium</Text>
             </TouchableOpacity>
           </ScrollView>
@@ -512,44 +547,69 @@ Start now by greeting briefly in ${languageName} and then immediately use askQue
   if (isInterviewEnded && evaluation.overallScore) {
     return (
       <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
-        <View style={styles.header}>
+        <View style={[styles.header, { backgroundColor: colors.surface }]}>
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-            <ChevronLeft size={24} color="#1e293b" />
+            <ChevronLeft size={24} color={colors.text} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Interview Results</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Interview Results</Text>
           <View style={styles.backButton} />
         </View>
-
-        <ScrollView
-          style={styles.content}
-          contentContainerStyle={[styles.resultsContainer, { paddingBottom: insets.bottom + 20 }]}
-          showsVerticalScrollIndicator={false}
-        >
+        <ScrollView style={styles.content} contentContainerStyle={[styles.resultsContainer, { paddingBottom: insets.bottom + 20 }]} showsVerticalScrollIndicator={false}>
           <View style={styles.scoreCard}>
             <Text style={styles.scoreLabel}>Overall Score</Text>
-            <View style={styles.scoreCircle}>
+            <View style={[styles.scoreCircle, {
+              borderColor: evaluation.overallScore >= 70 ? '#10b981' : evaluation.overallScore >= 40 ? '#f59e0b' : '#ef4444'
+            }]}>
               <Text style={styles.scoreValue}>{evaluation.overallScore}</Text>
               <Text style={styles.scoreMax}>/100</Text>
             </View>
-            <Text style={styles.scoreGrade}>
-              {evaluation.overallScore >= 80 ? 'Excellent' : 
-               evaluation.overallScore >= 60 ? 'Good' : 
+            <Text style={[styles.scoreGrade, {
+              color: evaluation.overallScore >= 80 ? '#10b981' : evaluation.overallScore >= 60 ? '#f59e0b' : evaluation.overallScore >= 40 ? '#f97316' : '#ef4444'
+            }]}>
+              {evaluation.overallScore >= 80 ? 'Excellent' :
+               evaluation.overallScore >= 60 ? 'Good' :
                evaluation.overallScore >= 40 ? 'Fair' : 'Needs Improvement'}
             </Text>
           </View>
 
           {evaluation.questionScores && evaluation.questionScores.length > 0 && (
-            <View style={styles.questionScoresCard}>
-              <Text style={styles.sectionTitle}>Question-wise Performance</Text>
+            <View style={[styles.questionScoresCard, { backgroundColor: colors.surface }]}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Question-wise Performance</Text>
               {evaluation.questionScores.map((qs, idx) => (
                 <View key={idx} style={styles.questionScoreItem}>
                   <View style={styles.questionScoreHeader}>
-                    <Text style={styles.questionScoreNumber}>Q{qs.question}</Text>
-                    <View style={styles.questionScoreBadge}>
-                      <Text style={styles.questionScoreValue}>{qs.score}/10</Text>
+                    <Text style={[styles.questionScoreNumber, { color: colors.text }]}>Q{qs.question}</Text>
+                    <View style={[styles.questionScoreBadge, {
+                      backgroundColor: qs.score >= 7 ? '#dcfce7' : qs.score >= 4 ? '#fef3c7' : '#fee2e2'
+                    }]}>
+                      <Text style={[styles.questionScoreValue, {
+                        color: qs.score >= 7 ? '#166534' : qs.score >= 4 ? '#92400e' : '#991b1b'
+                      }]}>{qs.score}/10</Text>
                     </View>
                   </View>
                   <Text style={styles.questionScoreFeedback}>{qs.feedback}</Text>
+                  {answers[qs.question - 1] && (
+                    <View style={styles.answerMediaRow}>
+                      {answers[qs.question - 1]?.audioUri && (
+                        <View style={styles.mediaTag}>
+                          <Mic size={12} color="#6366f1" />
+                          <Text style={styles.mediaTagText}>Voice Recorded</Text>
+                        </View>
+                      )}
+                      {answers[qs.question - 1]?.videoUri && (
+                        <View style={styles.mediaTag}>
+                          <Video size={12} color="#10b981" />
+                          <Text style={styles.mediaTagText}>Video Captured</Text>
+                        </View>
+                      )}
+                      {answers[qs.question - 1]?.duration > 0 && (
+                        <View style={styles.mediaTag}>
+                          <Clock size={12} color="#f59e0b" />
+                          <Text style={styles.mediaTagText}>{formatTime(answers[qs.question - 1].duration)}</Text>
+                        </View>
+                      )}
+                    </View>
+                  )}
                 </View>
               ))}
             </View>
@@ -565,7 +625,6 @@ Start now by greeting briefly in ${languageName} and then immediately use askQue
                 </View>
               ))}
             </View>
-
             <View style={[styles.evaluationCard, styles.weaknessCard]}>
               <Text style={styles.evaluationTitle}>⚠️ Areas to Improve</Text>
               {evaluation.weaknesses.map((item, idx) => (
@@ -575,7 +634,6 @@ Start now by greeting briefly in ${languageName} and then immediately use askQue
                 </View>
               ))}
             </View>
-
             <View style={[styles.evaluationCard, styles.recommendationCard]}>
               <Text style={styles.evaluationTitle}>💡 Recommendations</Text>
               {evaluation.recommendations.map((item, idx) => (
@@ -597,6 +655,8 @@ Start now by greeting briefly in ${languageName} and then immediately use askQue
               setQuestions([]);
               setCurrentQuestionIndex(0);
               setMessages([]);
+              setIsCameraRecording(false);
+              setCameraReady(false);
             }}
           >
             <Text style={styles.retryButtonText}>Start New Interview</Text>
@@ -608,11 +668,11 @@ Start now by greeting briefly in ${languageName} and then immediately use askQue
 
   return (
     <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <ChevronLeft size={24} color="#1e293b" />
+          <ChevronLeft size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Interview Assessment</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Interview Assessment</Text>
         <View style={styles.backButton} />
       </View>
 
@@ -628,9 +688,9 @@ Start now by greeting briefly in ${languageName} and then immediately use askQue
               <Text style={styles.infoTitle}>AI Interview</Text>
             </View>
             <Text style={styles.infoText}>
-              {"\n"}• 5 Questions presented as slides
-              {"\n"}• Answer via Text, Voice, or Video
-              {"\n"}• Real-time expression analysis
+              {"\n"}• 5 Questions — fast AI response
+              {"\n"}• Real voice recording & transcription
+              {"\n"}• Video recording of your expressions
               {"\n"}• Comprehensive AI evaluation
             </Text>
           </View>
@@ -638,9 +698,7 @@ Start now by greeting briefly in ${languageName} and then immediately use askQue
           {(!cameraPermission?.granted || !hasAudioPermission) && (
             <View style={styles.permissionWarning}>
               <Sparkles size={20} color="#ef4444" />
-              <Text style={styles.permissionWarningText}>
-                Camera and microphone permissions required
-              </Text>
+              <Text style={styles.permissionWarningText}>Camera and microphone permissions required</Text>
               <TouchableOpacity style={styles.grantButton} onPress={requestPermissions}>
                 <Text style={styles.grantButtonText}>Grant Permissions</Text>
               </TouchableOpacity>
@@ -648,68 +706,50 @@ Start now by greeting briefly in ${languageName} and then immediately use askQue
           )}
 
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Interview Language</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Interview Language</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.optionScroll}>
               {LANGUAGES.map((lang) => (
                 <TouchableOpacity
                   key={lang.id}
-                  style={[styles.languageButton, interviewLanguage === lang.id && styles.languageButtonActive]}
+                  style={[styles.languageButton, { backgroundColor: colors.surface, borderColor: colors.border }, interviewLanguage === lang.id && styles.languageButtonActive]}
                   onPress={() => setInterviewLanguage(lang.id)}
                 >
                   <Globe size={16} color={interviewLanguage === lang.id ? '#ffffff' : '#64748b'} />
-                  <Text style={[styles.languageText, interviewLanguage === lang.id && styles.languageTextActive]}>
-                    {lang.name}
-                  </Text>
+                  <Text style={[styles.languageText, interviewLanguage === lang.id && styles.languageTextActive]}>{lang.name}</Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
           </View>
 
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Select Board</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Select Board</Text>
             <View style={styles.boardButtons}>
               <TouchableOpacity
-                style={[styles.boardButton, selectedBoard === 'NCERT' && styles.boardButtonActiveNCERT]}
-                onPress={() => {
-                  setSelectedBoard('NCERT');
-                  setSelectedGrade(6);
-                  setSelectedSubject('');
-                  setSelectedChapter('');
-                }}
+                style={[styles.boardButton, { backgroundColor: colors.surface, borderColor: colors.border }, selectedBoard === 'NCERT' && styles.boardButtonActiveNCERT]}
+                onPress={() => { setSelectedBoard('NCERT'); setSelectedGrade(6); setSelectedSubject(''); setSelectedChapter(''); }}
               >
-                <Text style={[styles.boardButtonText, selectedBoard === 'NCERT' && styles.boardButtonTextActive]}>
-                  NCERT
-                </Text>
+                <Text style={[styles.boardButtonText, selectedBoard === 'NCERT' && styles.boardButtonTextActive]}>NCERT</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.boardButton, selectedBoard === 'ICSE' && styles.boardButtonActiveICSE]}
-                onPress={() => {
-                  setSelectedBoard('ICSE');
-                  setSelectedGrade(9);
-                  setSelectedSubject('');
-                  setSelectedChapter('');
-                }}
+                style={[styles.boardButton, { backgroundColor: colors.surface, borderColor: colors.border }, selectedBoard === 'ICSE' && styles.boardButtonActiveICSE]}
+                onPress={() => { setSelectedBoard('ICSE'); setSelectedGrade(9); setSelectedSubject(''); setSelectedChapter(''); }}
               >
-                <Text style={[styles.boardButtonText, selectedBoard === 'ICSE' && styles.boardButtonTextActive]}>
-                  ICSE
-                </Text>
+                <Text style={[styles.boardButtonText, selectedBoard === 'ICSE' && styles.boardButtonTextActive]}>ICSE</Text>
               </TouchableOpacity>
             </View>
           </View>
 
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Interview Topic</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Interview Topic</Text>
             <View style={styles.topicGrid}>
               {INTERVIEW_TOPICS.map((topic) => (
                 <TouchableOpacity
                   key={topic.id}
-                  style={[styles.topicButton, interviewTopic === topic.id && styles.topicButtonActive]}
+                  style={[styles.topicButton, { backgroundColor: colors.surface, borderColor: colors.border }, interviewTopic === topic.id && styles.topicButtonActive]}
                   onPress={() => setInterviewTopic(topic.id)}
                 >
                   <Text style={styles.topicIcon}>{topic.icon}</Text>
-                  <Text style={[styles.topicText, interviewTopic === topic.id && styles.topicTextActive]}>
-                    {topic.label}
-                  </Text>
+                  <Text style={[styles.topicText, interviewTopic === topic.id && styles.topicTextActive]}>{topic.label}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -718,65 +758,45 @@ Start now by greeting briefly in ${languageName} and then immediately use askQue
           {interviewTopic === 'subject' && (
             <>
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Select Grade</Text>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>Select Grade</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.optionScroll}>
                   {(selectedBoard === 'NCERT' ? [6, 7, 8, 9, 10, 11, 12] : [9, 10]).map((grade) => (
                     <TouchableOpacity
                       key={grade}
-                      style={[styles.optionButton, selectedGrade === grade && styles.optionButtonActive]}
-                      onPress={() => {
-                        setSelectedGrade(grade);
-                        setSelectedSubject('');
-                        setSelectedChapter('');
-                      }}
+                      style={[styles.optionButton, { backgroundColor: colors.surface, borderColor: colors.border }, selectedGrade === grade && styles.optionButtonActive]}
+                      onPress={() => { setSelectedGrade(grade); setSelectedSubject(''); setSelectedChapter(''); }}
                     >
-                      <Text style={[styles.optionText, selectedGrade === grade && styles.optionTextActive]}>
-                        Grade {grade}
-                      </Text>
+                      <Text style={[styles.optionText, selectedGrade === grade && styles.optionTextActive]}>Grade {grade}</Text>
                     </TouchableOpacity>
                   ))}
                 </ScrollView>
               </View>
-
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Select Subject</Text>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>Select Subject</Text>
                 <View style={styles.optionGrid}>
                   {subjects.map((subject) => (
                     <TouchableOpacity
                       key={subject.id}
-                      style={[styles.gridButton, selectedSubject === subject.id && styles.gridButtonActive]}
-                      onPress={() => {
-                        setSelectedSubject(subject.id);
-                        setSelectedChapter('');
-                      }}
+                      style={[styles.gridButton, { backgroundColor: colors.surface, borderColor: colors.border }, selectedSubject === subject.id && styles.gridButtonActive]}
+                      onPress={() => { setSelectedSubject(subject.id); setSelectedChapter(''); }}
                     >
-                      <Text style={[styles.gridText, selectedSubject === subject.id && styles.gridTextActive]}>
-                        {subject.name}
-                      </Text>
+                      <Text style={[styles.gridText, selectedSubject === subject.id && styles.gridTextActive]}>{subject.name}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
               </View>
-
               {selectedSubject && (
                 <View style={styles.section}>
-                  <Text style={styles.sectionTitle}>Select Chapter</Text>
+                  <Text style={[styles.sectionTitle, { color: colors.text }]}>Select Chapter</Text>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.optionScroll}>
                     {chapters.map((chapter) => (
                       <TouchableOpacity
                         key={chapter.id}
-                        style={[styles.chapterButton, selectedChapter === chapter.id && styles.chapterButtonActive]}
+                        style={[styles.chapterButton, { backgroundColor: colors.surface, borderColor: colors.border }, selectedChapter === chapter.id && styles.chapterButtonActive]}
                         onPress={() => setSelectedChapter(chapter.id)}
                       >
-                        <Text style={[styles.chapterNumber, selectedChapter === chapter.id && styles.chapterNumberActive]}>
-                          {chapter.number}
-                        </Text>
-                        <Text
-                          style={[styles.chapterTitle, selectedChapter === chapter.id && styles.chapterTitleActive]}
-                          numberOfLines={2}
-                        >
-                          {chapter.title}
-                        </Text>
+                        <Text style={[styles.chapterNumber, selectedChapter === chapter.id && styles.chapterNumberActive]}>{chapter.number}</Text>
+                        <Text style={[styles.chapterTitle, selectedChapter === chapter.id && styles.chapterTitleActive]} numberOfLines={2}>{chapter.title}</Text>
                       </TouchableOpacity>
                     ))}
                   </ScrollView>
@@ -796,11 +816,19 @@ Start now by greeting briefly in ${languageName} and then immediately use askQue
         </ScrollView>
       ) : (
         <View style={styles.interviewContainer}>
-          <View style={styles.progressContainer}>
+          <View style={[styles.progressContainer, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
             <View style={styles.progressHeader}>
               <Text style={styles.progressText}>Question {currentQuestionIndex + 1} of {MAX_QUESTIONS}</Text>
+              {(isVoiceRecording || isCameraRecording) && (
+                <View style={styles.liveTimerBadge}>
+                  <Animated.View style={[styles.liveDotOuter, { transform: [{ scale: pulseAnim }] }]}>
+                    <View style={styles.liveDot} />
+                  </Animated.View>
+                  <Text style={styles.liveTimerText}>{formatTime(recordingTimer)}</Text>
+                </View>
+              )}
               <TouchableOpacity style={styles.endButtonSmall} onPress={handleEndInterview}>
-                <Text style={styles.endButtonSmallText}>End Interview</Text>
+                <Text style={styles.endButtonSmallText}>End</Text>
               </TouchableOpacity>
             </View>
             <View style={styles.progressBar}>
@@ -811,14 +839,23 @@ Start now by greeting briefly in ${languageName} and then immediately use askQue
           <View style={styles.mainContent}>
             <View style={styles.cameraSection}>
               {Platform.OS !== 'web' ? (
-                <CameraView style={styles.camera} facing="front" />
+                <CameraView
+                  ref={cameraRef}
+                  style={styles.camera}
+                  facing="front"
+                  mode="video"
+                  onCameraReady={() => {
+                    console.log('[Interview] Camera ready');
+                    setCameraReady(true);
+                  }}
+                />
               ) : (
                 <View style={[styles.camera, styles.cameraPlaceholder]}>
                   <Camera size={32} color="#94a3b8" />
                   <Text style={styles.cameraPlaceholderText}>Camera</Text>
                 </View>
               )}
-              {isRecording && (
+              {isCameraRecording && (
                 <View style={styles.recordingIndicator}>
                   <View style={styles.recordingDot} />
                   <Text style={styles.recordingText}>REC</Text>
@@ -826,50 +863,56 @@ Start now by greeting briefly in ${languageName} and then immediately use askQue
               )}
             </View>
 
-            <Animated.View 
-              style={[
-                styles.questionSlide,
-                {
-                  opacity: fadeAnim,
-                  transform: [{
-                    translateX: slideAnim.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [0, 50],
-                    }),
-                  }],
-                },
-              ]}
-            >
-              <View style={styles.questionBadge}>
-                <Text style={styles.questionBadgeText}>Question {currentQuestionIndex + 1}</Text>
+            {isAIThinking ? (
+              <View style={styles.thinkingContainer}>
+                <ActivityIndicator size="large" color="#f59e0b" />
+                <Text style={[styles.thinkingText, { color: colors.textSecondary }]}>
+                  {currentQuestionIndex === 0 && questions.length === 0
+                    ? 'Preparing your first question...'
+                    : 'Evaluating & preparing next question...'}
+                </Text>
               </View>
-              <Text style={styles.questionText}>
-                {currentQuestion || 'Preparing your question...'}
-              </Text>
-            </Animated.View>
+            ) : (
+              <Animated.View
+                style={[
+                  styles.questionSlide,
+                  { backgroundColor: colors.surface },
+                  {
+                    opacity: fadeAnim,
+                    transform: [{ translateX: slideAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 50] }) }],
+                  },
+                ]}
+              >
+                <View style={styles.questionBadge}>
+                  <Text style={styles.questionBadgeText}>Question {currentQuestionIndex + 1}</Text>
+                </View>
+                <Text style={[styles.questionText, { color: colors.text }]}>
+                  {currentQuestion || 'Preparing your question...'}
+                </Text>
+              </Animated.View>
+            )}
 
             <View style={styles.inputMethodsContainer}>
-              <Text style={styles.inputMethodsTitle}>Answer using:</Text>
               <View style={styles.inputMethodTabs}>
                 <TouchableOpacity
-                  style={[styles.inputMethodTab, activeInputMethod === 'text' && styles.inputMethodTabActive]}
+                  style={[styles.inputMethodTab, { backgroundColor: colors.surface, borderColor: colors.border }, activeInputMethod === 'text' && styles.inputMethodTabActive]}
                   onPress={() => setActiveInputMethod('text')}
                 >
-                  <Type size={18} color={activeInputMethod === 'text' ? '#ffffff' : '#64748b'} />
+                  <Type size={16} color={activeInputMethod === 'text' ? '#ffffff' : '#64748b'} />
                   <Text style={[styles.inputMethodTabText, activeInputMethod === 'text' && styles.inputMethodTabTextActive]}>Text</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[styles.inputMethodTab, activeInputMethod === 'voice' && styles.inputMethodTabActive]}
+                  style={[styles.inputMethodTab, { backgroundColor: colors.surface, borderColor: colors.border }, activeInputMethod === 'voice' && styles.inputMethodTabActive]}
                   onPress={() => setActiveInputMethod('voice')}
                 >
-                  <Mic size={18} color={activeInputMethod === 'voice' ? '#ffffff' : '#64748b'} />
+                  <Mic size={16} color={activeInputMethod === 'voice' ? '#ffffff' : '#64748b'} />
                   <Text style={[styles.inputMethodTabText, activeInputMethod === 'voice' && styles.inputMethodTabTextActive]}>Voice</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[styles.inputMethodTab, activeInputMethod === 'video' && styles.inputMethodTabActive]}
+                  style={[styles.inputMethodTab, { backgroundColor: colors.surface, borderColor: colors.border }, activeInputMethod === 'video' && styles.inputMethodTabActive]}
                   onPress={() => setActiveInputMethod('video')}
                 >
-                  <Video size={18} color={activeInputMethod === 'video' ? '#ffffff' : '#64748b'} />
+                  <Video size={16} color={activeInputMethod === 'video' ? '#ffffff' : '#64748b'} />
                   <Text style={[styles.inputMethodTabText, activeInputMethod === 'video' && styles.inputMethodTabTextActive]}>Video</Text>
                 </TouchableOpacity>
               </View>
@@ -878,49 +921,64 @@ Start now by greeting briefly in ${languageName} and then immediately use askQue
                 <View style={styles.voiceInputContainer}>
                   <TouchableOpacity
                     style={[styles.voiceButton, isVoiceRecording && styles.voiceButtonActive]}
-                    onPress={isVoiceRecording ? stopVoiceRecordingAndTranscribe : startVoiceRecording}
+                    onPress={isVoiceRecording ? () => stopVoiceRecordingAndTranscribe() : startVoiceRecording}
                     disabled={isTranscribing || isProcessingVoice}
                   >
                     {isTranscribing ? (
-                      <Text style={styles.voiceButtonText}>Transcribing...</Text>
+                      <>
+                        <ActivityIndicator size="small" color="#ffffff" />
+                        <Text style={styles.voiceButtonText}>Transcribing...</Text>
+                      </>
                     ) : isProcessingVoice ? (
-                      <Text style={styles.voiceButtonText}>Starting...</Text>
+                      <>
+                        <ActivityIndicator size="small" color="#ffffff" />
+                        <Text style={styles.voiceButtonText}>Starting...</Text>
+                      </>
                     ) : isVoiceRecording ? (
                       <>
-                        <MicOff size={24} color="#ffffff" />
-                        <Text style={styles.voiceButtonText}>Stop & Transcribe</Text>
+                        <Square size={20} color="#ffffff" />
+                        <Text style={styles.voiceButtonText}>Stop Recording ({formatTime(recordingTimer)})</Text>
                       </>
                     ) : (
                       <>
-                        <Mic size={24} color="#ffffff" />
+                        <Mic size={20} color="#ffffff" />
                         <Text style={styles.voiceButtonText}>Start Speaking</Text>
                       </>
                     )}
                   </TouchableOpacity>
-                  <Text style={styles.voiceHint}>Your speech will be converted to text</Text>
+                  <Text style={[styles.voiceHint, { color: colors.textTertiary }]}>
+                    {isVoiceRecording ? 'Recording your voice — tap to stop & transcribe' : 'Your speech will be converted to text'}
+                  </Text>
                 </View>
               )}
 
               {activeInputMethod === 'video' && (
                 <View style={styles.videoInputContainer}>
-                  <View style={styles.videoStatusCard}>
-                    <Video size={24} color="#10b981" />
-                    <Text style={styles.videoStatusText}>
-                      {isRecording ? 'Video recording active - Your expressions are being captured' : 'Video paused'}
-                    </Text>
+                  <View style={[styles.videoStatusCard, { borderColor: isCameraRecording ? '#a7f3d0' : '#fde68a' }]}>
+                    {isCameraRecording ? (
+                      <>
+                        <Video size={20} color="#10b981" />
+                        <Text style={styles.videoStatusText}>Video recording active — your expressions are being captured</Text>
+                      </>
+                    ) : (
+                      <>
+                        <Camera size={20} color="#f59e0b" />
+                        <Text style={[styles.videoStatusText, { color: '#92400e' }]}>Camera preview active</Text>
+                      </>
+                    )}
                   </View>
-                  <Text style={styles.videoHint}>Type or speak your answer while video records your expressions</Text>
+                  <Text style={[styles.videoHint, { color: colors.textTertiary }]}>Type or speak your answer while video records</Text>
                 </View>
               )}
             </View>
           </View>
 
-          <View style={[styles.answerInputContainer, { paddingBottom: insets.bottom || 16 }]}>
+          <View style={[styles.answerInputContainer, { paddingBottom: insets.bottom || 16, backgroundColor: colors.surface, borderTopColor: colors.border }]}>
             <View style={styles.textInputRow}>
               <TextInput
-                style={styles.answerInput}
+                style={[styles.answerInput, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.text }]}
                 placeholder="Type your answer here..."
-                placeholderTextColor="#94a3b8"
+                placeholderTextColor={colors.textTertiary}
                 value={inputText}
                 onChangeText={setInputText}
                 multiline
@@ -932,12 +990,12 @@ Start now by greeting briefly in ${languageName} and then immediately use askQue
                   isVoiceRecording && styles.quickVoiceButtonActive,
                   isTranscribing && styles.quickVoiceButtonTranscribing
                 ]}
-                onPress={isVoiceRecording ? stopVoiceRecordingAndTranscribe : startVoiceRecording}
+                onPress={isVoiceRecording ? () => stopVoiceRecordingAndTranscribe() : startVoiceRecording}
                 disabled={isTranscribing || isProcessingVoice || Platform.OS === 'web'}
                 activeOpacity={0.7}
               >
                 {isTranscribing ? (
-                  <View style={styles.smallSpinner} />
+                  <ActivityIndicator size="small" color="#ffffff" />
                 ) : isVoiceRecording ? (
                   <MicOff size={20} color="#ffffff" />
                 ) : (
@@ -946,12 +1004,14 @@ Start now by greeting briefly in ${languageName} and then immediately use askQue
               </TouchableOpacity>
             </View>
             <TouchableOpacity
-              style={[styles.submitButton, !inputText.trim() && styles.submitButtonDisabled]}
+              style={[styles.submitButton, (!inputText.trim() || isAIThinking) && styles.submitButtonDisabled]}
               onPress={handleSubmitAnswer}
-              disabled={!inputText.trim()}
+              disabled={!inputText.trim() || isAIThinking}
             >
               <Send size={20} color="#ffffff" />
-              <Text style={styles.submitButtonText}>Submit Answer</Text>
+              <Text style={styles.submitButtonText}>
+                {isAIThinking ? 'Processing...' : 'Submit Answer'}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -1199,18 +1259,9 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: '#f59e0b',
     ...Platform.select({
-      ios: {
-        shadowColor: '#f59e0b',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 6,
-      },
-      web: {
-        boxShadow: '0 4px 12px rgba(245, 158, 11, 0.3)',
-      },
+      ios: { shadowColor: '#f59e0b', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 },
+      android: { elevation: 6 },
+      web: { boxShadow: '0 4px 12px rgba(245, 158, 11, 0.3)' },
     }),
   },
   startButtonDisabled: {
@@ -1242,14 +1293,42 @@ const styles = StyleSheet.create({
     fontWeight: '600' as const,
     color: '#64748b',
   },
-  endButtonSmall: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+  liveTimerBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#fef2f2',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  liveDotOuter: {
+    width: 12,
+    height: 12,
     borderRadius: 6,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  liveDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#ef4444',
+  },
+  liveTimerText: {
+    fontSize: 13,
+    fontWeight: '700' as const,
+    color: '#dc2626',
+    fontVariant: ['tabular-nums'],
+  },
+  endButtonSmall: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 8,
     backgroundColor: '#fee2e2',
   },
   endButtonSmallText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '600' as const,
     color: '#dc2626',
   },
@@ -1269,9 +1348,9 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   cameraSection: {
-    width: 120,
-    height: 160,
-    borderRadius: 12,
+    width: 110,
+    height: 150,
+    borderRadius: 14,
     overflow: 'hidden',
     position: 'absolute',
     top: 16,
@@ -1280,18 +1359,9 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     borderColor: '#ffffff',
     ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.2,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 4,
-      },
-      web: {
-        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
-      },
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4 },
+      android: { elevation: 4 },
+      web: { boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)' },
     }),
   },
   camera: {
@@ -1310,8 +1380,8 @@ const styles = StyleSheet.create({
   },
   recordingIndicator: {
     position: 'absolute',
-    top: 8,
-    left: 8,
+    top: 6,
+    left: 6,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
@@ -1331,27 +1401,37 @@ const styles = StyleSheet.create({
     fontWeight: '700' as const,
     color: '#ffffff',
   },
+  thinkingContainer: {
+    backgroundColor: 'rgba(245, 158, 11, 0.08)',
+    borderRadius: 20,
+    padding: 32,
+    marginRight: 130,
+    marginBottom: 20,
+    minHeight: 140,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.15)',
+  },
+  thinkingText: {
+    fontSize: 14,
+    fontWeight: '500' as const,
+    color: '#64748b',
+    textAlign: 'center',
+  },
   questionSlide: {
     backgroundColor: '#ffffff',
     borderRadius: 20,
     padding: 24,
-    marginRight: 140,
+    marginRight: 130,
     marginBottom: 20,
-    minHeight: 180,
+    minHeight: 140,
     justifyContent: 'center',
     ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 12,
-      },
-      android: {
-        elevation: 4,
-      },
-      web: {
-        boxShadow: '0 4px 16px rgba(0, 0, 0, 0.1)',
-      },
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 12 },
+      android: { elevation: 4 },
+      web: { boxShadow: '0 4px 16px rgba(0, 0, 0, 0.1)' },
     }),
   },
   questionBadge: {
@@ -1360,7 +1440,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
-    marginBottom: 16,
+    marginBottom: 12,
   },
   questionBadgeText: {
     fontSize: 12,
@@ -1368,32 +1448,26 @@ const styles = StyleSheet.create({
     color: '#92400e',
   },
   questionText: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '600' as const,
     color: '#1e293b',
-    lineHeight: 28,
+    lineHeight: 26,
   },
   inputMethodsContainer: {
     flex: 1,
   },
-  inputMethodsTitle: {
-    fontSize: 14,
-    fontWeight: '600' as const,
-    color: '#64748b',
-    marginBottom: 12,
-  },
   inputMethodTabs: {
     flexDirection: 'row',
     gap: 8,
-    marginBottom: 16,
+    marginBottom: 12,
   },
   inputMethodTab: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 12,
+    gap: 5,
+    paddingVertical: 10,
     borderRadius: 10,
     backgroundColor: '#ffffff',
     borderWidth: 1,
@@ -1413,68 +1487,59 @@ const styles = StyleSheet.create({
   },
   voiceInputContainer: {
     alignItems: 'center',
-    paddingVertical: 20,
+    paddingVertical: 12,
   },
   voiceButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
-    paddingVertical: 16,
-    paddingHorizontal: 32,
+    paddingVertical: 14,
+    paddingHorizontal: 28,
     borderRadius: 30,
     backgroundColor: '#10b981',
     ...Platform.select({
-      ios: {
-        shadowColor: '#10b981',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 4,
-      },
-      web: {
-        boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
-      },
+      ios: { shadowColor: '#10b981', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 },
+      android: { elevation: 4 },
+      web: { boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)' },
     }),
   },
   voiceButtonActive: {
     backgroundColor: '#ef4444',
   },
   voiceButtonText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600' as const,
     color: '#ffffff',
   },
   voiceHint: {
     fontSize: 12,
     color: '#94a3b8',
-    marginTop: 12,
+    marginTop: 10,
   },
   videoInputContainer: {
-    paddingVertical: 16,
+    paddingVertical: 8,
   },
   videoStatusCard: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
     backgroundColor: '#ecfdf5',
-    padding: 16,
+    padding: 14,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#a7f3d0',
   },
   videoStatusText: {
     flex: 1,
-    fontSize: 14,
+    fontSize: 13,
     color: '#047857',
     fontWeight: '500' as const,
   },
   videoHint: {
     fontSize: 12,
     color: '#94a3b8',
-    marginTop: 12,
+    marginTop: 8,
     textAlign: 'center',
   },
   answerInputContainer: {
@@ -1482,7 +1547,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     borderTopWidth: 1,
     borderTopColor: '#e2e8f0',
-    gap: 12,
+    gap: 10,
   },
   textInputRow: {
     flexDirection: 'row',
@@ -1498,7 +1563,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#1e293b',
     maxHeight: 100,
-    minHeight: 50,
+    minHeight: 48,
     borderWidth: 1,
     borderColor: '#e2e8f0',
   },
@@ -1519,14 +1584,6 @@ const styles = StyleSheet.create({
   quickVoiceButtonTranscribing: {
     backgroundColor: '#6366f1',
     borderColor: '#6366f1',
-  },
-  smallSpinner: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    borderWidth: 2,
-    borderColor: '#ffffff',
-    borderTopColor: 'transparent',
   },
   submitButton: {
     flexDirection: 'row',
@@ -1555,18 +1612,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 24,
     ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 12,
-      },
-      android: {
-        elevation: 4,
-      },
-      web: {
-        boxShadow: '0 4px 16px rgba(0, 0, 0, 0.1)',
-      },
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 12 },
+      android: { elevation: 4 },
+      web: { boxShadow: '0 4px 16px rgba(0, 0, 0, 0.1)' },
     }),
   },
   scoreLabel: {
@@ -1638,6 +1686,26 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#64748b',
     lineHeight: 20,
+  },
+  answerMediaRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 8,
+    flexWrap: 'wrap',
+  },
+  mediaTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#f1f5f9',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  mediaTagText: {
+    fontSize: 11,
+    fontWeight: '600' as const,
+    color: '#475569',
   },
   evaluationSection: {
     gap: 16,
@@ -1786,18 +1854,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#fbbf24',
     alignItems: 'center',
     ...Platform.select({
-      ios: {
-        shadowColor: '#fbbf24',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.4,
-        shadowRadius: 12,
-      },
-      android: {
-        elevation: 8,
-      },
-      web: {
-        boxShadow: '0 4px 12px rgba(251, 191, 36, 0.4)',
-      },
+      ios: { shadowColor: '#fbbf24', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 12 },
+      android: { elevation: 8 },
+      web: { boxShadow: '0 4px 12px rgba(251, 191, 36, 0.4)' },
     }),
   },
   upgradeButtonText: {
