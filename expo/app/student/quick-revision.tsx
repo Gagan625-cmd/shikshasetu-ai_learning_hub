@@ -19,7 +19,7 @@ const CARD_WIDTH = SCREEN_WIDTH - 48;
 
 const RevisionCardSchema = z.object({
   cards: z.array(z.object({
-    type: z.enum(['formula', 'keypoint', 'mnemonic', 'tip']),
+    type: z.enum(['formula', 'keypoint', 'mnemonic', 'tip', 'theory', 'definition']),
     title: z.string(),
     content: z.string(),
     importance: z.enum(['critical', 'important', 'good-to-know']),
@@ -33,6 +33,8 @@ const TYPE_CONFIG: Record<string, { icon: typeof Zap; gradient: [string, string]
   keypoint: { icon: Lightbulb, gradient: ['#f59e0b', '#d97706'], label: 'Key Point' },
   mnemonic: { icon: Brain, gradient: ['#8b5cf6', '#7c3aed'], label: 'Mnemonic' },
   tip: { icon: Sparkles, gradient: ['#06b6d4', '#0891b2'], label: 'Exam Tip' },
+  theory: { icon: Zap, gradient: ['#10b981', '#059669'], label: 'Theory' },
+  definition: { icon: Lightbulb, gradient: ['#6366f1', '#4f46e5'], label: 'Definition' },
 };
 
 const IMPORTANCE_COLORS: Record<string, { bg: string; text: string; label: string }> = {
@@ -273,22 +275,32 @@ export default function QuickRevisionMode() {
   const generateMutation = useMutation({
     mutationFn: async () => {
       const subjectName = subjects.find(s => s.id === selectedSubject)?.name || '';
-      const prompt = `Generate a "5-minute before exam" quick revision set for ${selectedBoard} Grade ${selectedGrade} ${subjectName}.
+      const prompt = `Generate a comprehensive "5-minute before exam" quick revision set for ${selectedBoard} Grade ${selectedGrade} ${subjectName}.
 
-Create 15-20 revision cards covering the MOST IMPORTANT content across ALL chapters of this subject.
+Create exactly 30 revision cards covering the MOST IMPORTANT content across ALL chapters of this subject.
 Language: ${selectedLanguage}
 
-Include a mix of:
-- Critical FORMULAS (with the formula clearly written)
-- KEY POINTS that are commonly tested in exams
-- MNEMONICS to remember lists, sequences, or concepts
-- EXAM TIPS for common mistakes to avoid
+Include a balanced mix of ALL these types:
+- "formula": Critical FORMULAS with the formula clearly written (about 6-8 cards)
+- "keypoint": KEY POINTS that are commonly tested in exams - important facts, statements, properties (about 6-8 cards)
+- "theory": THEORY explanations - concise explanations of important concepts, laws, theorems, principles, reactions, processes. Include WHY something works, not just what it is. (about 5-6 cards)
+- "definition": Important DEFINITIONS that are frequently asked in exams - precise definitions of key terms and concepts (about 4-5 cards)
+- "mnemonic": MNEMONICS to remember lists, sequences, or concepts (about 3-4 cards)
+- "tip": EXAM TIPS for common mistakes to avoid, marking scheme tips, and answer-writing strategies (about 3-4 cards)
 
 Focus on:
 1. Most frequently asked topics in board exams
 2. Formulas students commonly forget
-3. Tricky concepts that need last-minute review
+3. Tricky concepts that need last-minute review with proper theory explanation
 4. Memory aids for complex information
+5. Important theorems, laws, and their applications
+6. Key definitions that examiners expect word-perfect
+7. Conceptual understanding - not just rote memorization
+
+For theory cards: Include a brief but clear explanation of the concept, why it matters, and how it connects to other topics.
+For keypoint cards: Include important facts, properties, exceptions, and special cases.
+For definition cards: Give the precise textbook definition along with a one-line explanation.
+For formula cards: Include the formula, what each variable represents, and when to use it.
 
 Each card should be concise but complete - designed for quick scanning 5 minutes before an exam.
 Mark importance as "critical" for must-know items, "important" for frequently tested, and "good-to-know" for extras.`;
