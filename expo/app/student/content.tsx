@@ -91,7 +91,7 @@ export default function ContentBrowser() {
       }
       setIsSpeaking(true);
       const language = selectedLanguage === 'hindi' ? 'hi-IN' : 'en-US';
-      speakChunks(textToSpeak, language);
+      void speakChunks(textToSpeak, language);
     }
   };
 
@@ -182,8 +182,8 @@ export default function ContentBrowser() {
       .replace(/\^1/g, '¹')
       .replace(/\^0/g, '⁰')
       .replace(/\^\{([^}]+)\}/g, '^($1)')
-      .replace(/\_\{([^}]+)\}/g, '_($1)')
-      .replace(/\_([0-9a-zA-Z])/g, '₍$1₎')
+      .replace(/_\{([^}]+)\}/g, '_($1)')
+      .replace(/_([0-9a-zA-Z])/g, '₍$1₎')
       .replace(/\\leq/g, '≤')
       .replace(/\\geq/g, '≥')
       .replace(/\\le/g, '≤')

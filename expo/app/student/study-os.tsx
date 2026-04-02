@@ -15,7 +15,7 @@ export default function StudyOS() {
   const insets = useSafeAreaInsets();
   const { userProgress, addStudyTime } = useApp();
   const { isPremium } = useSubscription();
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   
   const [activeTab, setActiveTab] = useState<'timer' | 'blocker' | 'streaks' | 'coach'>('timer');
   
@@ -110,8 +110,8 @@ Respond with encouraging, motivational, and practical advice in 2-3 sentences. B
 
   if (!isPremium) {
     return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
-        <View style={styles.header}>
+      <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
+        <View style={[styles.header, { backgroundColor: isDark ? '#0d1a2d' : '#ffffff', borderBottomColor: colors.border }]}>
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
             <ChevronLeft size={24} color="#ffffff" />
           </TouchableOpacity>
@@ -166,8 +166,8 @@ Respond with encouraging, motivational, and practical advice in 2-3 sentences. B
   }
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <View style={styles.header}>
+    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
+      <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <ChevronLeft size={24} color={colors.text} />
         </TouchableOpacity>
@@ -175,34 +175,34 @@ Respond with encouraging, motivational, and practical advice in 2-3 sentences. B
         <View style={styles.backButton} />
       </View>
 
-      <View style={styles.tabBar}>
+      <View style={[styles.tabBar, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
         <TouchableOpacity
           style={[styles.tab, activeTab === 'timer' && styles.tabActive]}
           onPress={() => setActiveTab('timer')}
         >
-          <Timer size={20} color={activeTab === 'timer' ? '#3b82f6' : '#64748b'} />
-          <Text style={[styles.tabText, activeTab === 'timer' && styles.tabTextActive]}>Timer</Text>
+          <Timer size={20} color={activeTab === 'timer' ? '#3b82f6' : colors.textTertiary} />
+          <Text style={[styles.tabText, { color: colors.textTertiary }, activeTab === 'timer' && styles.tabTextActive]}>Timer</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.tab, activeTab === 'blocker' && styles.tabActive]}
           onPress={() => setActiveTab('blocker')}
         >
-          <Lock size={20} color={activeTab === 'blocker' ? '#3b82f6' : '#64748b'} />
-          <Text style={[styles.tabText, activeTab === 'blocker' && styles.tabTextActive]}>Blocker</Text>
+          <Lock size={20} color={activeTab === 'blocker' ? '#3b82f6' : colors.textTertiary} />
+          <Text style={[styles.tabText, { color: colors.textTertiary }, activeTab === 'blocker' && styles.tabTextActive]}>Blocker</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.tab, activeTab === 'streaks' && styles.tabActive]}
           onPress={() => setActiveTab('streaks')}
         >
-          <Flame size={20} color={activeTab === 'streaks' ? '#3b82f6' : '#64748b'} />
-          <Text style={[styles.tabText, activeTab === 'streaks' && styles.tabTextActive]}>Streaks</Text>
+          <Flame size={20} color={activeTab === 'streaks' ? '#3b82f6' : colors.textTertiary} />
+          <Text style={[styles.tabText, { color: colors.textTertiary }, activeTab === 'streaks' && styles.tabTextActive]}>Streaks</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.tab, activeTab === 'coach' && styles.tabActive]}
           onPress={() => setActiveTab('coach')}
         >
-          <MessageCircle size={20} color={activeTab === 'coach' ? '#3b82f6' : '#64748b'} />
-          <Text style={[styles.tabText, activeTab === 'coach' && styles.tabTextActive]}>Coach</Text>
+          <MessageCircle size={20} color={activeTab === 'coach' ? '#3b82f6' : colors.textTertiary} />
+          <Text style={[styles.tabText, { color: colors.textTertiary }, activeTab === 'coach' && styles.tabTextActive]}>Coach</Text>
         </TouchableOpacity>
       </View>
 
@@ -220,13 +220,13 @@ Respond with encouraging, motivational, and practical advice in 2-3 sentences. B
 
             <Animated.View style={[styles.timerCircle, { transform: [{ scale: scaleAnim }] }]}>
               <LinearGradient
-                colors={isRunning ? ['#3b82f6', '#2563eb'] : ['#e2e8f0', '#cbd5e1']}
+                colors={isRunning ? ['#3b82f6', '#2563eb'] : (isDark ? ['#152a45', '#1e3a5f'] : ['#e2e8f0', '#cbd5e1'])}
                 style={styles.timerGradient}
               >
-                <Text style={[styles.timerText, isRunning && styles.timerTextActive]}>
+                <Text style={[styles.timerText, { color: isDark ? '#7ea3c4' : '#64748b' }, isRunning && styles.timerTextActive]}>
                   {String(timerMinutes).padStart(2, '0')}:{String(timerSeconds).padStart(2, '0')}
                 </Text>
-                <Text style={[styles.timerLabel, isRunning && styles.timerLabelActive]}>
+                <Text style={[styles.timerLabel, { color: isDark ? '#4a6a8a' : '#94a3b8' }, isRunning && styles.timerLabelActive]}>
                   {isRunning ? 'Focus Time' : 'Ready to Start'}
                 </Text>
               </LinearGradient>
@@ -249,18 +249,18 @@ Respond with encouraging, motivational, and practical advice in 2-3 sentences. B
                   </>
                 )}
               </TouchableOpacity>
-              <TouchableOpacity style={styles.controlButtonSecondary} onPress={resetTimer}>
-                <RotateCcw size={20} color="#64748b" />
-                <Text style={styles.controlButtonSecondaryText}>Reset</Text>
+              <TouchableOpacity style={[styles.controlButtonSecondary, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={resetTimer}>
+                <RotateCcw size={20} color={colors.textTertiary} />
+                <Text style={[styles.controlButtonSecondaryText, { color: colors.textTertiary }]}>Reset</Text>
               </TouchableOpacity>
             </View>
 
-            <View style={styles.statsCard}>
+            <View style={[styles.statsCard, { backgroundColor: colors.cardBg }]}>
               <View style={styles.statItem}>
                 <Text style={[styles.statValue, { color: colors.accent }]}>{sessionCount}</Text>
                 <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Sessions Today</Text>
               </View>
-              <View style={styles.statDivider} />
+              <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
               <View style={styles.statItem}>
                 <Text style={[styles.statValue, { color: colors.accent }]}>{userProgress.totalStudyTime}</Text>
                 <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Total Minutes</Text>
@@ -276,11 +276,11 @@ Respond with encouraging, motivational, and practical advice in 2-3 sentences. B
               Block distracting apps and websites during study time
             </Text>
 
-            <View style={styles.blockerCard}>
+            <View style={[styles.blockerCard, { backgroundColor: colors.cardBg }]}>
               <View style={styles.blockerHeader}>
                 <Text style={[styles.blockerTitle, { color: colors.text }]}>Blocker Status</Text>
                 <TouchableOpacity
-                  style={[styles.blockerToggle, blockerActive && styles.blockerToggleActive]}
+                  style={[styles.blockerToggle, { backgroundColor: isDark ? '#152a45' : '#e2e8f0' }, blockerActive && styles.blockerToggleActive]}
                   onPress={() => setBlockerActive(!blockerActive)}
                 >
                   <View style={[styles.blockerToggleCircle, blockerActive && styles.blockerToggleCircleActive]} />
@@ -291,18 +291,18 @@ Respond with encouraging, motivational, and practical advice in 2-3 sentences. B
               </Text>
             </View>
 
-            <View style={styles.appsCard}>
+            <View style={[styles.appsCard, { backgroundColor: colors.cardBg }]}>
               <Text style={[styles.appsTitle, { color: colors.text }]}>Blocked Categories</Text>
               {blockedApps.map((app, index) => (
-                <View key={index} style={styles.appItem}>
+                <View key={index} style={[styles.appItem, { backgroundColor: isDark ? '#0a1525' : '#f8fafc' }]}>
                   <Text style={[styles.appText, { color: colors.textSecondary }]}>{app}</Text>
-                  <Lock size={16} color="#64748b" />
+                  <Lock size={16} color={colors.textTertiary} />
                 </View>
               ))}
             </View>
 
-            <View style={styles.infoBox}>
-              <Text style={styles.infoText}>
+            <View style={[styles.infoBox, { backgroundColor: isDark ? 'rgba(59,130,246,0.1)' : '#eff6ff', borderLeftColor: '#3b82f6' }]}>
+              <Text style={[styles.infoText, { color: isDark ? '#93c5fd' : '#1e40af' }]}>
                 💡 Tip: The blocker reminds you to stay focused. You control when it&apos;s active!
               </Text>
             </View>
@@ -332,21 +332,21 @@ Respond with encouraging, motivational, and practical advice in 2-3 sentences. B
             </LinearGradient>
 
             <View style={styles.rewardsGrid}>
-              <View style={styles.rewardCard}>
+              <View style={[styles.rewardCard, { backgroundColor: colors.cardBg }]}>
                 <Text style={styles.rewardEmoji}>🏆</Text>
                 <Text style={[styles.rewardTitle, { color: colors.text }]}>3-Day Warrior</Text>
                 <Text style={[styles.rewardStatus, { color: colors.textSecondary }]}>
                   {userProgress.currentStreak >= 3 ? '✓ Unlocked' : `${userProgress.currentStreak}/3`}
                 </Text>
               </View>
-              <View style={styles.rewardCard}>
+              <View style={[styles.rewardCard, { backgroundColor: colors.cardBg }]}>
                 <Text style={styles.rewardEmoji}>⭐</Text>
                 <Text style={[styles.rewardTitle, { color: colors.text }]}>Week Champion</Text>
                 <Text style={[styles.rewardStatus, { color: colors.textSecondary }]}>
                   {userProgress.currentStreak >= 7 ? '✓ Unlocked' : `${userProgress.currentStreak}/7`}
                 </Text>
               </View>
-              <View style={styles.rewardCard}>
+              <View style={[styles.rewardCard, { backgroundColor: colors.cardBg }]}>
                 <Text style={styles.rewardEmoji}>💎</Text>
                 <Text style={[styles.rewardTitle, { color: colors.text }]}>Month Legend</Text>
                 <Text style={[styles.rewardStatus, { color: colors.textSecondary }]}>
@@ -364,17 +364,17 @@ Respond with encouraging, motivational, and practical advice in 2-3 sentences. B
               Get motivational support and study guidance
             </Text>
 
-            <View style={styles.coachCard}>
-              <View style={styles.coachAvatar}>
+            <View style={[styles.coachCard, { backgroundColor: colors.cardBg }]}>
+              <View style={[styles.coachAvatar, { backgroundColor: isDark ? 'rgba(139,92,246,0.15)' : '#f3e8ff' }]}>
                 <Sparkles size={32} color="#8b5cf6" />
               </View>
               <Text style={[styles.coachName, { color: colors.text }]}>Setu Sensei</Text>
-              <Text style={styles.coachRole}>Motivational Coach</Text>
+              <Text style={[styles.coachRole, { color: isDark ? '#a78bfa' : '#8b5cf6' }]}>Motivational Coach</Text>
             </View>
 
             {coachMessage && (
-              <View style={styles.coachMessageCard}>
-                <Text style={styles.coachMessageText}>{coachMessage}</Text>
+              <View style={[styles.coachMessageCard, { backgroundColor: isDark ? 'rgba(139,92,246,0.1)' : '#f3e8ff', borderLeftColor: '#8b5cf6' }]}>
+                <Text style={[styles.coachMessageText, { color: isDark ? '#c4b5fd' : '#6b21a8' }]}>{coachMessage}</Text>
               </View>
             )}
 
@@ -390,7 +390,7 @@ Respond with encouraging, motivational, and practical advice in 2-3 sentences. B
                 editable={!coachMutation.isPending}
               />
               <TouchableOpacity
-                style={[styles.coachSendButton, !coachInput.trim() && styles.coachSendButtonDisabled]}
+                style={[styles.coachSendButton, !coachInput.trim() && [styles.coachSendButtonDisabled, { backgroundColor: isDark ? '#152a45' : '#cbd5e1' }]]}
                 onPress={handleCoachMessage}
                 disabled={!coachInput.trim() || coachMutation.isPending}
               >
@@ -405,7 +405,7 @@ Respond with encouraging, motivational, and practical advice in 2-3 sentences. B
               {['I feel unmotivated', 'How to focus better?', 'Tips for exam prep'].map((suggestion, idx) => (
                 <TouchableOpacity
                   key={idx}
-                  style={styles.suggestionButton}
+                  style={[styles.suggestionButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
                   onPress={() => {
                     setCoachInput(suggestion);
                     coachMutation.mutate(suggestion);

@@ -26,7 +26,7 @@ export default function TeacherQuizGenerator() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { selectedLanguage, maybeRequestReview } = useApp();
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   
   const [syllabus, setSyllabus] = useState<'NCERT' | 'ICSE'>('NCERT');
   const [selectedGrade, setSelectedGrade] = useState<number>(6);
@@ -89,7 +89,7 @@ Make questions aligned with ${syllabus} exam pattern and difficulty level.`;
     onSuccess: (data) => {
       setQuiz(data);
       setCurrentQuestion(0);
-      maybeRequestReview();
+      void maybeRequestReview();
     },
   });
 
@@ -127,7 +127,7 @@ Make questions aligned with ${syllabus} exam pattern and difficulty level.`;
           <>
             <View style={styles.syllabusSelector}>
               <TouchableOpacity
-                style={[styles.syllabusButton, syllabus === 'NCERT' && styles.syllabusButtonActive]}
+                style={[styles.syllabusButton, { backgroundColor: colors.surface, borderColor: colors.border }, syllabus === 'NCERT' && styles.syllabusButtonActive]}
                 onPress={() => {
                   setSyllabus('NCERT');
                   setSelectedGrade(6);
@@ -135,13 +135,13 @@ Make questions aligned with ${syllabus} exam pattern and difficulty level.`;
                   setSelectedChapter('');
                 }}
               >
-                <BookOpen size={20} color={syllabus === 'NCERT' ? '#ffffff' : '#64748b'} />
+                <BookOpen size={20} color={syllabus === 'NCERT' ? '#ffffff' : colors.textTertiary} />
                 <Text style={[styles.syllabusButtonText, syllabus === 'NCERT' && styles.syllabusButtonTextActive]}>
                   NCERT
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.syllabusButton, syllabus === 'ICSE' && styles.syllabusButtonActive]}
+                style={[styles.syllabusButton, { backgroundColor: colors.surface, borderColor: colors.border }, syllabus === 'ICSE' && styles.syllabusButtonActive]}
                 onPress={() => {
                   setSyllabus('ICSE');
                   setSelectedGrade(9);
@@ -149,7 +149,7 @@ Make questions aligned with ${syllabus} exam pattern and difficulty level.`;
                   setSelectedChapter('');
                 }}
               >
-                <GraduationCap size={20} color={syllabus === 'ICSE' ? '#ffffff' : '#64748b'} />
+                <GraduationCap size={20} color={syllabus === 'ICSE' ? '#ffffff' : colors.textTertiary} />
                 <Text style={[styles.syllabusButtonText, syllabus === 'ICSE' && styles.syllabusButtonTextActive]}>
                   ICSE
                 </Text>
@@ -162,7 +162,7 @@ Make questions aligned with ${syllabus} exam pattern and difficulty level.`;
                 {availableGrades.map((grade) => (
                   <TouchableOpacity
                     key={grade}
-                    style={[styles.optionButton, selectedGrade === grade && styles.optionButtonActive]}
+                    style={[styles.optionButton, { backgroundColor: colors.surface, borderColor: colors.border }, selectedGrade === grade && styles.optionButtonActive]}
                     onPress={() => {
                       setSelectedGrade(grade);
                       setSelectedSubject('');
@@ -183,7 +183,7 @@ Make questions aligned with ${syllabus} exam pattern and difficulty level.`;
                 {subjects.map((subject) => (
                   <TouchableOpacity
                     key={subject.id}
-                    style={[styles.gridButton, selectedSubject === subject.id && styles.gridButtonActive]}
+                    style={[styles.gridButton, { backgroundColor: colors.surface, borderColor: colors.border }, selectedSubject === subject.id && styles.gridButtonActive]}
                     onPress={() => {
                       setSelectedSubject(subject.id);
                       setSelectedChapter('');
@@ -204,7 +204,7 @@ Make questions aligned with ${syllabus} exam pattern and difficulty level.`;
                   {chapters.map((chapter) => (
                     <TouchableOpacity
                       key={chapter.id}
-                      style={[styles.chapterButton, selectedChapter === chapter.id && styles.chapterButtonActive]}
+                      style={[styles.chapterButton, { backgroundColor: colors.surface, borderColor: colors.border }, selectedChapter === chapter.id && styles.chapterButtonActive]}
                       onPress={() => setSelectedChapter(chapter.id)}
                     >
                       <Text style={[styles.chapterNumber, selectedChapter === chapter.id && styles.chapterNumberActive]}>
@@ -244,7 +244,7 @@ Make questions aligned with ${syllabus} exam pattern and difficulty level.`;
 
         {quiz && currentQ && (
           <View style={styles.quizContainer}>
-            <View style={styles.progressBar}>
+            <View style={[styles.progressBar, { backgroundColor: isDark ? '#152a45' : '#e2e8f0' }]}>
               <View
                 style={[
                   styles.progressFill,
@@ -257,7 +257,7 @@ Make questions aligned with ${syllabus} exam pattern and difficulty level.`;
               Question {currentQuestion + 1} of {quiz.questions.length}
             </Text>
 
-            <View style={styles.questionCard}>
+            <View style={[styles.questionCard, { backgroundColor: colors.cardBg }]}>
               <Text style={[styles.questionText, { color: colors.text }]}>{currentQ.question}</Text>
 
               <View style={styles.optionsContainer}>
@@ -269,6 +269,7 @@ Make questions aligned with ${syllabus} exam pattern and difficulty level.`;
                       key={index}
                       style={[
                         styles.optionCard,
+                        { backgroundColor: isDark ? '#0a1525' : '#f8fafc', borderColor: colors.border },
                         isCorrect && styles.optionCardCorrect,
                       ]}
                     >
@@ -282,16 +283,16 @@ Make questions aligned with ${syllabus} exam pattern and difficulty level.`;
                 })}
               </View>
 
-              <View style={styles.explanationCard}>
-                <Text style={styles.explanationTitle}>Answer Explanation:</Text>
-                <Text style={styles.explanationText}>{currentQ.explanation}</Text>
+              <View style={[styles.explanationCard, { backgroundColor: isDark ? 'rgba(59,130,246,0.1)' : '#eff6ff' }]}>
+                <Text style={[styles.explanationTitle, { color: isDark ? '#93c5fd' : '#1e40af' }]}>Answer Explanation:</Text>
+                <Text style={[styles.explanationText, { color: isDark ? '#7dd3fc' : '#1e40af' }]}>{currentQ.explanation}</Text>
               </View>
             </View>
 
             <View style={styles.navigationButtons}>
               {currentQuestion > 0 && (
-                <TouchableOpacity style={styles.navButton} onPress={handlePrevious}>
-                  <Text style={styles.navButtonText}>Previous</Text>
+                <TouchableOpacity style={[styles.navButton, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={handlePrevious}>
+                  <Text style={[styles.navButtonText, { color: colors.textSecondary }]}>Previous</Text>
                 </TouchableOpacity>
               )}
               

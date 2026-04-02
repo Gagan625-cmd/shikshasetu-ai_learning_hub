@@ -12,7 +12,7 @@ export default function StudentInterview() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { selectedLanguage } = useApp();
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const scrollViewRef = useRef<ScrollView>(null);
   
   const [selectedGrade, setSelectedGrade] = useState<number>(6);
@@ -85,10 +85,10 @@ Start by greeting the student and asking your first question.`;
           contentContainerStyle={[styles.contentContainer, { paddingBottom: insets.bottom + 20 }]}
           showsVerticalScrollIndicator={false}
         >
-          <View style={styles.infoCard}>
+          <View style={[styles.infoCard, { backgroundColor: isDark ? colors.cardBg : '#ffffff' }]}>
             <MessageCircle size={48} color="#f59e0b" />
-            <Text style={styles.infoTitle}>AI-Powered Interview</Text>
-            <Text style={styles.infoText}>
+            <Text style={[styles.infoTitle, { color: colors.text }]}>AI-Powered Interview</Text>
+            <Text style={[styles.infoText, { color: colors.textSecondary }]}>
               Practice your knowledge with an AI interviewer. Select a topic and get personalized questions to test your understanding.
             </Text>
           </View>

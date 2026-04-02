@@ -26,7 +26,7 @@ export default function VoiceAssistant({ visible, onClose }: VoiceAssistantProps
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const insets = useSafeAreaInsets();
   const { addTeacherActivity } = useApp();
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
 
   useEffect(() => {
     if (isRecording) {
@@ -170,7 +170,7 @@ Make it detailed, practical, and ready to use in a classroom.`;
       const generatedContent = await robustGenerateText({ messages: [{ role: 'user', content: contentPrompt }] });
       setGeneratedContent(generatedContent);
 
-      await addTeacherActivity({
+      addTeacherActivity({
         type: 'voice-content-creation',
         title: 'Voice-Generated Lesson',
         timestamp: Date.now(),
@@ -238,7 +238,7 @@ Make it detailed, practical, and ready to use in a classroom.`;
       transparent={false}
       onRequestClose={handleClose}
     >
-      <View style={[styles.container, { paddingTop: insets.top }]}>
+      <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
         <LinearGradient
           colors={['#7c3aed', '#a855f7']}
           style={styles.header}
@@ -270,7 +270,7 @@ Make it detailed, practical, and ready to use in a classroom.`;
             </View>
           )}
 
-          <View style={styles.recordingSection}>
+          <View style={[styles.recordingSection]}>
             <TouchableOpacity
               style={styles.micButton}
               onPress={isRecording ? stopRecording : startRecording}
@@ -290,10 +290,10 @@ Make it detailed, practical, and ready to use in a classroom.`;
                 </Animated.View>
               </LinearGradient>
             </TouchableOpacity>
-            <Text style={styles.recordingText}>
+            <Text style={[styles.recordingText, { color: colors.text }]}>
               {isProcessing ? 'Processing...' : isRecording ? 'Tap to stop recording' : 'Tap to start recording'}
             </Text>
-            <Text style={styles.recordingHint}>
+            <Text style={[styles.recordingHint, { color: colors.textSecondary }]}>
               Speak naturally about the lesson you want to create
             </Text>
           </View>
@@ -302,10 +302,10 @@ Make it detailed, practical, and ready to use in a classroom.`;
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
                 <FileText size={20} color="#8b5cf6" />
-                <Text style={styles.sectionTitle}>Transcript</Text>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>Transcript</Text>
               </View>
-              <View style={styles.transcriptCard}>
-                <Text style={styles.transcriptText}>{transcript}</Text>
+              <View style={[styles.transcriptCard, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
+                <Text style={[styles.transcriptText, { color: colors.textSecondary }]}>{transcript}</Text>
               </View>
             </View>
           )}
@@ -314,7 +314,7 @@ Make it detailed, practical, and ready to use in a classroom.`;
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
                 <Sparkles size={20} color="#8b5cf6" />
-                <Text style={styles.sectionTitle}>Generated Content</Text>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>Generated Content</Text>
               </View>
               <View style={[styles.contentCard, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
                 <Text style={[styles.contentText, { color: colors.text }]}>{generatedContent}</Text>
@@ -335,13 +335,13 @@ Make it detailed, practical, and ready to use in a classroom.`;
             </View>
           )}
 
-          <View style={styles.featuresCard}>
-            <Text style={styles.featuresTitle}>✨ AI Features</Text>
+          <View style={[styles.featuresCard, { backgroundColor: isDark ? 'rgba(139,92,246,0.1)' : '#faf5ff' }]}>
+            <Text style={[styles.featuresTitle, { color: isDark ? '#c4b5fd' : '#6b21a8' }]}>✨ AI Features</Text>
             <View style={styles.featuresList}>
-              <Text style={styles.featureItem}>🎤 Speech-to-text transcription</Text>
-              <Text style={styles.featureItem}>😊 Emotional tone detection</Text>
-              <Text style={styles.featureItem}>📝 Automatic content generation</Text>
-              <Text style={styles.featureItem}>🎯 Contextual lesson planning</Text>
+              <Text style={[styles.featureItem, { color: isDark ? '#a78bfa' : '#7c3aed' }]}>🎤 Speech-to-text transcription</Text>
+              <Text style={[styles.featureItem, { color: isDark ? '#a78bfa' : '#7c3aed' }]}>😊 Emotional tone detection</Text>
+              <Text style={[styles.featureItem, { color: isDark ? '#a78bfa' : '#7c3aed' }]}>📝 Automatic content generation</Text>
+              <Text style={[styles.featureItem, { color: isDark ? '#a78bfa' : '#7c3aed' }]}>🎯 Contextual lesson planning</Text>
             </View>
           </View>
         </ScrollView>

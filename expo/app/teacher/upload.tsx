@@ -63,7 +63,7 @@ export default function TeacherUpload() {
         uploadedAt: new Date(),
       };
       
-      await addTeacherUpload(upload);
+      addTeacherUpload(upload);
       
       setIsUploading(false);
       Alert.alert('Success', 'Content uploaded successfully! Students will be notified.');
@@ -220,9 +220,9 @@ export default function TeacherUpload() {
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>Title *</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
             placeholder={`Enter ${uploadType} title...`}
-            placeholderTextColor="#94a3b8"
+            placeholderTextColor={colors.textTertiary}
             value={title}
             onChangeText={setTitle}
           />
@@ -232,15 +232,15 @@ export default function TeacherUpload() {
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>Video URL *</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
               placeholder="Enter video URL (YouTube, Vimeo, etc)..."
-              placeholderTextColor="#94a3b8"
+              placeholderTextColor={colors.textTertiary}
               value={videoUrl}
               onChangeText={setVideoUrl}
               keyboardType="url"
               autoCapitalize="none"
             />
-            <Text style={styles.helperText}>
+            <Text style={[styles.helperText, { color: colors.textTertiary }]}>
               Supported: YouTube, Vimeo, or direct video URLs
             </Text>
           </View>
@@ -250,9 +250,9 @@ export default function TeacherUpload() {
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>Content *</Text>
             <TextInput
-              style={styles.textArea}
+              style={[styles.textArea, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
               placeholder={`Write your summary in ${selectedLanguage}...`}
-              placeholderTextColor="#94a3b8"
+              placeholderTextColor={colors.textTertiary}
               value={content}
               onChangeText={setContent}
               multiline

@@ -1327,7 +1327,7 @@ export default function ContentGenerator() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { selectedLanguage, addContentActivity } = useApp();
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   
   const [selectedBoard, setSelectedBoard] = useState<'NCERT' | 'ICSE'>('NCERT');
   const [selectedGrade, setSelectedGrade] = useState<number>(6);
@@ -2393,7 +2393,7 @@ IMPORTANT REQUIREMENTS:
             </View>
 
 
-            <View style={[styles.resultCard, { backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#e2e8f0' }]}>
+            <View style={[styles.resultCard, { backgroundColor: isDark ? colors.cardBg : '#ffffff', borderWidth: 1, borderColor: colors.border }]}>
               <Text style={[styles.resultTitle, { color: '#1e293b' }]}>Generated Content</Text>
               <Text style={[styles.resultContent, { color: '#000000' }]} selectable>{cleanMarkdown(generatedContent)}</Text>
             </View>
