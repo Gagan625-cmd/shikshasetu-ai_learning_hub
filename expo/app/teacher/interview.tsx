@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { ChevronLeft, Video, Sparkles, Send, Camera, Globe, Lock, Mic, MicOff, ChevronRight, CheckCircle, Type, Square, Clock } from 'lucide-react-native';
+import { ChevronLeft, Video, Sparkles, Send, Camera, Globe, Mic, MicOff, ChevronRight, CheckCircle, Type, Square, Clock } from 'lucide-react-native';
 import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Platform, TextInput, Animated, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
@@ -10,9 +10,7 @@ import { useRorkAgent, createRorkTool } from '@rork-ai/toolkit-sdk';
 import { z } from 'zod';
 import { NCERT_SUBJECTS, LANGUAGES } from '@/constants/ncert-data';
 import { ICSE_SUBJECTS } from '@/constants/icse-data';
-import { useSubscription } from '@/contexts/subscription-context';
 import { useTheme } from '@/contexts/theme-context';
-import { LinearGradient } from 'expo-linear-gradient';
 
 const INTERVIEW_TOPICS = [
   { id: 'subject', label: 'Subject Expert', icon: '📚' },
@@ -38,7 +36,6 @@ export default function TeacherInterview() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   useApp();
-  const { isPremium } = useSubscription();
   const { colors } = useTheme();
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const [hasAudioPermission, setHasAudioPermission] = useState(false);
@@ -500,49 +497,6 @@ Start NOW: greet briefly in ${languageName}, then IMMEDIATELY call evaluateAndAs
   const currentQuestion = questions[currentQuestionIndex] || '';
   const progressPercentage = ((currentQuestionIndex + 1) / MAX_QUESTIONS) * 100;
 
-  if (!isPremium) {
-    return (
-      <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
-        <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-            <ChevronLeft size={24} color="#ffffff" />
-          </TouchableOpacity>
-          <Text style={styles.premiumHeaderTitle}>Interview Assessment</Text>
-          <View style={styles.backButton} />
-        </View>
-        <LinearGradient colors={['#7e22ce', '#9333ea']} style={styles.premiumContainer}>
-          <ScrollView style={styles.content} contentContainerStyle={[styles.premiumContent, { paddingBottom: insets.bottom + 20 }]} showsVerticalScrollIndicator={false}>
-            <View style={styles.lockIconContainer}>
-              <Lock size={72} color="#fbbf24" strokeWidth={2} />
-            </View>
-            <Text style={styles.premiumTitle}>Premium Feature</Text>
-            <Text style={styles.premiumDescription}>AI Interview Assessment is an advanced feature available exclusively for premium members.</Text>
-            <View style={styles.premiumFeaturesList}>
-              <View style={styles.premiumFeatureItem}>
-                <Video size={20} color="#fbbf24" />
-                <Text style={styles.premiumFeatureText}>Live video recording & expression analysis</Text>
-              </View>
-              <View style={styles.premiumFeatureItem}>
-                <Mic size={20} color="#fbbf24" />
-                <Text style={styles.premiumFeatureText}>Voice recording with AI transcription</Text>
-              </View>
-              <View style={styles.premiumFeatureItem}>
-                <Sparkles size={20} color="#fbbf24" />
-                <Text style={styles.premiumFeatureText}>AI-powered comprehensive assessment</Text>
-              </View>
-              <View style={styles.premiumFeatureItem}>
-                <Globe size={20} color="#fbbf24" />
-                <Text style={styles.premiumFeatureText}>Multi-language support</Text>
-              </View>
-            </View>
-            <TouchableOpacity style={styles.upgradeButton} onPress={() => router.push('/paywall' as any)}>
-              <Text style={styles.upgradeButtonText}>Upgrade to Premium</Text>
-            </TouchableOpacity>
-          </ScrollView>
-        </LinearGradient>
-      </View>
-    );
-  }
 
   if (isInterviewEnded && evaluation.overallScore) {
     return (
