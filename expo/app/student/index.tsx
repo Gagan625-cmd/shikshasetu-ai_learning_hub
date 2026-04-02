@@ -56,6 +56,151 @@ function getDailyQuote() {
   return DAILY_QUOTES[dayIndex];
 }
 
+const AnimatedFire = memo(() => {
+  const flame1 = useRef(new Animated.Value(0)).current;
+  const flame2 = useRef(new Animated.Value(0)).current;
+  const flame3 = useRef(new Animated.Value(0)).current;
+  const glowPulse = useRef(new Animated.Value(0)).current;
+  const sway = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(flame1, { toValue: 1, duration: 400, useNativeDriver: true }),
+        Animated.timing(flame1, { toValue: 0, duration: 350, useNativeDriver: true }),
+      ])
+    ).start();
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(flame2, { toValue: 1, duration: 550, useNativeDriver: true }),
+        Animated.timing(flame2, { toValue: 0.2, duration: 450, useNativeDriver: true }),
+      ])
+    ).start();
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(flame3, { toValue: 1, duration: 300, useNativeDriver: true }),
+        Animated.timing(flame3, { toValue: 0.3, duration: 500, useNativeDriver: true }),
+      ])
+    ).start();
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(glowPulse, { toValue: 1, duration: 800, useNativeDriver: true }),
+        Animated.timing(glowPulse, { toValue: 0, duration: 600, useNativeDriver: true }),
+      ])
+    ).start();
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(sway, { toValue: 1, duration: 700, useNativeDriver: true }),
+        Animated.timing(sway, { toValue: -1, duration: 700, useNativeDriver: true }),
+      ])
+    ).start();
+  }, [flame1, flame2, flame3, glowPulse, sway]);
+
+  const swayX = sway.interpolate({ inputRange: [-1, 1], outputRange: [-1.5, 1.5] });
+  const outerScale = flame1.interpolate({ inputRange: [0, 1], outputRange: [0.88, 1.05] });
+  const innerScale = flame2.interpolate({ inputRange: [0.2, 1], outputRange: [0.85, 1.1] });
+  const coreScale = flame3.interpolate({ inputRange: [0.3, 1], outputRange: [0.8, 1.15] });
+  const glowOp = glowPulse.interpolate({ inputRange: [0, 1], outputRange: [0.3, 0.7] });
+  const tipY = flame1.interpolate({ inputRange: [0, 1], outputRange: [0, -2] });
+  const sparkOp1 = flame3.interpolate({ inputRange: [0.3, 0.7, 1], outputRange: [0, 1, 0] });
+  const sparkOp2 = flame2.interpolate({ inputRange: [0.2, 0.6, 1], outputRange: [0, 0.8, 0] });
+
+  return (
+    <View style={fireStyles.container}>
+      <Animated.View style={[fireStyles.glow, { opacity: glowOp }]} />
+      <Animated.View style={{ transform: [{ translateX: swayX }] }}>
+        <Animated.View style={[fireStyles.outerFlame, { transform: [{ scaleY: outerScale }, { scaleX: outerScale }] }]} />
+        <Animated.View style={[fireStyles.midFlame, { transform: [{ scaleY: innerScale }, { scaleX: innerScale }] }]} />
+        <Animated.View style={[fireStyles.innerFlame, { transform: [{ scaleY: coreScale }, { translateY: tipY }] }]} />
+        <Animated.View style={[fireStyles.coreFlame, { transform: [{ scaleY: coreScale }] }]} />
+        <Animated.View style={[fireStyles.spark1, { opacity: sparkOp1, transform: [{ translateY: tipY }] }]} />
+        <Animated.View style={[fireStyles.spark2, { opacity: sparkOp2 }]} />
+      </Animated.View>
+    </View>
+  );
+});
+
+AnimatedFire.displayName = 'AnimatedFire';
+
+const fireStyles = StyleSheet.create({
+  container: {
+    width: 24,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+  },
+  glow: {
+    position: 'absolute',
+    bottom: -2,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#ff6b00',
+  },
+  outerFlame: {
+    position: 'absolute',
+    bottom: 0,
+    alignSelf: 'center',
+    width: 18,
+    height: 24,
+    borderRadius: 9,
+    borderTopLeftRadius: 4,
+    borderTopRightRadius: 4,
+    backgroundColor: '#ff4500',
+  },
+  midFlame: {
+    position: 'absolute',
+    bottom: 1,
+    alignSelf: 'center',
+    width: 14,
+    height: 20,
+    borderRadius: 7,
+    borderTopLeftRadius: 3,
+    borderTopRightRadius: 3,
+    backgroundColor: '#ff8c00',
+  },
+  innerFlame: {
+    position: 'absolute',
+    bottom: 2,
+    alignSelf: 'center',
+    width: 10,
+    height: 16,
+    borderRadius: 5,
+    borderTopLeftRadius: 2,
+    borderTopRightRadius: 2,
+    backgroundColor: '#ffc107',
+  },
+  coreFlame: {
+    position: 'absolute',
+    bottom: 2,
+    alignSelf: 'center',
+    width: 6,
+    height: 10,
+    borderRadius: 3,
+    borderTopLeftRadius: 1,
+    borderTopRightRadius: 1,
+    backgroundColor: '#fff3b0',
+  },
+  spark1: {
+    position: 'absolute',
+    top: -2,
+    left: 6,
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: '#ffeb3b',
+  },
+  spark2: {
+    position: 'absolute',
+    top: 0,
+    right: 5,
+    width: 2,
+    height: 2,
+    borderRadius: 1,
+    backgroundColor: '#ffa726',
+  },
+});
+
 const DailyQuoteCard = memo(({ isDark }: { isDark: boolean }) => {
   const quote = useMemo(() => getDailyQuote(), []);
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -686,7 +831,7 @@ export default function StudentDashboard() {
               <Text style={styles.xpValue}>{userProgress.totalXP.toLocaleString()} XP</Text>
             </View>
             <View style={styles.streakMini}>
-              <Text style={styles.streakEmoji}>🔥</Text>
+              <AnimatedFire />
               <Text style={styles.streakMiniText}>{userProgress.currentStreak}</Text>
             </View>
           </View>
