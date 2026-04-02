@@ -392,6 +392,78 @@ const UploadCard = memo(({ upload, onPress, isDark }: { upload: any; onPress: ()
 
 UploadCard.displayName = 'UploadCard';
 
+const CHESS_PIECES: Record<number, { piece: string; name: string }> = {
+  1: { piece: '♟', name: 'Pawn' },
+  2: { piece: '♟', name: 'Pawn' },
+  3: { piece: '♜', name: 'Rook' },
+  4: { piece: '♞', name: 'Knight' },
+  5: { piece: '♝', name: 'Bishop' },
+  6: { piece: '♝', name: 'Bishop' },
+  7: { piece: '♞', name: 'Knight' },
+  8: { piece: '♛', name: 'Queen' },
+  9: { piece: '♛', name: 'Queen' },
+  10: { piece: '♚', name: 'King' },
+};
+
+const ChessPieceIcon = memo(({ level, color }: { level: number; color: string }) => {
+  const bounceY = useRef(new Animated.Value(0)).current;
+  const slideX = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const isAnimating = useRef(false);
+
+  const handlePress = useCallback(() => {
+    if (isAnimating.current) return;
+    isAnimating.current = true;
+
+    Animated.parallel([
+      Animated.sequence([
+        Animated.timing(bounceY, { toValue: -12, duration: 150, useNativeDriver: true }),
+        Animated.timing(bounceY, { toValue: 4, duration: 120, useNativeDriver: true }),
+        Animated.timing(bounceY, { toValue: -6, duration: 100, useNativeDriver: true }),
+        Animated.timing(bounceY, { toValue: 2, duration: 80, useNativeDriver: true }),
+        Animated.spring(bounceY, { toValue: 0, friction: 4, tension: 80, useNativeDriver: true }),
+      ]),
+      Animated.sequence([
+        Animated.timing(slideX, { toValue: 8, duration: 120, useNativeDriver: true }),
+        Animated.timing(slideX, { toValue: -8, duration: 140, useNativeDriver: true }),
+        Animated.timing(slideX, { toValue: 5, duration: 100, useNativeDriver: true }),
+        Animated.spring(slideX, { toValue: 0, friction: 5, tension: 60, useNativeDriver: true }),
+      ]),
+      Animated.sequence([
+        Animated.timing(scaleAnim, { toValue: 1.2, duration: 150, useNativeDriver: true }),
+        Animated.spring(scaleAnim, { toValue: 1, friction: 4, tension: 100, useNativeDriver: true }),
+      ]),
+    ]).start(() => {
+      isAnimating.current = false;
+    });
+  }, [bounceY, slideX, scaleAnim]);
+
+  const chessPiece = CHESS_PIECES[level] || CHESS_PIECES[1];
+
+  return (
+    <TouchableOpacity onPress={handlePress} activeOpacity={1}>
+      <Animated.View
+        style={{
+          transform: [
+            { translateY: bounceY },
+            { translateX: slideX },
+            { scale: scaleAnim },
+          ],
+        }}
+      >
+        <LinearGradient
+          colors={[color, color + 'AA']}
+          style={styles.levelIconGradient}
+        >
+          <Text style={styles.chessPieceText}>{chessPiece.piece}</Text>
+        </LinearGradient>
+      </Animated.View>
+    </TouchableOpacity>
+  );
+});
+
+ChessPieceIcon.displayName = 'ChessPieceIcon';
+
 function getLevel(xp: number): { level: number; title: string; icon: typeof Star; color: string; nextLevelXP: number; currentLevelXP: number } {
   if (xp >= 10000) return { level: 10, title: 'Legend', icon: Crown, color: '#fbbf24', nextLevelXP: 10000, currentLevelXP: 10000 };
   if (xp >= 7500) return { level: 9, title: 'Master', icon: Crown, color: '#f59e0b', nextLevelXP: 10000, currentLevelXP: 7500 };
@@ -596,12 +668,7 @@ export default function StudentDashboard() {
         <View style={styles.xpBar}>
           <View style={styles.levelRow}>
             <Animated.View style={[styles.levelIconOuter, { transform: [{ scale: pulseAnim }] }]}>
-              <LinearGradient
-                colors={[levelInfo.color, levelInfo.color + 'AA']}
-                style={styles.levelIconGradient}
-              >
-                <Text style={styles.levelNumber}>{levelInfo.level}</Text>
-              </LinearGradient>
+              <ChessPieceIcon level={levelInfo.level} color={levelInfo.color} />
             </Animated.View>
             <View style={styles.levelTextCol}>
               <View style={styles.levelTitleRow}>
@@ -944,6 +1011,13 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '900' as const,
     color: '#ffffff',
+  },
+  chessPieceText: {
+    fontSize: 28,
+    color: '#ffffff',
+    textShadowColor: 'rgba(0, 0, 0, 0.4)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
   },
   levelTextCol: {
     flex: 1,
