@@ -55,13 +55,13 @@ function countDots(): number {
 
 const TOTAL_DOTS = countDots();
 
-const FLAPPY_GRAVITY = 0.5;
-const FLAPPY_JUMP = -8;
-const PIPE_WIDTH = 50;
-const PIPE_GAP = 150;
-const BIRD_SIZE = 30;
-const GAME_HEIGHT = 400;
-const GAME_WIDTH = SCREEN_WIDTH - 48;
+const FLAPPY_GRAVITY = 0.35;
+const FLAPPY_JUMP = -7;
+const PIPE_WIDTH = 54;
+const PIPE_GAP = 160;
+const BIRD_SIZE = 34;
+const GAME_HEIGHT = 460;
+const GAME_WIDTH = SCREEN_WIDTH - 32;
 
 function PacmanGame({ onFinish, colors: _themeColors }: { onFinish: (won: boolean) => void; colors: any }) {
   const [pacPos, setPacPos] = useState({ row: 1, col: 1 });
@@ -362,10 +362,11 @@ function PacmanGame({ onFinish, colors: _themeColors }: { onFinish: (won: boolea
 }
 
 const CLOUD_POSITIONS = [
-  { x: 20, y: 30, size: 40, opacity: 0.7 },
-  { x: 120, y: 60, size: 32, opacity: 0.5 },
-  { x: 220, y: 20, size: 36, opacity: 0.6 },
-  { x: 80, y: 90, size: 28, opacity: 0.4 },
+  { x: 20, y: 25, size: 44, opacity: 0.6 },
+  { x: 120, y: 55, size: 34, opacity: 0.45 },
+  { x: 220, y: 18, size: 38, opacity: 0.55 },
+  { x: 80, y: 85, size: 30, opacity: 0.35 },
+  { x: 170, y: 40, size: 26, opacity: 0.3 },
 ];
 
 const FOREST_TREES_BG = [
@@ -404,6 +405,8 @@ const FOREST_FIREFLIES = [
   { x: 310, y: 90 },
   { x: 170, y: 200 },
   { x: 60, y: 250 },
+  { x: 280, y: 170 },
+  { x: 40, y: 190 },
 ];
 
 const PIPE_CAP_HEIGHT = 20;
@@ -413,23 +416,37 @@ const GROUND_HEIGHT = 40;
 function JumpingFoxGame({ onFinish }: { onFinish: (won: boolean) => void; colors: any }) {
   const [birdY, setBirdY] = useState(GAME_HEIGHT / 2);
   const [velocity, setVelocity] = useState(0);
+  const [_bestScore, _setBestScore] = useState(0);
+  const [comboCount, setComboCount] = useState(0);
+  const [particles, setParticles] = useState<Array<{ id: number; x: number; y: number; vx: number; vy: number; life: number; emoji: string }>>([]);
   const [pipes, setPipes] = useState<Array<{ x: number; gapY: number; scored: boolean }>>([
     { x: GAME_WIDTH, gapY: 150, scored: false },
-    { x: GAME_WIDTH + 200, gapY: 200, scored: false },
-    { x: GAME_WIDTH + 400, gapY: 120, scored: false },
+    { x: GAME_WIDTH + 220, gapY: 200, scored: false },
+    { x: GAME_WIDTH + 440, gapY: 120, scored: false },
   ]);
   const [score, setScore] = useState(0);
   const [gameOver, setGameOver] = useState(false);
   const [started, setStarted] = useState(false);
+  const [jumpCount, setJumpCount] = useState(0);
   const TARGET_SCORE = 5;
   const pendingGameOver = useRef<{ won: boolean } | null>(null);
 
   const birdRotation = useRef(new Animated.Value(0)).current;
   const birdBob = useRef(new Animated.Value(0)).current;
+  const birdScale = useRef(new Animated.Value(1)).current;
   const cloudAnim = useRef(new Animated.Value(0)).current;
   const scoreFlash = useRef(new Animated.Value(1)).current;
+  const scoreBgFlash = useRef(new Animated.Value(0)).current;
   const startPulse = useRef(new Animated.Value(1)).current;
+  const startFadeIn = useRef(new Animated.Value(0)).current;
+  const gameOverScale = useRef(new Animated.Value(0.5)).current;
+  const gameOverOpacity = useRef(new Animated.Value(0)).current;
+  const deathFlash = useRef(new Animated.Value(0)).current;
+  const shakeX = useRef(new Animated.Value(0)).current;
+  const comboScale = useRef(new Animated.Value(0)).current;
+  const comboOpacity = useRef(new Animated.Value(0)).current;
   const gameLoop = useRef<ReturnType<typeof setInterval> | null>(null);
+  const particleTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const bgTreeSway = useRef(new Animated.Value(0)).current;
   const midTreeSway = useRef(new Animated.Value(0)).current;
@@ -443,23 +460,76 @@ function JumpingFoxGame({ onFinish }: { onFinish: (won: boolean) => void; colors
   const sunRayRotate = useRef(new Animated.Value(0)).current;
   const bgParallax = useRef(new Animated.Value(0)).current;
   const midParallax = useRef(new Animated.Value(0)).current;
+  const foxTailWag = useRef(new Animated.Value(0)).current;
+  const progressWidth = useRef(new Animated.Value(0)).current;
+  const groundScroll = useRef(new Animated.Value(0)).current;
+  const foxBreath = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    Animated.timing(startFadeIn, { toValue: 1, duration: 600, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
+  }, [startFadeIn]);
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(foxBreath, { toValue: 1.04, duration: 600, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(foxBreath, { toValue: 1, duration: 600, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      ])
+    ).start();
+  }, [foxBreath]);
+
+  useEffect(() => {
+    if (started && !gameOver) {
+      Animated.loop(
+        Animated.timing(groundScroll, { toValue: 1, duration: 3000, useNativeDriver: true })
+      ).start();
+    }
+    return () => { groundScroll.stopAnimation(); };
+  }, [started, gameOver, groundScroll]);
+
+  useEffect(() => {
+    if (particles.length > 0) {
+      particleTimer.current = setInterval(() => {
+        setParticles(prev => {
+          const updated = prev.map(p => ({
+            ...p,
+            x: p.x + p.vx,
+            y: p.y + p.vy,
+            vy: p.vy + 0.15,
+            life: p.life - 1,
+          })).filter(p => p.life > 0);
+          return updated;
+        });
+      }, 50);
+    }
+    return () => { if (particleTimer.current) clearInterval(particleTimer.current); };
+  }, [particles.length]);
 
   useEffect(() => {
     if (!started) {
       Animated.loop(
         Animated.sequence([
-          Animated.timing(birdBob, { toValue: -8, duration: 600, useNativeDriver: true }),
-          Animated.timing(birdBob, { toValue: 8, duration: 600, useNativeDriver: true }),
+          Animated.timing(birdBob, { toValue: -10, duration: 700, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+          Animated.timing(birdBob, { toValue: 10, duration: 700, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
         ])
       ).start();
       Animated.loop(
         Animated.sequence([
-          Animated.timing(startPulse, { toValue: 1.15, duration: 800, useNativeDriver: true }),
-          Animated.timing(startPulse, { toValue: 1, duration: 800, useNativeDriver: true }),
+          Animated.timing(startPulse, { toValue: 1.12, duration: 900, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+          Animated.timing(startPulse, { toValue: 1, duration: 900, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
         ])
       ).start();
     }
   }, [started, birdBob, startPulse]);
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(foxTailWag, { toValue: 1, duration: 300, useNativeDriver: true }),
+        Animated.timing(foxTailWag, { toValue: -1, duration: 300, useNativeDriver: true }),
+      ])
+    ).start();
+  }, [foxTailWag]);
 
   useEffect(() => {
     Animated.loop(
@@ -514,8 +584,8 @@ function JumpingFoxGame({ onFinish }: { onFinish: (won: boolean) => void; colors
     ).start();
     Animated.loop(
       Animated.sequence([
-        Animated.timing(mistOpacity, { toValue: 0.35, duration: 5000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-        Animated.timing(mistOpacity, { toValue: 0.1, duration: 5000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(mistOpacity, { toValue: 0.3, duration: 5000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(mistOpacity, { toValue: 0.08, duration: 5000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
       ])
     ).start();
     Animated.loop(
@@ -529,6 +599,46 @@ function JumpingFoxGame({ onFinish }: { onFinish: (won: boolean) => void; colors
     ).start();
   }, [cloudAnim, bgTreeSway, midTreeSway, leafFloat1, leafFloat2, leafFall, fireflyGlow1, fireflyGlow2, fireflyGlow3, mistOpacity, sunRayRotate, bgParallax, midParallax]);
 
+  const spawnScoreParticles = useCallback((x: number, y: number) => {
+    const emojis = ['✨', '🌟', '⭐', '💫', '🍃'];
+    const newParticles = Array.from({ length: 6 }).map((_, i) => ({
+      id: Date.now() + i,
+      x,
+      y,
+      vx: (Math.random() - 0.5) * 4,
+      vy: -(Math.random() * 3 + 1),
+      life: 15 + Math.floor(Math.random() * 10),
+      emoji: emojis[Math.floor(Math.random() * emojis.length)],
+    }));
+    setParticles(prev => [...prev, ...newParticles]);
+  }, []);
+
+  const triggerDeathEffect = useCallback(() => {
+    deathFlash.setValue(0.6);
+    Animated.timing(deathFlash, { toValue: 0, duration: 400, useNativeDriver: true }).start();
+    Animated.sequence([
+      Animated.timing(shakeX, { toValue: 8, duration: 40, useNativeDriver: true }),
+      Animated.timing(shakeX, { toValue: -8, duration: 40, useNativeDriver: true }),
+      Animated.timing(shakeX, { toValue: 6, duration: 35, useNativeDriver: true }),
+      Animated.timing(shakeX, { toValue: -6, duration: 35, useNativeDriver: true }),
+      Animated.timing(shakeX, { toValue: 3, duration: 30, useNativeDriver: true }),
+      Animated.timing(shakeX, { toValue: 0, duration: 30, useNativeDriver: true }),
+    ]).start();
+  }, [deathFlash, shakeX]);
+
+  const showCombo = useCallback((count: number) => {
+    if (count < 2) return;
+    comboScale.setValue(0.3);
+    comboOpacity.setValue(1);
+    Animated.parallel([
+      Animated.spring(comboScale, { toValue: 1, friction: 4, tension: 120, useNativeDriver: true }),
+      Animated.sequence([
+        Animated.delay(800),
+        Animated.timing(comboOpacity, { toValue: 0, duration: 300, useNativeDriver: true }),
+      ]),
+    ]).start();
+  }, [comboScale, comboOpacity]);
+
   const jump = useCallback(() => {
     if (gameOver) return;
     if (!started) {
@@ -537,16 +647,45 @@ function JumpingFoxGame({ onFinish }: { onFinish: (won: boolean) => void; colors
       startPulse.stopAnimation();
     }
     setVelocity(FLAPPY_JUMP);
+    setJumpCount(c => c + 1);
     Animated.sequence([
-      Animated.timing(birdRotation, { toValue: -30, duration: 100, useNativeDriver: true }),
-      Animated.timing(birdRotation, { toValue: 0, duration: 300, useNativeDriver: true }),
+      Animated.timing(birdRotation, { toValue: -30, duration: 70, useNativeDriver: true }),
+      Animated.timing(birdRotation, { toValue: 0, duration: 280, easing: Easing.out(Easing.quad), useNativeDriver: true }),
     ]).start();
-  }, [gameOver, started, birdRotation, birdBob, startPulse]);
+    Animated.sequence([
+      Animated.timing(birdScale, { toValue: 1.18, duration: 50, useNativeDriver: true }),
+      Animated.spring(birdScale, { toValue: 1, friction: 4, tension: 160, useNativeDriver: true }),
+    ]).start();
+  }, [gameOver, started, birdRotation, birdBob, startPulse, birdScale]);
 
   const flashScore = useCallback(() => {
-    scoreFlash.setValue(1.4);
-    Animated.spring(scoreFlash, { toValue: 1, friction: 4, tension: 120, useNativeDriver: true }).start();
-  }, [scoreFlash]);
+    scoreFlash.setValue(1.5);
+    Animated.spring(scoreFlash, { toValue: 1, friction: 3, tension: 100, useNativeDriver: true }).start();
+    scoreBgFlash.setValue(1);
+    Animated.timing(scoreBgFlash, { toValue: 0, duration: 400, useNativeDriver: true }).start();
+  }, [scoreFlash, scoreBgFlash]);
+
+  const animateProgress = useCallback((newScore: number) => {
+    Animated.spring(progressWidth, {
+      toValue: (newScore / TARGET_SCORE) * 100,
+      friction: 6,
+      tension: 80,
+      useNativeDriver: false,
+    }).start();
+  }, [progressWidth]);
+
+  const showGameOver = useCallback((won: boolean) => {
+    gameOverOpacity.setValue(0);
+    gameOverScale.setValue(0.3);
+    if (!won) triggerDeathEffect();
+    Animated.sequence([
+      Animated.delay(won ? 200 : 400),
+      Animated.parallel([
+        Animated.timing(gameOverOpacity, { toValue: 1, duration: 350, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+        Animated.spring(gameOverScale, { toValue: 1, friction: 5, tension: 70, useNativeDriver: true }),
+      ]),
+    ]).start();
+  }, [gameOverOpacity, gameOverScale, triggerDeathEffect]);
 
   useEffect(() => {
     if (!started || gameOver) return;
@@ -561,32 +700,36 @@ function JumpingFoxGame({ onFinish }: { onFinish: (won: boolean) => void; colors
         return newY;
       });
 
-      if (velocity > 2) {
-        Animated.timing(birdRotation, { toValue: Math.min(velocity * 5, 60), duration: 100, useNativeDriver: true }).start();
+      if (velocity > 1.5) {
+        Animated.timing(birdRotation, { toValue: Math.min(velocity * 5, 55), duration: 80, useNativeDriver: true }).start();
       }
 
       setPipes(prevPipes => {
-        const newPipes = prevPipes.map(p => ({ ...p, x: p.x - 3 }));
+        const pipeSpeed = 2.6 + Math.min(score * 0.08, 0.8);
+        const newPipes = prevPipes.map(p => ({ ...p, x: p.x - pipeSpeed }));
         newPipes.forEach((pipe, idx) => {
           if (pipe.x + PIPE_WIDTH < 0) {
+            const minGapY = 65;
+            const maxGapY = GAME_HEIGHT - PIPE_GAP - GROUND_HEIGHT - 65;
             newPipes[idx] = {
-              x: GAME_WIDTH,
-              gapY: 60 + Math.random() * (GAME_HEIGHT - PIPE_GAP - GROUND_HEIGHT - 120),
+              x: GAME_WIDTH + 30,
+              gapY: minGapY + Math.random() * (maxGapY - minGapY),
               scored: false,
             };
           }
         });
         return newPipes;
       });
-    }, 30);
+    }, 28);
 
     return () => { if (gameLoop.current) clearInterval(gameLoop.current); };
-  }, [started, gameOver, velocity, onFinish, birdRotation]);
+  }, [started, gameOver, velocity, onFinish, birdRotation, score]);
 
   useEffect(() => {
     if (gameOver) return;
     if (pendingGameOver.current) {
       setGameOver(true);
+      showGameOver(pendingGameOver.current.won);
       onFinish(pendingGameOver.current.won);
       pendingGameOver.current = null;
       return;
@@ -599,13 +742,15 @@ function JumpingFoxGame({ onFinish }: { onFinish: (won: boolean) => void; colors
     let shouldEndGame = false;
     let won = false;
     let newScore = score;
+    let newCombo = comboCount;
 
     for (const pipe of pipes) {
       const pipeLeft = pipe.x;
       const pipeRight = pipe.x + PIPE_WIDTH;
+      const hitboxShrink = 3;
 
-      if (birdRight > pipeLeft && birdLeft < pipeRight) {
-        if (birdTop < pipe.gapY || birdBottom > pipe.gapY + PIPE_GAP) {
+      if (birdRight - hitboxShrink > pipeLeft + hitboxShrink && birdLeft + hitboxShrink < pipeRight - hitboxShrink) {
+        if (birdTop + hitboxShrink < pipe.gapY || birdBottom - hitboxShrink > pipe.gapY + PIPE_GAP) {
           shouldEndGame = true;
           won = false;
           break;
@@ -616,6 +761,10 @@ function JumpingFoxGame({ onFinish }: { onFinish: (won: boolean) => void; colors
         pipe.scored = true;
         flashScore();
         newScore = newScore + 1;
+        newCombo = newCombo + 1;
+        animateProgress(newScore);
+        spawnScoreParticles(pipe.x + PIPE_WIDTH, birdY);
+        showCombo(newCombo);
         if (newScore >= TARGET_SCORE) {
           shouldEndGame = true;
           won = true;
@@ -625,17 +774,22 @@ function JumpingFoxGame({ onFinish }: { onFinish: (won: boolean) => void; colors
 
     if (newScore !== score) {
       setScore(newScore);
+      _setBestScore(prev => Math.max(prev, newScore));
+    }
+    if (newCombo !== comboCount) {
+      setComboCount(newCombo);
     }
 
     if (shouldEndGame) {
       setGameOver(true);
+      showGameOver(won);
       onFinish(won);
     }
-  }, [birdY, pipes, gameOver, onFinish, flashScore, score]);
+  }, [birdY, pipes, gameOver, onFinish, flashScore, score, animateProgress, showGameOver, comboCount, spawnScoreParticles, showCombo]);
 
   const birdRotateInterp = birdRotation.interpolate({
-    inputRange: [-30, 0, 60],
-    outputRange: ['-30deg', '0deg', '60deg'],
+    inputRange: [-30, 0, 55],
+    outputRange: ['-30deg', '0deg', '55deg'],
   });
 
   const cloudTranslate = cloudAnim.interpolate({
@@ -651,6 +805,8 @@ function JumpingFoxGame({ onFinish }: { onFinish: (won: boolean) => void; colors
   const sunRayInterp = sunRayRotate.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
   const bgParallaxX = bgParallax.interpolate({ inputRange: [0, 1], outputRange: [0, -GAME_WIDTH * 0.3] });
   const midParallaxX = midParallax.interpolate({ inputRange: [0, 1], outputRange: [0, -GAME_WIDTH * 0.5] });
+  const tailRotate = foxTailWag.interpolate({ inputRange: [-1, 0, 1], outputRange: ['-25deg', '-15deg', '-5deg'] });
+  const scoreBgOpacity = scoreBgFlash.interpolate({ inputRange: [0, 1], outputRange: [0, 0.3] });
 
   const getFireflyAnim = (idx: number) => {
     if (idx % 3 === 0) return fireflyGlow1;
@@ -658,16 +814,63 @@ function JumpingFoxGame({ onFinish }: { onFinish: (won: boolean) => void; colors
     return fireflyGlow3;
   };
 
+  const groundScrollX = groundScroll.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, -GAME_WIDTH],
+  });
+
+  const progressInterp = progressWidth.interpolate({
+    inputRange: [0, 100],
+    outputRange: ['0%', '100%'],
+    extrapolate: 'clamp',
+  });
+
   return (
     <View style={flappyStyles.container}>
+      <View style={flappyStyles.headerRow}>
+        <View style={flappyStyles.headerLeft}>
+          <Text style={flappyStyles.headerTitle}>🦊 Jumping Fox</Text>
+          <Text style={flappyStyles.headerSub}>Navigate through {TARGET_SCORE} forest trees!</Text>
+        </View>
+        {started && (
+          <View style={flappyStyles.headerStatsRow}>
+            <View style={flappyStyles.headerStatPill}>
+              <Text style={flappyStyles.headerStatIcon}>👆</Text>
+              <Text style={flappyStyles.headerJumps}>{jumpCount}</Text>
+            </View>
+            <View style={[flappyStyles.headerStatPill, { backgroundColor: 'rgba(16,185,129,0.12)' }]}>
+              <Text style={flappyStyles.headerStatIcon}>🌲</Text>
+              <Text style={[flappyStyles.headerJumps, { color: '#059669' }]}>{score}/{TARGET_SCORE}</Text>
+            </View>
+          </View>
+        )}
+      </View>
+
+      {started && !gameOver && (
+        <View style={flappyStyles.progressContainer}>
+          <View style={flappyStyles.progressTrack}>
+            <Animated.View style={[flappyStyles.progressFill, { width: progressInterp as any }]} />
+          </View>
+          <View style={flappyStyles.progressDots}>
+            {Array.from({ length: TARGET_SCORE }).map((_, i) => (
+              <View key={i} style={[flappyStyles.progressDot, i < score && flappyStyles.progressDotActive]}>
+                {i < score ? <Text style={flappyStyles.progressDotCheck}>✓</Text> : <Text style={flappyStyles.progressDotNum}>{i + 1}</Text>}
+              </View>
+            ))}
+          </View>
+        </View>
+      )}
+
+      <Animated.View style={{ transform: [{ translateX: shakeX }] }}>
       <TouchableOpacity
         activeOpacity={1}
         onPress={jump}
         style={[flappyStyles.gameArea, { width: GAME_WIDTH, height: GAME_HEIGHT }]}
+        testID="flappy-game-area"
       >
         <LinearGradient
-          colors={['#0a1f0a', '#0f2b0f', '#143814', '#1a4d1a', '#1e5c1e', '#2d7a2d']}
-          locations={[0, 0.15, 0.3, 0.5, 0.7, 1]}
+          colors={['#071507', '#0a1f0a', '#0f2b0f', '#143814', '#1a4d1a', '#1e5c1e', '#2d7a2d']}
+          locations={[0, 0.1, 0.2, 0.35, 0.55, 0.75, 1]}
           style={StyleSheet.absoluteFillObject}
         />
 
@@ -675,9 +878,11 @@ function JumpingFoxGame({ onFinish }: { onFinish: (won: boolean) => void; colors
           <View style={flappyStyles.sunRay1} />
           <View style={flappyStyles.sunRay2} />
           <View style={flappyStyles.sunRay3} />
+          <View style={flappyStyles.sunRay4} />
         </Animated.View>
 
         <View style={flappyStyles.sunWrap}>
+          <View style={flappyStyles.sunGlow} />
           <View style={flappyStyles.sunOuter}>
             <View style={flappyStyles.sunInner} />
           </View>
@@ -827,15 +1032,30 @@ function JumpingFoxGame({ onFinish }: { onFinish: (won: boolean) => void; colors
           </Animated.View>
         ))}
 
+        <Animated.View style={[flappyStyles.scoreFlashOverlay, { opacity: scoreBgOpacity }]} />
+        <Animated.View style={[flappyStyles.deathFlashOverlay, { opacity: deathFlash }]} />
+
         <View style={flappyStyles.scoreOverlay}>
           <View style={flappyStyles.scoreBadge}>
-            <Text style={flappyStyles.scoreEmoji}>🌿</Text>
+            <Text style={flappyStyles.scoreEmoji}>🌲</Text>
             <Animated.Text style={[flappyStyles.scoreOverlayText, { transform: [{ scale: scoreFlash }] }]}>
               {score}
             </Animated.Text>
             <Text style={flappyStyles.scoreTarget}>/{TARGET_SCORE}</Text>
           </View>
         </View>
+
+        {comboCount >= 2 && (
+          <Animated.View style={[flappyStyles.comboOverlay, { opacity: comboOpacity, transform: [{ scale: comboScale }] }]}>
+            <Text style={flappyStyles.comboText}>{comboCount}x Combo!</Text>
+          </Animated.View>
+        )}
+
+        {particles.map(p => (
+          <View key={p.id} style={[flappyStyles.particle, { left: p.x, top: p.y, opacity: p.life / 20 }]}>
+            <Text style={{ fontSize: 10 }}>{p.emoji}</Text>
+          </View>
+        ))}
 
         {pipes.map((pipe, i) => (
           <View key={i}>
@@ -932,71 +1152,143 @@ function JumpingFoxGame({ onFinish }: { onFinish: (won: boolean) => void; colors
               transform: [
                 { rotate: started ? birdRotateInterp as any : '0deg' },
                 { translateY: started ? 0 : (birdBob as any) },
+                { scale: started ? birdScale : Animated.multiply(birdScale, foxBreath) as any },
               ],
             },
           ]}
         >
+          <View style={flappyStyles.foxShadow} />
           <View style={flappyStyles.foxBody}>
-            <View style={flappyStyles.foxEarLeft} />
-            <View style={flappyStyles.foxEarRight} />
-            <View style={flappyStyles.foxTail} />
+            <View style={flappyStyles.foxEarLeft}>
+              <View style={flappyStyles.foxEarInner} />
+            </View>
+            <View style={flappyStyles.foxEarRight}>
+              <View style={flappyStyles.foxEarInner} />
+            </View>
+            <Animated.View style={[flappyStyles.foxTail, { transform: [{ rotate: tailRotate as any }] }]}>
+              <View style={flappyStyles.foxTailTip} />
+            </Animated.View>
+            <View style={flappyStyles.foxBelly} />
             <View style={flappyStyles.foxEye}>
               <View style={flappyStyles.foxPupil} />
+              <View style={flappyStyles.foxEyeShine} />
+            </View>
+            <View style={flappyStyles.foxEyeLeft}>
+              <View style={flappyStyles.foxPupilLeft} />
+              <View style={flappyStyles.foxEyeShineLeft} />
             </View>
             <View style={flappyStyles.foxNose} />
             <View style={flappyStyles.foxCheek} />
+            <View style={flappyStyles.foxCheekLeft} />
+            <View style={flappyStyles.foxMouth} />
+            <View style={flappyStyles.foxWhiskerRight1} />
+            <View style={flappyStyles.foxWhiskerRight2} />
           </View>
         </Animated.View>
 
         <View style={[flappyStyles.groundLayer, { width: GAME_WIDTH * 2 }]}>
+          <View style={[flappyStyles.grassTopHighlight, { width: GAME_WIDTH * 2 }]} />
+          <View style={[flappyStyles.grassTop, { width: GAME_WIDTH * 2 }]} />
           <View style={[flappyStyles.grassBlade, { width: GAME_WIDTH * 2 }]} />
           <View style={[flappyStyles.grassStripe, { width: GAME_WIDTH * 2 }]} />
           <View style={[flappyStyles.dirtLayer, { width: GAME_WIDTH * 2 }]} />
-          <View style={flappyStyles.groundDetails}>
-            {[0, 40, 85, 130, 180, 225, 280].map((x, i) => (
+          <Animated.View style={[flappyStyles.groundDetails, { transform: [{ translateX: groundScrollX as any }] }]}>
+            {[0, 40, 85, 130, 180, 225, 280, 330, 380].map((x, i) => (
               <View key={`mushroom-${i}`} style={[flappyStyles.mushroom, { left: x }]}>
-                <View style={flappyStyles.mushroomCap} />
+                <View style={[flappyStyles.mushroomCap, i % 3 === 0 && { backgroundColor: '#a855f7' }]}>
+                  <View style={flappyStyles.mushroomSpot} />
+                </View>
                 <View style={flappyStyles.mushroomStem} />
               </View>
             ))}
-          </View>
+            {[25, 70, 155, 210, 265, 320, 370].map((x, i) => (
+              <View key={`flower-${i}`} style={[flappyStyles.groundFlower, { left: x }]}>
+                <Text style={{ fontSize: 8 }}>{['🌸', '🌼', '🌺', '🌻'][i % 4]}</Text>
+              </View>
+            ))}
+          </Animated.View>
         </View>
 
         {!started && !gameOver && (
-          <View style={flappyStyles.tapPrompt}>
+          <Animated.View style={[flappyStyles.tapPrompt, { opacity: startFadeIn }]}>
             <View style={flappyStyles.startCard}>
+              <LinearGradient
+                colors={['#10b981', '#059669']}
+                style={flappyStyles.startCardDecor}
+              />
               <Animated.View style={{ transform: [{ scale: startPulse }] }}>
                 <View style={flappyStyles.startIconCircle}>
-                  <Text style={{ fontSize: 28 }}>🦊</Text>
+                  <Text style={{ fontSize: 36 }}>🦊</Text>
                 </View>
               </Animated.View>
               <Text style={flappyStyles.startTitle}>Jumping Fox</Text>
-              <Text style={flappyStyles.startSubtitle}>Jump through {TARGET_SCORE} forest trees to win!</Text>
+              <Text style={flappyStyles.startSubtitle}>Help the fox leap through the forest!</Text>
+              <View style={flappyStyles.startDivider} />
+              <View style={flappyStyles.startInfoRow}>
+                <View style={flappyStyles.startInfoPill}>
+                  <Text style={flappyStyles.startInfoIcon}>🌲</Text>
+                  <Text style={flappyStyles.startInfoText}>Pass {TARGET_SCORE} trees</Text>
+                </View>
+                <View style={flappyStyles.startInfoPill}>
+                  <Text style={flappyStyles.startInfoIcon}>👆</Text>
+                  <Text style={flappyStyles.startInfoText}>Tap to jump</Text>
+                </View>
+                <View style={flappyStyles.startInfoPill}>
+                  <Text style={flappyStyles.startInfoIcon}>⚡</Text>
+                  <Text style={flappyStyles.startInfoText}>Speed increases</Text>
+                </View>
+              </View>
               <View style={flappyStyles.tapIndicator}>
-                <Text style={flappyStyles.tapText}>Tap anywhere to jump</Text>
+                <Text style={flappyStyles.tapText}>TAP ANYWHERE TO START</Text>
               </View>
             </View>
-          </View>
+          </Animated.View>
         )}
 
         {gameOver && (
-          <View style={flappyStyles.gameOverOverlay}>
-            <View style={flappyStyles.gameOverCard}>
+          <Animated.View style={[flappyStyles.gameOverOverlay, { opacity: gameOverOpacity }]}>
+            <Animated.View style={[flappyStyles.gameOverCard, { transform: [{ scale: gameOverScale }] }]}>
+              <LinearGradient
+                colors={score >= TARGET_SCORE ? ['#10b981', '#059669'] : ['#ef4444', '#dc2626']}
+                style={flappyStyles.gameOverTopStripe}
+              />
               <Text style={flappyStyles.gameOverEmoji}>{score >= TARGET_SCORE ? '🏆' : '💥'}</Text>
               <Text style={flappyStyles.gameOverTitle}>
-                {score >= TARGET_SCORE ? 'Amazing!' : 'Crashed!'}
+                {score >= TARGET_SCORE ? 'Amazing Run!' : 'Oops, Crashed!'}
               </Text>
-              <View style={flappyStyles.gameOverScoreWrap}>
-                <Text style={flappyStyles.gameOverScoreLabel}>Score</Text>
-                <Text style={[
-                  flappyStyles.gameOverScoreValue,
-                  { color: score >= TARGET_SCORE ? '#10b981' : '#ef4444' },
-                ]}>{score}/{TARGET_SCORE}</Text>
+              <Text style={flappyStyles.gameOverSubtitle}>
+                {score >= TARGET_SCORE ? 'The fox made it through the forest!' : 'The fox hit a tree trunk!'}
+              </Text>
+              <View style={flappyStyles.gameOverDivider} />
+              <View style={flappyStyles.gameOverStatsRow}>
+                <View style={flappyStyles.gameOverStat}>
+                  <Text style={flappyStyles.gameOverStatLabel}>Trees Passed</Text>
+                  <Text style={[
+                    flappyStyles.gameOverStatValue,
+                    { color: score >= TARGET_SCORE ? '#10b981' : '#ef4444' },
+                  ]}>{score}/{TARGET_SCORE}</Text>
+                </View>
+                <View style={flappyStyles.gameOverStatDivider} />
+                <View style={flappyStyles.gameOverStat}>
+                  <Text style={flappyStyles.gameOverStatLabel}>Jumps</Text>
+                  <Text style={flappyStyles.gameOverStatValue}>{jumpCount}</Text>
+                </View>
+                <View style={flappyStyles.gameOverStatDivider} />
+                <View style={flappyStyles.gameOverStat}>
+                  <Text style={flappyStyles.gameOverStatLabel}>Best Combo</Text>
+                  <Text style={[flappyStyles.gameOverStatValue, { color: '#f59e0b' }]}>{comboCount}x</Text>
+                </View>
               </View>
-            </View>
-          </View>
+              {score >= TARGET_SCORE && (
+                <View style={flappyStyles.gameOverBonusRow}>
+                  <Text style={flappyStyles.gameOverBonusText}>🎉 No XP lost! Great job!</Text>
+                </View>
+              )}
+            </Animated.View>
+          </Animated.View>
         )}
       </TouchableOpacity>
+      </Animated.View>
     </View>
   );
 }
@@ -2096,15 +2388,146 @@ const flappyStyles = StyleSheet.create({
   container: {
     alignItems: 'center',
   },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+    marginBottom: 12,
+    paddingHorizontal: 4,
+  },
+  headerLeft: {
+    flex: 1,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '800' as const,
+    color: '#1a3a15',
+  },
+  headerSub: {
+    fontSize: 13,
+    color: '#4a7a44',
+    marginTop: 2,
+  },
+  headerStats: {
+    backgroundColor: 'rgba(45,90,39,0.1)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 10,
+  },
+  headerStatsRow: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  headerStatPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(45,90,39,0.1)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 10,
+    gap: 4,
+  },
+  headerStatIcon: {
+    fontSize: 12,
+  },
+  headerJumps: {
+    fontSize: 12,
+    fontWeight: '700' as const,
+    color: '#2d5a27',
+  },
+  progressContainer: {
+    width: '100%',
+    marginBottom: 10,
+    gap: 6,
+  },
+  progressTrack: {
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(45,90,39,0.15)',
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: '#10b981',
+    borderRadius: 3,
+  },
+  progressDots: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 4,
+  },
+  progressDot: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(45,90,39,0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: 'rgba(45,90,39,0.2)',
+  },
+  progressDotActive: {
+    backgroundColor: '#10b981',
+    borderColor: '#059669',
+  },
+  progressDotCheck: {
+    fontSize: 12,
+    fontWeight: '700' as const,
+    color: '#fff',
+  },
+  progressDotNum: {
+    fontSize: 10,
+    fontWeight: '600' as const,
+    color: '#64748b',
+  },
   gameArea: {
     position: 'relative',
-    borderRadius: 16,
+    borderRadius: 20,
     overflow: 'hidden',
     ...Platform.select({
-      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 16 },
-      android: { elevation: 8 },
-      web: { boxShadow: '0 4px 20px rgba(0,0,0,0.3)' },
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.35, shadowRadius: 20 },
+      android: { elevation: 10 },
+      web: { boxShadow: '0 6px 28px rgba(0,0,0,0.35)' },
     }),
+  },
+  scoreFlashOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: '#10b981',
+    zIndex: 14,
+  },
+  deathFlashOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: '#ef4444',
+    zIndex: 14,
+  },
+  comboOverlay: {
+    position: 'absolute',
+    top: 50,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    zIndex: 16,
+  },
+  comboText: {
+    fontSize: 22,
+    fontWeight: '900' as const,
+    color: '#fbbf24',
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 4,
+  },
+  particle: {
+    position: 'absolute',
+    zIndex: 17,
   },
   sunRayLayer: {
     position: 'absolute',
@@ -2144,11 +2567,30 @@ const flappyStyles = StyleSheet.create({
     borderRadius: 2,
     transform: [{ rotate: '120deg' }],
   },
+  sunRay4: {
+    position: 'absolute',
+    top: 70,
+    left: 75,
+    width: 4,
+    height: 60,
+    backgroundColor: 'rgba(255,236,130,0.05)',
+    borderRadius: 2,
+    transform: [{ rotate: '180deg' }],
+  },
   sunWrap: {
     position: 'absolute',
     top: 12,
     right: 25,
     zIndex: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sunGlow: {
+    position: 'absolute',
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: 'rgba(255, 236, 130, 0.12)',
   },
   sunOuter: {
     width: 36,
@@ -2344,46 +2786,73 @@ const flappyStyles = StyleSheet.create({
   foxEarLeft: {
     position: 'absolute',
     left: 2,
-    top: -6,
-    width: 8,
-    height: 10,
+    top: -7,
+    width: 9,
+    height: 11,
     backgroundColor: '#F97316',
-    borderTopLeftRadius: 6,
+    borderTopLeftRadius: 7,
     borderTopRightRadius: 2,
     transform: [{ rotate: '-15deg' }],
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: '#C2410C',
   },
   foxEarRight: {
     position: 'absolute',
-    right: 4,
-    top: -5,
-    width: 8,
-    height: 10,
+    right: 3,
+    top: -6,
+    width: 9,
+    height: 11,
     backgroundColor: '#F97316',
     borderTopLeftRadius: 2,
-    borderTopRightRadius: 6,
+    borderTopRightRadius: 7,
     transform: [{ rotate: '15deg' }],
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: '#C2410C',
+  },
+  foxEarInner: {
+    position: 'absolute',
+    bottom: 1,
+    left: 2,
+    right: 2,
+    height: 5,
+    borderRadius: 2,
+    backgroundColor: '#FDBA74',
   },
   foxTail: {
     position: 'absolute',
-    left: -10,
+    left: -12,
     bottom: 2,
-    width: 14,
-    height: 8,
-    borderRadius: 4,
+    width: 16,
+    height: 9,
+    borderRadius: 5,
     backgroundColor: '#EA580C',
-    transform: [{ rotate: '-20deg' }],
+  },
+  foxTailTip: {
+    position: 'absolute',
+    left: 0,
+    top: 1,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#FEF3C7',
+  },
+  foxBelly: {
+    position: 'absolute',
+    right: 2,
+    bottom: 3,
+    width: 14,
+    height: 10,
+    borderRadius: 7,
+    backgroundColor: '#FDBA74',
+    opacity: 0.6,
   },
   foxEye: {
     position: 'absolute',
     right: 5,
     top: 7,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 9,
+    height: 9,
+    borderRadius: 5,
     backgroundColor: '#fff',
     borderWidth: 1,
     borderColor: '#333',
@@ -2391,29 +2860,113 @@ const flappyStyles = StyleSheet.create({
     alignItems: 'center',
   },
   foxPupil: {
+    width: 5,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: '#1a1a2e',
+    marginLeft: 1,
+  },
+  foxEyeShine: {
+    position: 'absolute',
+    top: 1,
+    right: 1,
+    width: 2,
+    height: 2,
+    borderRadius: 1,
+    backgroundColor: '#fff',
+  },
+  foxNose: {
+    position: 'absolute',
+    right: -1,
+    top: 13,
+    width: 6,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: '#1a1a2e',
+  },
+  foxShadow: {
+    position: 'absolute',
+    bottom: -4,
+    width: BIRD_SIZE * 0.7,
+    height: 4,
+    borderRadius: 10,
+    backgroundColor: 'rgba(0,0,0,0.15)',
+    alignSelf: 'center',
+  },
+  foxEyeLeft: {
+    position: 'absolute',
+    left: 7,
+    top: 8,
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#333',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  foxPupilLeft: {
     width: 4,
     height: 4,
     borderRadius: 2,
     backgroundColor: '#1a1a2e',
-    marginLeft: 1,
+    marginRight: 1,
   },
-  foxNose: {
+  foxEyeShineLeft: {
     position: 'absolute',
-    right: 0,
-    top: 13,
-    width: 5,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: '#1a1a2e',
+    top: 1,
+    right: 1,
+    width: 2,
+    height: 2,
+    borderRadius: 1,
+    backgroundColor: '#fff',
   },
   foxCheek: {
     position: 'absolute',
     right: 8,
-    top: 14,
+    top: 16,
     width: 5,
-    height: 3,
-    borderRadius: 2,
-    backgroundColor: 'rgba(255, 182, 130, 0.6)',
+    height: 4,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255, 160, 100, 0.5)',
+  },
+  foxCheekLeft: {
+    position: 'absolute',
+    left: 9,
+    top: 16,
+    width: 5,
+    height: 4,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255, 160, 100, 0.4)',
+  },
+  foxMouth: {
+    position: 'absolute',
+    right: 3,
+    top: 19,
+    width: 4,
+    height: 2,
+    borderBottomLeftRadius: 2,
+    borderBottomRightRadius: 2,
+    backgroundColor: '#92400E',
+  },
+  foxWhiskerRight1: {
+    position: 'absolute',
+    right: -5,
+    top: 14,
+    width: 8,
+    height: 1,
+    backgroundColor: 'rgba(0,0,0,0.15)',
+    transform: [{ rotate: '-10deg' }],
+  },
+  foxWhiskerRight2: {
+    position: 'absolute',
+    right: -5,
+    top: 17,
+    width: 8,
+    height: 1,
+    backgroundColor: 'rgba(0,0,0,0.12)',
+    transform: [{ rotate: '10deg' }],
   },
   groundLayer: {
     position: 'absolute',
@@ -2421,6 +2974,14 @@ const flappyStyles = StyleSheet.create({
     left: 0,
     height: GROUND_HEIGHT,
     zIndex: 8,
+  },
+  grassTopHighlight: {
+    height: 2,
+    backgroundColor: '#66BB6A',
+  },
+  grassTop: {
+    height: 3,
+    backgroundColor: '#4CAF50',
   },
   grassBlade: {
     height: 4,
@@ -2453,6 +3014,19 @@ const flappyStyles = StyleSheet.create({
     borderTopRightRadius: 4,
     backgroundColor: '#ef4444',
   },
+  mushroomSpot: {
+    position: 'absolute',
+    top: 1,
+    left: 2,
+    width: 2,
+    height: 2,
+    borderRadius: 1,
+    backgroundColor: '#fff',
+  },
+  groundFlower: {
+    position: 'absolute',
+    top: -6,
+  },
   mushroomStem: {
     width: 3,
     height: 4,
@@ -2472,22 +3046,40 @@ const flappyStyles = StyleSheet.create({
     zIndex: 20,
   },
   startCard: {
-    backgroundColor: 'rgba(255,255,255,0.95)',
-    borderRadius: 24,
+    backgroundColor: 'rgba(255,255,255,0.97)',
+    borderRadius: 28,
     padding: 28,
     alignItems: 'center',
-    width: '75%',
-    gap: 10,
+    width: '80%',
+    gap: 8,
+    overflow: 'hidden',
     ...Platform.select({
-      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.25, shadowRadius: 16 },
-      android: { elevation: 8 },
-      web: { boxShadow: '0 6px 24px rgba(0,0,0,0.25)' },
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.3, shadowRadius: 20 },
+      android: { elevation: 10 },
+      web: { boxShadow: '0 8px 32px rgba(0,0,0,0.3)' },
     }),
   },
+  startCardDecor: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 5,
+  },
+  startDivider: {
+    width: '60%',
+    height: 1,
+    backgroundColor: 'rgba(45,90,39,0.12)',
+    marginVertical: 4,
+  },
+  startInfoIcon: {
+    fontSize: 14,
+    marginBottom: 2,
+  },
   startIconCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     backgroundColor: '#2d5a27',
     justifyContent: 'center',
     alignItems: 'center',
@@ -2495,26 +3087,47 @@ const flappyStyles = StyleSheet.create({
     borderColor: '#3d8b37',
   },
   startTitle: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: '800' as const,
     color: '#1a3a15',
+    marginTop: 4,
   },
   startSubtitle: {
     fontSize: 14,
     color: '#4a7a44',
     fontWeight: '500' as const,
+    textAlign: 'center',
+  },
+  startInfoRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 4,
+  },
+  startInfoPill: {
+    backgroundColor: 'rgba(45,90,39,0.08)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+    alignItems: 'center',
+    gap: 2,
+  },
+  startInfoText: {
+    fontSize: 10,
+    fontWeight: '600' as const,
+    color: '#2d5a27',
   },
   tapIndicator: {
-    marginTop: 6,
+    marginTop: 10,
     backgroundColor: '#2d5a27',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 14,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 16,
   },
   tapText: {
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: '700' as const,
     color: '#fff',
+    letterSpacing: 1,
   },
   gameOverOverlay: {
     position: 'absolute',
@@ -2528,25 +3141,85 @@ const flappyStyles = StyleSheet.create({
     zIndex: 20,
   },
   gameOverCard: {
-    backgroundColor: 'rgba(255,255,255,0.95)',
-    borderRadius: 24,
-    padding: 32,
+    backgroundColor: 'rgba(255,255,255,0.97)',
+    borderRadius: 28,
+    padding: 28,
     alignItems: 'center',
-    width: '70%',
-    gap: 8,
+    width: '80%',
+    gap: 6,
+    overflow: 'hidden',
     ...Platform.select({
-      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.25, shadowRadius: 16 },
-      android: { elevation: 8 },
-      web: { boxShadow: '0 6px 24px rgba(0,0,0,0.25)' },
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.3, shadowRadius: 20 },
+      android: { elevation: 10 },
+      web: { boxShadow: '0 8px 32px rgba(0,0,0,0.3)' },
     }),
   },
+  gameOverTopStripe: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 5,
+  },
+  gameOverBonusRow: {
+    backgroundColor: 'rgba(16,185,129,0.1)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 10,
+    marginTop: 4,
+  },
+  gameOverBonusText: {
+    fontSize: 13,
+    fontWeight: '700' as const,
+    color: '#059669',
+  },
   gameOverEmoji: {
-    fontSize: 48,
+    fontSize: 52,
+    marginTop: 4,
   },
   gameOverTitle: {
     fontSize: 24,
     fontWeight: '800' as const,
     color: '#1a3a15',
+  },
+  gameOverSubtitle: {
+    fontSize: 13,
+    color: '#64748b',
+    textAlign: 'center',
+    fontWeight: '500' as const,
+  },
+  gameOverDivider: {
+    width: '80%',
+    height: 1,
+    backgroundColor: '#e2e8f0',
+    marginVertical: 8,
+  },
+  gameOverStatsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 0,
+  },
+  gameOverStat: {
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  gameOverStatLabel: {
+    fontSize: 11,
+    fontWeight: '600' as const,
+    color: '#94a3b8',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 2,
+  },
+  gameOverStatValue: {
+    fontSize: 28,
+    fontWeight: '900' as const,
+    color: '#1a3a15',
+  },
+  gameOverStatDivider: {
+    width: 1,
+    height: 36,
+    backgroundColor: '#e2e8f0',
   },
   gameOverScoreWrap: {
     alignItems: 'center',
