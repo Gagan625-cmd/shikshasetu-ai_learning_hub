@@ -387,7 +387,7 @@ const FOREST_TREES_MID = [
   { x: 300, height: 155, width: 35, shade: '#236e23' },
 ];
 
-const FOREST_LEAVES = [
+const _FOREST_LEAVES = [
   { x: 40, y: 50, size: 12, rotation: '15deg', emoji: '\u{1F343}' },
   { x: 130, y: 80, size: 10, rotation: '-20deg', emoji: '\u{1F342}' },
   { x: 220, y: 35, size: 11, rotation: '45deg', emoji: '\u{1F343}' },
@@ -416,9 +416,6 @@ const GROUND_HEIGHT = 40;
 function JumpingFoxGame({ onFinish }: { onFinish: (won: boolean) => void; colors: any }) {
   const [birdY, setBirdY] = useState(GAME_HEIGHT / 2);
   const [velocity, setVelocity] = useState(0);
-  const [_bestScore, _setBestScore] = useState(0);
-  const [comboCount, setComboCount] = useState(0);
-  const [particles, setParticles] = useState<Array<{ id: number; x: number; y: number; vx: number; vy: number; life: number; emoji: string }>>([]);
   const [pipes, setPipes] = useState<Array<{ x: number; gapY: number; scored: boolean }>>([
     { x: GAME_WIDTH, gapY: 150, scored: false },
     { x: GAME_WIDTH + 220, gapY: 200, scored: false },
@@ -427,96 +424,33 @@ function JumpingFoxGame({ onFinish }: { onFinish: (won: boolean) => void; colors
   const [score, setScore] = useState(0);
   const [gameOver, setGameOver] = useState(false);
   const [started, setStarted] = useState(false);
-  const [jumpCount, setJumpCount] = useState(0);
   const TARGET_SCORE = 5;
   const pendingGameOver = useRef<{ won: boolean } | null>(null);
 
   const birdRotation = useRef(new Animated.Value(0)).current;
   const birdBob = useRef(new Animated.Value(0)).current;
-  const birdScale = useRef(new Animated.Value(1)).current;
   const cloudAnim = useRef(new Animated.Value(0)).current;
   const scoreFlash = useRef(new Animated.Value(1)).current;
-  const scoreBgFlash = useRef(new Animated.Value(0)).current;
   const startPulse = useRef(new Animated.Value(1)).current;
-  const startFadeIn = useRef(new Animated.Value(0)).current;
-  const gameOverScale = useRef(new Animated.Value(0.5)).current;
-  const gameOverOpacity = useRef(new Animated.Value(0)).current;
-  const deathFlash = useRef(new Animated.Value(0)).current;
-  const shakeX = useRef(new Animated.Value(0)).current;
-  const comboScale = useRef(new Animated.Value(0)).current;
-  const comboOpacity = useRef(new Animated.Value(0)).current;
   const gameLoop = useRef<ReturnType<typeof setInterval> | null>(null);
-  const particleTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const bgTreeSway = useRef(new Animated.Value(0)).current;
-  const midTreeSway = useRef(new Animated.Value(0)).current;
-  const leafFloat1 = useRef(new Animated.Value(0)).current;
-  const leafFloat2 = useRef(new Animated.Value(0)).current;
-  const leafFall = useRef(new Animated.Value(0)).current;
-  const fireflyGlow1 = useRef(new Animated.Value(0)).current;
-  const fireflyGlow2 = useRef(new Animated.Value(0)).current;
-  const fireflyGlow3 = useRef(new Animated.Value(0)).current;
-  const mistOpacity = useRef(new Animated.Value(0.15)).current;
-  const sunRayRotate = useRef(new Animated.Value(0)).current;
   const bgParallax = useRef(new Animated.Value(0)).current;
   const midParallax = useRef(new Animated.Value(0)).current;
-  const foxTailWag = useRef(new Animated.Value(0)).current;
-  const progressWidth = useRef(new Animated.Value(0)).current;
-  const groundScroll = useRef(new Animated.Value(0)).current;
-  const foxBreath = useRef(new Animated.Value(1)).current;
-
-  useEffect(() => {
-    Animated.timing(startFadeIn, { toValue: 1, duration: 600, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
-  }, [startFadeIn]);
-
-  useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(foxBreath, { toValue: 1.04, duration: 600, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-        Animated.timing(foxBreath, { toValue: 1, duration: 600, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-      ])
-    ).start();
-  }, [foxBreath]);
-
-  useEffect(() => {
-    if (started && !gameOver) {
-      Animated.loop(
-        Animated.timing(groundScroll, { toValue: 1, duration: 3000, useNativeDriver: true })
-      ).start();
-    }
-    return () => { groundScroll.stopAnimation(); };
-  }, [started, gameOver, groundScroll]);
-
-  useEffect(() => {
-    if (particles.length > 0) {
-      particleTimer.current = setInterval(() => {
-        setParticles(prev => {
-          const updated = prev.map(p => ({
-            ...p,
-            x: p.x + p.vx,
-            y: p.y + p.vy,
-            vy: p.vy + 0.15,
-            life: p.life - 1,
-          })).filter(p => p.life > 0);
-          return updated;
-        });
-      }, 50);
-    }
-    return () => { if (particleTimer.current) clearInterval(particleTimer.current); };
-  }, [particles.length]);
+  const fireflyGlow1 = useRef(new Animated.Value(0)).current;
+  const fireflyGlow2 = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (!started) {
       Animated.loop(
         Animated.sequence([
-          Animated.timing(birdBob, { toValue: -10, duration: 700, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-          Animated.timing(birdBob, { toValue: 10, duration: 700, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+          Animated.timing(birdBob, { toValue: -8, duration: 600, useNativeDriver: true }),
+          Animated.timing(birdBob, { toValue: 8, duration: 600, useNativeDriver: true }),
         ])
       ).start();
       Animated.loop(
         Animated.sequence([
-          Animated.timing(startPulse, { toValue: 1.12, duration: 900, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-          Animated.timing(startPulse, { toValue: 1, duration: 900, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+          Animated.timing(startPulse, { toValue: 1.15, duration: 800, useNativeDriver: true }),
+          Animated.timing(startPulse, { toValue: 1, duration: 800, useNativeDriver: true }),
         ])
       ).start();
     }
@@ -524,45 +458,13 @@ function JumpingFoxGame({ onFinish }: { onFinish: (won: boolean) => void; colors
 
   useEffect(() => {
     Animated.loop(
-      Animated.sequence([
-        Animated.timing(foxTailWag, { toValue: 1, duration: 300, useNativeDriver: true }),
-        Animated.timing(foxTailWag, { toValue: -1, duration: 300, useNativeDriver: true }),
-      ])
-    ).start();
-  }, [foxTailWag]);
-
-  useEffect(() => {
-    Animated.loop(
       Animated.timing(cloudAnim, { toValue: 1, duration: 20000, useNativeDriver: true })
     ).start();
     Animated.loop(
-      Animated.sequence([
-        Animated.timing(bgTreeSway, { toValue: 1, duration: 4000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-        Animated.timing(bgTreeSway, { toValue: -1, duration: 4000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-        Animated.timing(bgTreeSway, { toValue: 0, duration: 3000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-      ])
+      Animated.timing(bgParallax, { toValue: 1, duration: 30000, useNativeDriver: true })
     ).start();
     Animated.loop(
-      Animated.sequence([
-        Animated.timing(midTreeSway, { toValue: 1, duration: 3500, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-        Animated.timing(midTreeSway, { toValue: -1, duration: 3500, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-        Animated.timing(midTreeSway, { toValue: 0, duration: 2500, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-      ])
-    ).start();
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(leafFloat1, { toValue: 1, duration: 3000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-        Animated.timing(leafFloat1, { toValue: 0, duration: 3000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-      ])
-    ).start();
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(leafFloat2, { toValue: 1, duration: 2500, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-        Animated.timing(leafFloat2, { toValue: 0, duration: 2500, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-      ])
-    ).start();
-    Animated.loop(
-      Animated.timing(leafFall, { toValue: 1, duration: 6000, useNativeDriver: true })
+      Animated.timing(midParallax, { toValue: 1, duration: 20000, useNativeDriver: true })
     ).start();
     Animated.loop(
       Animated.sequence([
@@ -576,68 +478,7 @@ function JumpingFoxGame({ onFinish }: { onFinish: (won: boolean) => void; colors
         Animated.timing(fireflyGlow2, { toValue: 0, duration: 2000, useNativeDriver: true }),
       ])
     ).start();
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(fireflyGlow3, { toValue: 1, duration: 1800, useNativeDriver: true }),
-        Animated.timing(fireflyGlow3, { toValue: 0.2, duration: 1200, useNativeDriver: true }),
-      ])
-    ).start();
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(mistOpacity, { toValue: 0.3, duration: 5000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-        Animated.timing(mistOpacity, { toValue: 0.08, duration: 5000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-      ])
-    ).start();
-    Animated.loop(
-      Animated.timing(sunRayRotate, { toValue: 1, duration: 15000, useNativeDriver: true })
-    ).start();
-    Animated.loop(
-      Animated.timing(bgParallax, { toValue: 1, duration: 30000, useNativeDriver: true })
-    ).start();
-    Animated.loop(
-      Animated.timing(midParallax, { toValue: 1, duration: 20000, useNativeDriver: true })
-    ).start();
-  }, [cloudAnim, bgTreeSway, midTreeSway, leafFloat1, leafFloat2, leafFall, fireflyGlow1, fireflyGlow2, fireflyGlow3, mistOpacity, sunRayRotate, bgParallax, midParallax]);
-
-  const spawnScoreParticles = useCallback((x: number, y: number) => {
-    const emojis = ['✨', '🌟', '⭐', '💫', '🍃'];
-    const newParticles = Array.from({ length: 6 }).map((_, i) => ({
-      id: Date.now() + i,
-      x,
-      y,
-      vx: (Math.random() - 0.5) * 4,
-      vy: -(Math.random() * 3 + 1),
-      life: 15 + Math.floor(Math.random() * 10),
-      emoji: emojis[Math.floor(Math.random() * emojis.length)],
-    }));
-    setParticles(prev => [...prev, ...newParticles]);
-  }, []);
-
-  const triggerDeathEffect = useCallback(() => {
-    deathFlash.setValue(0.6);
-    Animated.timing(deathFlash, { toValue: 0, duration: 400, useNativeDriver: true }).start();
-    Animated.sequence([
-      Animated.timing(shakeX, { toValue: 8, duration: 40, useNativeDriver: true }),
-      Animated.timing(shakeX, { toValue: -8, duration: 40, useNativeDriver: true }),
-      Animated.timing(shakeX, { toValue: 6, duration: 35, useNativeDriver: true }),
-      Animated.timing(shakeX, { toValue: -6, duration: 35, useNativeDriver: true }),
-      Animated.timing(shakeX, { toValue: 3, duration: 30, useNativeDriver: true }),
-      Animated.timing(shakeX, { toValue: 0, duration: 30, useNativeDriver: true }),
-    ]).start();
-  }, [deathFlash, shakeX]);
-
-  const showCombo = useCallback((count: number) => {
-    if (count < 2) return;
-    comboScale.setValue(0.3);
-    comboOpacity.setValue(1);
-    Animated.parallel([
-      Animated.spring(comboScale, { toValue: 1, friction: 4, tension: 120, useNativeDriver: true }),
-      Animated.sequence([
-        Animated.delay(800),
-        Animated.timing(comboOpacity, { toValue: 0, duration: 300, useNativeDriver: true }),
-      ]),
-    ]).start();
-  }, [comboScale, comboOpacity]);
+  }, [cloudAnim, bgParallax, midParallax, fireflyGlow1, fireflyGlow2]);
 
   const jump = useCallback(() => {
     if (gameOver) return;
@@ -647,45 +488,16 @@ function JumpingFoxGame({ onFinish }: { onFinish: (won: boolean) => void; colors
       startPulse.stopAnimation();
     }
     setVelocity(FLAPPY_JUMP);
-    setJumpCount(c => c + 1);
     Animated.sequence([
       Animated.timing(birdRotation, { toValue: -30, duration: 70, useNativeDriver: true }),
       Animated.timing(birdRotation, { toValue: 0, duration: 280, easing: Easing.out(Easing.quad), useNativeDriver: true }),
     ]).start();
-    Animated.sequence([
-      Animated.timing(birdScale, { toValue: 1.18, duration: 50, useNativeDriver: true }),
-      Animated.spring(birdScale, { toValue: 1, friction: 4, tension: 160, useNativeDriver: true }),
-    ]).start();
-  }, [gameOver, started, birdRotation, birdBob, startPulse, birdScale]);
+  }, [gameOver, started, birdRotation, birdBob, startPulse]);
 
   const flashScore = useCallback(() => {
     scoreFlash.setValue(1.5);
     Animated.spring(scoreFlash, { toValue: 1, friction: 3, tension: 100, useNativeDriver: true }).start();
-    scoreBgFlash.setValue(1);
-    Animated.timing(scoreBgFlash, { toValue: 0, duration: 400, useNativeDriver: true }).start();
-  }, [scoreFlash, scoreBgFlash]);
-
-  const animateProgress = useCallback((newScore: number) => {
-    Animated.spring(progressWidth, {
-      toValue: (newScore / TARGET_SCORE) * 100,
-      friction: 6,
-      tension: 80,
-      useNativeDriver: false,
-    }).start();
-  }, [progressWidth]);
-
-  const showGameOver = useCallback((won: boolean) => {
-    gameOverOpacity.setValue(0);
-    gameOverScale.setValue(0.3);
-    if (!won) triggerDeathEffect();
-    Animated.sequence([
-      Animated.delay(won ? 200 : 400),
-      Animated.parallel([
-        Animated.timing(gameOverOpacity, { toValue: 1, duration: 350, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
-        Animated.spring(gameOverScale, { toValue: 1, friction: 5, tension: 70, useNativeDriver: true }),
-      ]),
-    ]).start();
-  }, [gameOverOpacity, gameOverScale, triggerDeathEffect]);
+  }, [scoreFlash]);
 
   useEffect(() => {
     if (!started || gameOver) return;
@@ -723,13 +535,12 @@ function JumpingFoxGame({ onFinish }: { onFinish: (won: boolean) => void; colors
     }, 28);
 
     return () => { if (gameLoop.current) clearInterval(gameLoop.current); };
-  }, [started, gameOver, velocity, onFinish, birdRotation, score]);
+  }, [started, gameOver, velocity, birdRotation, score]);
 
   useEffect(() => {
     if (gameOver) return;
     if (pendingGameOver.current) {
       setGameOver(true);
-      showGameOver(pendingGameOver.current.won);
       onFinish(pendingGameOver.current.won);
       pendingGameOver.current = null;
       return;
@@ -742,7 +553,6 @@ function JumpingFoxGame({ onFinish }: { onFinish: (won: boolean) => void; colors
     let shouldEndGame = false;
     let won = false;
     let newScore = score;
-    let newCombo = comboCount;
 
     for (const pipe of pipes) {
       const pipeLeft = pipe.x;
@@ -761,10 +571,6 @@ function JumpingFoxGame({ onFinish }: { onFinish: (won: boolean) => void; colors
         pipe.scored = true;
         flashScore();
         newScore = newScore + 1;
-        newCombo = newCombo + 1;
-        animateProgress(newScore);
-        spawnScoreParticles(pipe.x + PIPE_WIDTH, birdY);
-        showCombo(newCombo);
         if (newScore >= TARGET_SCORE) {
           shouldEndGame = true;
           won = true;
@@ -774,18 +580,13 @@ function JumpingFoxGame({ onFinish }: { onFinish: (won: boolean) => void; colors
 
     if (newScore !== score) {
       setScore(newScore);
-      _setBestScore(prev => Math.max(prev, newScore));
-    }
-    if (newCombo !== comboCount) {
-      setComboCount(newCombo);
     }
 
     if (shouldEndGame) {
       setGameOver(true);
-      showGameOver(won);
       onFinish(won);
     }
-  }, [birdY, pipes, gameOver, onFinish, flashScore, score, animateProgress, showGameOver, comboCount, spawnScoreParticles, showCombo]);
+  }, [birdY, pipes, gameOver, onFinish, flashScore, score]);
 
   const birdRotateInterp = birdRotation.interpolate({
     inputRange: [-30, 0, 55],
@@ -797,71 +598,11 @@ function JumpingFoxGame({ onFinish }: { onFinish: (won: boolean) => void; colors
     outputRange: [0, -GAME_WIDTH],
   });
 
-  const bgSwayInterp = bgTreeSway.interpolate({ inputRange: [-1, 0, 1], outputRange: [-2, 0, 2] });
-  const midSwayInterp = midTreeSway.interpolate({ inputRange: [-1, 0, 1], outputRange: [-3, 0, 3] });
-  const leafX1 = leafFloat1.interpolate({ inputRange: [0, 1], outputRange: [-8, 8] });
-  const leafX2 = leafFloat2.interpolate({ inputRange: [0, 1], outputRange: [6, -6] });
-  const leafFallY = leafFall.interpolate({ inputRange: [0, 1], outputRange: [-20, GAME_HEIGHT + 20] });
-  const sunRayInterp = sunRayRotate.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
   const bgParallaxX = bgParallax.interpolate({ inputRange: [0, 1], outputRange: [0, -GAME_WIDTH * 0.3] });
   const midParallaxX = midParallax.interpolate({ inputRange: [0, 1], outputRange: [0, -GAME_WIDTH * 0.5] });
-  const tailRotate = foxTailWag.interpolate({ inputRange: [-1, 0, 1], outputRange: ['-25deg', '-15deg', '-5deg'] });
-  const scoreBgOpacity = scoreBgFlash.interpolate({ inputRange: [0, 1], outputRange: [0, 0.3] });
-
-  const getFireflyAnim = (idx: number) => {
-    if (idx % 3 === 0) return fireflyGlow1;
-    if (idx % 3 === 1) return fireflyGlow2;
-    return fireflyGlow3;
-  };
-
-  const groundScrollX = groundScroll.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, -GAME_WIDTH],
-  });
-
-  const progressInterp = progressWidth.interpolate({
-    inputRange: [0, 100],
-    outputRange: ['0%', '100%'],
-    extrapolate: 'clamp',
-  });
 
   return (
     <View style={flappyStyles.container}>
-      <View style={flappyStyles.headerRow}>
-        <View style={flappyStyles.headerLeft}>
-          <Text style={flappyStyles.headerTitle}>🦊 Jumping Fox</Text>
-          <Text style={flappyStyles.headerSub}>Navigate through {TARGET_SCORE} forest trees!</Text>
-        </View>
-        {started && (
-          <View style={flappyStyles.headerStatsRow}>
-            <View style={flappyStyles.headerStatPill}>
-              <Text style={flappyStyles.headerStatIcon}>👆</Text>
-              <Text style={flappyStyles.headerJumps}>{jumpCount}</Text>
-            </View>
-            <View style={[flappyStyles.headerStatPill, { backgroundColor: 'rgba(16,185,129,0.12)' }]}>
-              <Text style={flappyStyles.headerStatIcon}>🌲</Text>
-              <Text style={[flappyStyles.headerJumps, { color: '#059669' }]}>{score}/{TARGET_SCORE}</Text>
-            </View>
-          </View>
-        )}
-      </View>
-
-      {started && !gameOver && (
-        <View style={flappyStyles.progressContainer}>
-          <View style={flappyStyles.progressTrack}>
-            <Animated.View style={[flappyStyles.progressFill, { width: progressInterp as any }]} />
-          </View>
-          <View style={flappyStyles.progressDots}>
-            {Array.from({ length: TARGET_SCORE }).map((_, i) => (
-              <View key={i} style={[flappyStyles.progressDot, i < score && flappyStyles.progressDotActive]}>
-                {i < score ? <Text style={flappyStyles.progressDotCheck}>✓</Text> : <Text style={flappyStyles.progressDotNum}>{i + 1}</Text>}
-              </View>
-            ))}
-          </View>
-        </View>
-      )}
-
-      <Animated.View style={{ transform: [{ translateX: shakeX }] }}>
       <TouchableOpacity
         activeOpacity={1}
         onPress={jump}
@@ -869,20 +610,12 @@ function JumpingFoxGame({ onFinish }: { onFinish: (won: boolean) => void; colors
         testID="flappy-game-area"
       >
         <LinearGradient
-          colors={['#071507', '#0a1f0a', '#0f2b0f', '#143814', '#1a4d1a', '#1e5c1e', '#2d7a2d']}
-          locations={[0, 0.1, 0.2, 0.35, 0.55, 0.75, 1]}
+          colors={['#0a1f0a', '#0f2b0f', '#143814', '#1a4d1a', '#1e5c1e', '#2d7a2d']}
+          locations={[0, 0.15, 0.3, 0.5, 0.7, 1]}
           style={StyleSheet.absoluteFillObject}
         />
 
-        <Animated.View style={[flappyStyles.sunRayLayer, { transform: [{ rotate: sunRayInterp as any }] }]}>
-          <View style={flappyStyles.sunRay1} />
-          <View style={flappyStyles.sunRay2} />
-          <View style={flappyStyles.sunRay3} />
-          <View style={flappyStyles.sunRay4} />
-        </Animated.View>
-
         <View style={flappyStyles.sunWrap}>
-          <View style={flappyStyles.sunGlow} />
           <View style={flappyStyles.sunOuter}>
             <View style={flappyStyles.sunInner} />
           </View>
@@ -890,14 +623,13 @@ function JumpingFoxGame({ onFinish }: { onFinish: (won: boolean) => void; colors
 
         <Animated.View style={[flappyStyles.forestBgLayer, { transform: [{ translateX: bgParallaxX as any }] }]}>
           {FOREST_TREES_BG.map((tree, i) => (
-            <Animated.View key={`bg-tree-${i}`} style={[
+            <View key={`bg-tree-${i}`} style={[
               flappyStyles.bgTree,
               {
                 left: tree.x,
                 bottom: GROUND_HEIGHT - 5,
                 height: tree.height,
                 width: tree.width,
-                transform: [{ translateX: bgSwayInterp as any }],
               },
             ]}>
               <View style={[
@@ -908,41 +640,19 @@ function JumpingFoxGame({ onFinish }: { onFinish: (won: boolean) => void; colors
                 flappyStyles.bgTreeTrunk,
                 { width: tree.width * 0.3, height: tree.height * 0.5, backgroundColor: '#3d2b1f' },
               ]} />
-            </Animated.View>
-          ))}
-          {FOREST_TREES_BG.map((tree, i) => (
-            <Animated.View key={`bg-tree-dup-${i}`} style={[
-              flappyStyles.bgTree,
-              {
-                left: tree.x + GAME_WIDTH * 0.8,
-                bottom: GROUND_HEIGHT - 5,
-                height: tree.height,
-                width: tree.width,
-                transform: [{ translateX: bgSwayInterp as any }],
-              },
-            ]}>
-              <View style={[
-                flappyStyles.bgTreeCanopy,
-                { backgroundColor: tree.shade, width: tree.width * 2.2, height: tree.height * 0.6, borderRadius: tree.width * 1.1 },
-              ]} />
-              <View style={[
-                flappyStyles.bgTreeTrunk,
-                { width: tree.width * 0.3, height: tree.height * 0.5, backgroundColor: '#3d2b1f' },
-              ]} />
-            </Animated.View>
+            </View>
           ))}
         </Animated.View>
 
         <Animated.View style={[flappyStyles.forestMidLayer, { transform: [{ translateX: midParallaxX as any }] }]}>
           {FOREST_TREES_MID.map((tree, i) => (
-            <Animated.View key={`mid-tree-${i}`} style={[
+            <View key={`mid-tree-${i}`} style={[
               flappyStyles.midTree,
               {
                 left: tree.x,
                 bottom: GROUND_HEIGHT - 3,
                 height: tree.height,
                 width: tree.width,
-                transform: [{ translateX: midSwayInterp as any }],
               },
             ]}>
               <View style={[
@@ -953,32 +663,11 @@ function JumpingFoxGame({ onFinish }: { onFinish: (won: boolean) => void; colors
                 flappyStyles.midTreeTrunk,
                 { width: tree.width * 0.28, height: tree.height * 0.55, backgroundColor: '#4a3728' },
               ]} />
-            </Animated.View>
-          ))}
-          {FOREST_TREES_MID.map((tree, i) => (
-            <Animated.View key={`mid-tree-dup-${i}`} style={[
-              flappyStyles.midTree,
-              {
-                left: tree.x + GAME_WIDTH * 0.7,
-                bottom: GROUND_HEIGHT - 3,
-                height: tree.height,
-                width: tree.width,
-                transform: [{ translateX: midSwayInterp as any }],
-              },
-            ]}>
-              <View style={[
-                flappyStyles.midTreeCanopy,
-                { backgroundColor: tree.shade, width: tree.width * 2, height: tree.height * 0.55, borderRadius: tree.width },
-              ]} />
-              <View style={[
-                flappyStyles.midTreeTrunk,
-                { width: tree.width * 0.28, height: tree.height * 0.55, backgroundColor: '#4a3728' },
-              ]} />
-            </Animated.View>
+            </View>
           ))}
         </Animated.View>
 
-        <Animated.View style={[flappyStyles.mistLayer, { opacity: mistOpacity }]} />
+        <View style={flappyStyles.mistLayer} />
 
         <Animated.View style={[flappyStyles.cloudLayer, { transform: [{ translateX: cloudTranslate }] }]}>
           {CLOUD_POSITIONS.map((cloud, i) => (
@@ -995,27 +684,7 @@ function JumpingFoxGame({ onFinish }: { onFinish: (won: boolean) => void; colors
           ))}
         </Animated.View>
 
-        {FOREST_LEAVES.map((leaf, i) => (
-          <Animated.View
-            key={`leaf-${i}`}
-            style={[
-              flappyStyles.floatingLeaf,
-              {
-                left: leaf.x,
-                transform: [
-                  { translateX: (i % 2 === 0 ? leafX1 : leafX2) as any },
-                  { translateY: leafFallY as any },
-                  { rotate: leaf.rotation },
-                ],
-                opacity: 0.7,
-              },
-            ]}
-          >
-            <Text style={{ fontSize: leaf.size }}>{leaf.emoji}</Text>
-          </Animated.View>
-        ))}
-
-        {FOREST_FIREFLIES.map((ff, i) => (
+        {FOREST_FIREFLIES.slice(0, 4).map((ff, i) => (
           <Animated.View
             key={`ff-${i}`}
             style={[
@@ -1023,17 +692,13 @@ function JumpingFoxGame({ onFinish }: { onFinish: (won: boolean) => void; colors
               {
                 left: ff.x,
                 top: ff.y,
-                opacity: getFireflyAnim(i),
+                opacity: i % 2 === 0 ? fireflyGlow1 : fireflyGlow2,
               },
             ]}
           >
             <View style={flappyStyles.fireflyCore} />
-            <View style={flappyStyles.fireflyGlow} />
           </Animated.View>
         ))}
-
-        <Animated.View style={[flappyStyles.scoreFlashOverlay, { opacity: scoreBgOpacity }]} />
-        <Animated.View style={[flappyStyles.deathFlashOverlay, { opacity: deathFlash }]} />
 
         <View style={flappyStyles.scoreOverlay}>
           <View style={flappyStyles.scoreBadge}>
@@ -1044,18 +709,6 @@ function JumpingFoxGame({ onFinish }: { onFinish: (won: boolean) => void; colors
             <Text style={flappyStyles.scoreTarget}>/{TARGET_SCORE}</Text>
           </View>
         </View>
-
-        {comboCount >= 2 && (
-          <Animated.View style={[flappyStyles.comboOverlay, { opacity: comboOpacity, transform: [{ scale: comboScale }] }]}>
-            <Text style={flappyStyles.comboText}>{comboCount}x Combo!</Text>
-          </Animated.View>
-        )}
-
-        {particles.map(p => (
-          <View key={p.id} style={[flappyStyles.particle, { left: p.x, top: p.y, opacity: p.life / 20 }]}>
-            <Text style={{ fontSize: 10 }}>{p.emoji}</Text>
-          </View>
-        ))}
 
         {pipes.map((pipe, i) => (
           <View key={i}>
@@ -1072,16 +725,6 @@ function JumpingFoxGame({ onFinish }: { onFinish: (won: boolean) => void; colors
               ]}
             />
             <View style={[
-              flappyStyles.pipeVines,
-              {
-                left: pipe.x - 3,
-                top: Math.max(pipe.gapY - PIPE_CAP_HEIGHT - 15, 0),
-                width: PIPE_WIDTH + 6,
-              },
-            ]}>
-              <Text style={flappyStyles.vineText}>🌿🍃🌿</Text>
-            </View>
-            <View style={[
               flappyStyles.pipeCap,
               {
                 left: pipe.x - PIPE_CAP_OVERHANG,
@@ -1090,7 +733,6 @@ function JumpingFoxGame({ onFinish }: { onFinish: (won: boolean) => void; colors
                 height: PIPE_CAP_HEIGHT,
               },
             ]} />
-
             <View style={[
               flappyStyles.pipeCap,
               {
@@ -1100,16 +742,6 @@ function JumpingFoxGame({ onFinish }: { onFinish: (won: boolean) => void; colors
                 height: PIPE_CAP_HEIGHT,
               },
             ]} />
-            <View style={[
-              flappyStyles.pipeVinesBottom,
-              {
-                left: pipe.x - 3,
-                top: pipe.gapY + PIPE_GAP + PIPE_CAP_HEIGHT,
-                width: PIPE_WIDTH + 6,
-              },
-            ]}>
-              <Text style={flappyStyles.vineText}>🌿🍃🌿</Text>
-            </View>
             <LinearGradient
               colors={['#4a3728', '#5a3f2b', '#3d2b1f']}
               style={[
@@ -1122,24 +754,6 @@ function JumpingFoxGame({ onFinish }: { onFinish: (won: boolean) => void; colors
                 },
               ]}
             />
-            <View style={[
-              flappyStyles.pipeBark,
-              {
-                left: pipe.x + PIPE_WIDTH * 0.15,
-                top: 10,
-                height: Math.max(pipe.gapY - PIPE_CAP_HEIGHT - 20, 0),
-                width: 3,
-              },
-            ]} />
-            <View style={[
-              flappyStyles.pipeBark,
-              {
-                left: pipe.x + PIPE_WIDTH * 0.6,
-                top: pipe.gapY + PIPE_GAP + PIPE_CAP_HEIGHT + 10,
-                height: Math.max(GAME_HEIGHT - pipe.gapY - PIPE_GAP - PIPE_CAP_HEIGHT - GROUND_HEIGHT - 20, 0),
-                width: 3,
-              },
-            ]} />
           </View>
         ))}
 
@@ -1152,143 +766,62 @@ function JumpingFoxGame({ onFinish }: { onFinish: (won: boolean) => void; colors
               transform: [
                 { rotate: started ? birdRotateInterp as any : '0deg' },
                 { translateY: started ? 0 : (birdBob as any) },
-                { scale: started ? birdScale : Animated.multiply(birdScale, foxBreath) as any },
               ],
             },
           ]}
         >
-          <View style={flappyStyles.foxShadow} />
           <View style={flappyStyles.foxBody}>
-            <View style={flappyStyles.foxEarLeft}>
-              <View style={flappyStyles.foxEarInner} />
-            </View>
-            <View style={flappyStyles.foxEarRight}>
-              <View style={flappyStyles.foxEarInner} />
-            </View>
-            <Animated.View style={[flappyStyles.foxTail, { transform: [{ rotate: tailRotate as any }] }]}>
-              <View style={flappyStyles.foxTailTip} />
-            </Animated.View>
-            <View style={flappyStyles.foxBelly} />
+            <View style={flappyStyles.foxEarLeft} />
+            <View style={flappyStyles.foxEarRight} />
+            <View style={flappyStyles.foxTail} />
             <View style={flappyStyles.foxEye}>
               <View style={flappyStyles.foxPupil} />
-              <View style={flappyStyles.foxEyeShine} />
-            </View>
-            <View style={flappyStyles.foxEyeLeft}>
-              <View style={flappyStyles.foxPupilLeft} />
-              <View style={flappyStyles.foxEyeShineLeft} />
             </View>
             <View style={flappyStyles.foxNose} />
-            <View style={flappyStyles.foxCheek} />
-            <View style={flappyStyles.foxCheekLeft} />
-            <View style={flappyStyles.foxMouth} />
-            <View style={flappyStyles.foxWhiskerRight1} />
-            <View style={flappyStyles.foxWhiskerRight2} />
           </View>
         </Animated.View>
 
         <View style={[flappyStyles.groundLayer, { width: GAME_WIDTH * 2 }]}>
-          <View style={[flappyStyles.grassTopHighlight, { width: GAME_WIDTH * 2 }]} />
-          <View style={[flappyStyles.grassTop, { width: GAME_WIDTH * 2 }]} />
           <View style={[flappyStyles.grassBlade, { width: GAME_WIDTH * 2 }]} />
           <View style={[flappyStyles.grassStripe, { width: GAME_WIDTH * 2 }]} />
           <View style={[flappyStyles.dirtLayer, { width: GAME_WIDTH * 2 }]} />
-          <Animated.View style={[flappyStyles.groundDetails, { transform: [{ translateX: groundScrollX as any }] }]}>
-            {[0, 40, 85, 130, 180, 225, 280, 330, 380].map((x, i) => (
-              <View key={`mushroom-${i}`} style={[flappyStyles.mushroom, { left: x }]}>
-                <View style={[flappyStyles.mushroomCap, i % 3 === 0 && { backgroundColor: '#a855f7' }]}>
-                  <View style={flappyStyles.mushroomSpot} />
-                </View>
-                <View style={flappyStyles.mushroomStem} />
-              </View>
-            ))}
-            {[25, 70, 155, 210, 265, 320, 370].map((x, i) => (
-              <View key={`flower-${i}`} style={[flappyStyles.groundFlower, { left: x }]}>
-                <Text style={{ fontSize: 8 }}>{['🌸', '🌼', '🌺', '🌻'][i % 4]}</Text>
-              </View>
-            ))}
-          </Animated.View>
         </View>
 
         {!started && !gameOver && (
-          <Animated.View style={[flappyStyles.tapPrompt, { opacity: startFadeIn }]}>
+          <View style={flappyStyles.tapPrompt}>
             <View style={flappyStyles.startCard}>
-              <LinearGradient
-                colors={['#10b981', '#059669']}
-                style={flappyStyles.startCardDecor}
-              />
               <Animated.View style={{ transform: [{ scale: startPulse }] }}>
                 <View style={flappyStyles.startIconCircle}>
-                  <Text style={{ fontSize: 36 }}>🦊</Text>
+                  <Text style={{ fontSize: 28 }}>🦊</Text>
                 </View>
               </Animated.View>
               <Text style={flappyStyles.startTitle}>Jumping Fox</Text>
-              <Text style={flappyStyles.startSubtitle}>Help the fox leap through the forest!</Text>
-              <View style={flappyStyles.startDivider} />
-              <View style={flappyStyles.startInfoRow}>
-                <View style={flappyStyles.startInfoPill}>
-                  <Text style={flappyStyles.startInfoIcon}>🌲</Text>
-                  <Text style={flappyStyles.startInfoText}>Pass {TARGET_SCORE} trees</Text>
-                </View>
-                <View style={flappyStyles.startInfoPill}>
-                  <Text style={flappyStyles.startInfoIcon}>👆</Text>
-                  <Text style={flappyStyles.startInfoText}>Tap to jump</Text>
-                </View>
-                <View style={flappyStyles.startInfoPill}>
-                  <Text style={flappyStyles.startInfoIcon}>⚡</Text>
-                  <Text style={flappyStyles.startInfoText}>Speed increases</Text>
-                </View>
-              </View>
+              <Text style={flappyStyles.startSubtitle}>Jump through {TARGET_SCORE} forest trees to win!</Text>
               <View style={flappyStyles.tapIndicator}>
-                <Text style={flappyStyles.tapText}>TAP ANYWHERE TO START</Text>
+                <Text style={flappyStyles.tapText}>Tap anywhere to jump</Text>
               </View>
             </View>
-          </Animated.View>
+          </View>
         )}
 
         {gameOver && (
-          <Animated.View style={[flappyStyles.gameOverOverlay, { opacity: gameOverOpacity }]}>
-            <Animated.View style={[flappyStyles.gameOverCard, { transform: [{ scale: gameOverScale }] }]}>
-              <LinearGradient
-                colors={score >= TARGET_SCORE ? ['#10b981', '#059669'] : ['#ef4444', '#dc2626']}
-                style={flappyStyles.gameOverTopStripe}
-              />
+          <View style={flappyStyles.gameOverOverlay}>
+            <View style={flappyStyles.gameOverCard}>
               <Text style={flappyStyles.gameOverEmoji}>{score >= TARGET_SCORE ? '🏆' : '💥'}</Text>
               <Text style={flappyStyles.gameOverTitle}>
-                {score >= TARGET_SCORE ? 'Amazing Run!' : 'Oops, Crashed!'}
+                {score >= TARGET_SCORE ? 'Amazing!' : 'Crashed!'}
               </Text>
-              <Text style={flappyStyles.gameOverSubtitle}>
-                {score >= TARGET_SCORE ? 'The fox made it through the forest!' : 'The fox hit a tree trunk!'}
-              </Text>
-              <View style={flappyStyles.gameOverDivider} />
-              <View style={flappyStyles.gameOverStatsRow}>
-                <View style={flappyStyles.gameOverStat}>
-                  <Text style={flappyStyles.gameOverStatLabel}>Trees Passed</Text>
-                  <Text style={[
-                    flappyStyles.gameOverStatValue,
-                    { color: score >= TARGET_SCORE ? '#10b981' : '#ef4444' },
-                  ]}>{score}/{TARGET_SCORE}</Text>
-                </View>
-                <View style={flappyStyles.gameOverStatDivider} />
-                <View style={flappyStyles.gameOverStat}>
-                  <Text style={flappyStyles.gameOverStatLabel}>Jumps</Text>
-                  <Text style={flappyStyles.gameOverStatValue}>{jumpCount}</Text>
-                </View>
-                <View style={flappyStyles.gameOverStatDivider} />
-                <View style={flappyStyles.gameOverStat}>
-                  <Text style={flappyStyles.gameOverStatLabel}>Best Combo</Text>
-                  <Text style={[flappyStyles.gameOverStatValue, { color: '#f59e0b' }]}>{comboCount}x</Text>
-                </View>
+              <View style={flappyStyles.gameOverScoreWrap}>
+                <Text style={flappyStyles.gameOverScoreLabel}>Score</Text>
+                <Text style={[
+                  flappyStyles.gameOverScoreValue,
+                  { color: score >= TARGET_SCORE ? '#10b981' : '#ef4444' },
+                ]}>{score}/{TARGET_SCORE}</Text>
               </View>
-              {score >= TARGET_SCORE && (
-                <View style={flappyStyles.gameOverBonusRow}>
-                  <Text style={flappyStyles.gameOverBonusText}>🎉 No XP lost! Great job!</Text>
-                </View>
-              )}
-            </Animated.View>
-          </Animated.View>
+            </View>
+          </View>
         )}
       </TouchableOpacity>
-      </Animated.View>
     </View>
   );
 }
@@ -2388,7 +1921,7 @@ const flappyStyles = StyleSheet.create({
   container: {
     alignItems: 'center',
   },
-  headerRow: {
+  _headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
