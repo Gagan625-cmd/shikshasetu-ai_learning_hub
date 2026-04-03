@@ -37,7 +37,35 @@ export const GK_QUESTIONS: GKQuestion[] = [
   { question: "Which is the fastest land animal?", options: ["Lion", "Cheetah", "Horse", "Leopard"], correctAnswer: 1 },
 ];
 
+export const TOUGH_GK_QUESTIONS: GKQuestion[] = [
+  { question: "Which treaty ended World War I?", options: ["Treaty of Paris", "Treaty of Versailles", "Treaty of Westphalia", "Treaty of Tordesillas"], correctAnswer: 1 },
+  { question: "What is the SI unit of electric current?", options: ["Volt", "Watt", "Ampere", "Ohm"], correctAnswer: 2 },
+  { question: "Who wrote 'The Origin of Species'?", options: ["Gregor Mendel", "Charles Darwin", "Louis Pasteur", "Alfred Wallace"], correctAnswer: 1 },
+  { question: "What is the atomic number of Carbon?", options: ["4", "6", "8", "12"], correctAnswer: 1 },
+  { question: "Which Indian state has the longest coastline?", options: ["Tamil Nadu", "Kerala", "Gujarat", "Maharashtra"], correctAnswer: 2 },
+  { question: "What is the powerhouse of the cell?", options: ["Nucleus", "Ribosome", "Mitochondria", "Golgi Body"], correctAnswer: 2 },
+  { question: "Who formulated the laws of electromagnetic induction?", options: ["Ampere", "Faraday", "Maxwell", "Hertz"], correctAnswer: 1 },
+  { question: "What is the chemical formula of sulfuric acid?", options: ["HCl", "HNO3", "H2SO4", "H3PO4"], correctAnswer: 2 },
+  { question: "Which planet has the most moons?", options: ["Jupiter", "Saturn", "Uranus", "Neptune"], correctAnswer: 1 },
+  { question: "What is the value of Avogadro's number?", options: ["6.022 × 10²³", "3.14 × 10²³", "1.66 × 10²⁷", "9.81 × 10²³"], correctAnswer: 0 },
+  { question: "Who discovered penicillin?", options: ["Louis Pasteur", "Alexander Fleming", "Joseph Lister", "Robert Koch"], correctAnswer: 1 },
+  { question: "What is the largest bone in the human body?", options: ["Humerus", "Tibia", "Femur", "Fibula"], correctAnswer: 2 },
+  { question: "Which gas is known as laughing gas?", options: ["CO2", "NO2", "N2O", "SO2"], correctAnswer: 2 },
+  { question: "What is the pH of pure water?", options: ["5", "7", "9", "14"], correctAnswer: 1 },
+  { question: "Who proposed the heliocentric model?", options: ["Ptolemy", "Copernicus", "Kepler", "Galileo"], correctAnswer: 1 },
+  { question: "What is the capital of Bhutan?", options: ["Kathmandu", "Thimphu", "Colombo", "Dhaka"], correctAnswer: 1 },
+  { question: "Which vitamin deficiency causes scurvy?", options: ["Vitamin A", "Vitamin B12", "Vitamin C", "Vitamin K"], correctAnswer: 2 },
+  { question: "What is the escape velocity of Earth?", options: ["7.9 km/s", "11.2 km/s", "15.4 km/s", "9.8 km/s"], correctAnswer: 1 },
+  { question: "Who invented the telephone?", options: ["Thomas Edison", "Nikola Tesla", "Alexander Graham Bell", "Guglielmo Marconi"], correctAnswer: 2 },
+  { question: "What is the process of conversion of solid to gas called?", options: ["Evaporation", "Condensation", "Sublimation", "Deposition"], correctAnswer: 2 },
+];
+
 export function getRandomGKQuestions(count: number): GKQuestion[] {
   const shuffled = [...GK_QUESTIONS].sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, count);
+}
+
+export function getRandomToughGKQuestions(count: number): GKQuestion[] {
+  const shuffled = [...TOUGH_GK_QUESTIONS].sort(() => Math.random() - 0.5);
   return shuffled.slice(0, count);
 }

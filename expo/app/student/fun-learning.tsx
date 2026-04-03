@@ -10,18 +10,19 @@ import {
   Alert,
   Platform,
   Easing,
+  PanResponder,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, Brain, Lock, Trophy, Zap, ChevronRight, Star, X, Check, Grid3x3, GraduationCap } from 'lucide-react-native';
+import { ArrowLeft, Brain, Lock, Trophy, Zap, ChevronRight, Star, X, Check, Grid3x3, GraduationCap, PersonStanding } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useApp } from '@/contexts/app-context';
 import { useTheme } from '@/contexts/theme-context';
-import { getRandomGKQuestions, GKQuestion } from '@/constants/gk-questions';
+import { getRandomGKQuestions, getRandomToughGKQuestions, GKQuestion } from '@/constants/gk-questions';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-type GameScreen = 'home' | 'pacman' | 'flappy' | 'tictactoe' | 'gk-quiz';
+type GameScreen = 'home' | 'pacman' | 'flappy' | 'tictactoe' | 'gk-quiz' | 'runner';
 
 const GRID_SIZE = 15;
 const CELL_SIZE = Math.floor((SCREEN_WIDTH - 48) / GRID_SIZE);
@@ -1202,18 +1203,561 @@ function TicTacToeGame({ onFinish, colors: themeColors }: { onFinish: (won: bool
   );
 }
 
+const RUNNER_WIDTH = SCREEN_WIDTH - 32;
+const RUNNER_HEIGHT = 520;
+const LANE_COUNT = 3;
+const LANE_WIDTH = Math.floor(RUNNER_WIDTH / LANE_COUNT);
+const PLAYER_SIZE = 40;
+const OBSTACLE_HEIGHT = 50;
+const COIN_SIZE = 22;
+const ROAD_LINE_HEIGHT = 30;
+
+interface RunnerObstacle {
+  id: number;
+  lane: number;
+  y: number;
+  type: 'bus' | 'train' | 'barrier' | 'cone' | 'rock';
+}
+
+interface RunnerCoin {
+  id: number;
+  lane: number;
+  y: number;
+  collected: boolean;
+}
+
+const OBSTACLE_EMOJIS: Record<string, string> = {
+  bus: '\u{1F68C}',
+  train: '\u{1F682}',
+  barrier: '\u{1F6A7}',
+  cone: '\u{26D4}',
+  rock: '\u{1FAA8}',
+};
+
+function ClassroomRunnerGame({ onFinish, onRevive }: { onFinish: (coins: number) => void; onRevive: () => void }) {
+  const [playerLane, setPlayerLane] = useState(1);
+  const [obstacles, setObstacles] = useState<RunnerObstacle[]>([]);
+  const [coins, setCoins] = useState<RunnerCoin[]>([]);
+  const [score, setScore] = useState(0);
+  const [distance, setDistance] = useState(0);
+  const [gameOver, setGameOver] = useState(false);
+  const [started, setStarted] = useState(false);
+  const [canRevive, setCanRevive] = useState(true);
+  const [teacherY] = useState(RUNNER_HEIGHT + 60);
+
+  const playerX = useRef(new Animated.Value(LANE_WIDTH * 1 + LANE_WIDTH / 2 - PLAYER_SIZE / 2)).current;
+  const playerBounce = useRef(new Animated.Value(0)).current;
+  const roadOffset = useRef(new Animated.Value(0)).current;
+  const teacherBounce = useRef(new Animated.Value(0)).current;
+  const startPulse = useRef(new Animated.Value(1)).current;
+  const coinPulse = useRef(new Animated.Value(1)).current;
+  const bgScroll = useRef(new Animated.Value(0)).current;
+
+  const gameLoop = useRef<ReturnType<typeof setInterval> | null>(null);
+  const obstacleIdRef = useRef(0);
+  const coinIdRef = useRef(0);
+  const speedRef = useRef(3.5);
+  const frameRef = useRef(0);
+  const playerLaneRef = useRef(1);
+  const gameOverRef = useRef(false);
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(playerBounce, { toValue: -4, duration: 300, useNativeDriver: true }),
+        Animated.timing(playerBounce, { toValue: 4, duration: 300, useNativeDriver: true }),
+      ])
+    ).start();
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(teacherBounce, { toValue: -3, duration: 400, useNativeDriver: true }),
+        Animated.timing(teacherBounce, { toValue: 3, duration: 400, useNativeDriver: true }),
+      ])
+    ).start();
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(coinPulse, { toValue: 1.2, duration: 600, useNativeDriver: true }),
+        Animated.timing(coinPulse, { toValue: 1, duration: 600, useNativeDriver: true }),
+      ])
+    ).start();
+    Animated.loop(
+      Animated.timing(roadOffset, { toValue: ROAD_LINE_HEIGHT * 2, duration: 400, useNativeDriver: true })
+    ).start();
+    Animated.loop(
+      Animated.timing(bgScroll, { toValue: 1, duration: 8000, useNativeDriver: true })
+    ).start();
+  }, [playerBounce, teacherBounce, coinPulse, roadOffset, bgScroll]);
+
+  useEffect(() => {
+    if (!started) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(startPulse, { toValue: 1.1, duration: 700, useNativeDriver: true }),
+          Animated.timing(startPulse, { toValue: 1, duration: 700, useNativeDriver: true }),
+        ])
+      ).start();
+    }
+  }, [started, startPulse]);
+
+  const moveTo = useCallback((lane: number) => {
+    if (gameOverRef.current) return;
+    const clamped = Math.max(0, Math.min(2, lane));
+    playerLaneRef.current = clamped;
+    setPlayerLane(clamped);
+    Animated.spring(playerX, {
+      toValue: LANE_WIDTH * clamped + LANE_WIDTH / 2 - PLAYER_SIZE / 2,
+      friction: 7,
+      tension: 150,
+      useNativeDriver: true,
+    }).start();
+  }, [playerX]);
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gs) => Math.abs(gs.dx) > 10 || Math.abs(gs.dy) > 10,
+      onPanResponderRelease: (_, gs) => {
+        if (!started && !gameOverRef.current) {
+          setStarted(true);
+          startPulse.stopAnimation();
+          return;
+        }
+        if (Math.abs(gs.dx) > Math.abs(gs.dy)) {
+          if (gs.dx > 20) {
+            moveTo(playerLaneRef.current + 1);
+          } else if (gs.dx < -20) {
+            moveTo(playerLaneRef.current - 1);
+          }
+        }
+      },
+    })
+  ).current;
+
+  useEffect(() => {
+    if (!started || gameOver) return;
+
+    gameLoop.current = setInterval(() => {
+      if (gameOverRef.current) return;
+      frameRef.current += 1;
+      const frame = frameRef.current;
+
+      speedRef.current = Math.min(3.5 + frame * 0.003, 8);
+      const speed = speedRef.current;
+
+      setDistance(d => d + 1);
+
+      if (frame % 35 === 0) {
+        const types: Array<'bus' | 'train' | 'barrier' | 'cone' | 'rock'> = ['bus', 'train', 'barrier', 'cone', 'rock'];
+        const lane = Math.floor(Math.random() * 3);
+        const type = types[Math.floor(Math.random() * types.length)];
+        obstacleIdRef.current += 1;
+        setObstacles(prev => [...prev, { id: obstacleIdRef.current, lane, y: -OBSTACLE_HEIGHT, type }]);
+      }
+
+      if (frame % 20 === 0) {
+        const lane = Math.floor(Math.random() * 3);
+        coinIdRef.current += 1;
+        setCoins(prev => [...prev, { id: coinIdRef.current, lane, y: -COIN_SIZE, collected: false }]);
+      }
+
+      setObstacles(prev => {
+        const updated = prev.map(o => ({ ...o, y: o.y + speed })).filter(o => o.y < RUNNER_HEIGHT + 60);
+        for (const obs of updated) {
+          const obsLeft = obs.lane * LANE_WIDTH + 10;
+          const obsRight = obsLeft + LANE_WIDTH - 20;
+          const obsTop = obs.y;
+          const obsBottom = obs.y + OBSTACLE_HEIGHT;
+
+          const pLane = playerLaneRef.current;
+          const pLeft = pLane * LANE_WIDTH + LANE_WIDTH / 2 - PLAYER_SIZE / 2;
+          const pRight = pLeft + PLAYER_SIZE;
+          const pTop = RUNNER_HEIGHT - 120;
+          const pBottom = pTop + PLAYER_SIZE;
+
+          if (pRight > obsLeft + 5 && pLeft < obsRight - 5 && pBottom > obsTop + 5 && pTop < obsBottom - 5) {
+            gameOverRef.current = true;
+            setGameOver(true);
+            if (gameLoop.current) clearInterval(gameLoop.current);
+            return updated;
+          }
+        }
+        return updated;
+      });
+
+      setCoins(prev => {
+        return prev.map(c => {
+          const newY = c.y + speed;
+          if (c.collected || newY > RUNNER_HEIGHT + 30) return { ...c, y: newY };
+          const cLane = c.lane;
+          const pLane = playerLaneRef.current;
+          const cCenterY = newY + COIN_SIZE / 2;
+          const pTop = RUNNER_HEIGHT - 120;
+          const pBottom = pTop + PLAYER_SIZE;
+          if (cLane === pLane && cCenterY > pTop - 5 && cCenterY < pBottom + 5) {
+            setScore(s => s + 1);
+            return { ...c, y: newY, collected: true };
+          }
+          return { ...c, y: newY };
+        }).filter(c => c.y < RUNNER_HEIGHT + 30 || !c.collected);
+      });
+    }, 25);
+
+    return () => { if (gameLoop.current) clearInterval(gameLoop.current); };
+  }, [started, gameOver]);
+
+  const handleRevive = useCallback(() => {
+    setCanRevive(false);
+    onRevive();
+  }, [onRevive]);
+
+  const restartAfterRevive = useCallback(() => {
+    gameOverRef.current = false;
+    setGameOver(false);
+    setObstacles([]);
+    setStarted(true);
+    frameRef.current = 0;
+    speedRef.current = 3.5;
+  }, []);
+
+  const playerTop = RUNNER_HEIGHT - 120;
+
+  const bgScrollY = bgScroll.interpolate({ inputRange: [0, 1], outputRange: [0, -200] });
+
+  return (
+    <View style={runnerStyles.container}>
+      <View style={runnerStyles.scoreBar}>
+        <View style={runnerStyles.scorePill}>
+          <Text style={runnerStyles.coinEmoji}>\u{1FA99}</Text>
+          <Text style={runnerStyles.scoreNum}>{score}</Text>
+        </View>
+        <View style={runnerStyles.distPill}>
+          <Text style={runnerStyles.distText}>{distance}m</Text>
+        </View>
+      </View>
+
+      <View
+        style={[runnerStyles.gameArea, { width: RUNNER_WIDTH, height: RUNNER_HEIGHT }]}
+        {...panResponder.panHandlers}
+      >
+        <LinearGradient
+          colors={['#1a1a2e', '#16213e', '#0f3460']}
+          style={StyleSheet.absoluteFillObject}
+        />
+
+        <Animated.View style={[runnerStyles.bgPattern, { transform: [{ translateY: bgScrollY }] }]}>
+          {Array.from({ length: 20 }).map((_, i) => (
+            <View key={`bg-${i}`} style={[runnerStyles.bgStar, { left: (i * 47) % RUNNER_WIDTH, top: i * 35 }]} />
+          ))}
+        </Animated.View>
+
+        <View style={runnerStyles.road}>
+          <LinearGradient
+            colors={['#2d2d44', '#3a3a5c', '#2d2d44']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={StyleSheet.absoluteFillObject}
+          />
+          <View style={[runnerStyles.roadEdge, { left: 0 }]} />
+          <View style={[runnerStyles.roadEdge, { right: 0 }]} />
+
+          {[1, 2].map(i => (
+            <View key={`lane-${i}`} style={[runnerStyles.laneDivider, { left: LANE_WIDTH * i - 1 }]}>
+              <Animated.View style={{ transform: [{ translateY: roadOffset }] }}>
+                {Array.from({ length: 20 }).map((_, j) => (
+                  <View key={j} style={runnerStyles.dashLine} />
+                ))}
+              </Animated.View>
+            </View>
+          ))}
+        </View>
+
+        {obstacles.map(obs => (
+          <View
+            key={obs.id}
+            style={[
+              runnerStyles.obstacle,
+              {
+                left: obs.lane * LANE_WIDTH + 10,
+                top: obs.y,
+                width: LANE_WIDTH - 20,
+                height: OBSTACLE_HEIGHT,
+              },
+            ]}
+          >
+            <LinearGradient
+              colors={
+                obs.type === 'bus' ? ['#dc2626', '#b91c1c'] :
+                obs.type === 'train' ? ['#2563eb', '#1d4ed8'] :
+                obs.type === 'barrier' ? ['#f59e0b', '#d97706'] :
+                obs.type === 'cone' ? ['#ea580c', '#c2410c'] :
+                ['#6b7280', '#4b5563']
+              }
+              style={runnerStyles.obstacleGradient}
+            >
+              <Text style={runnerStyles.obstacleEmoji}>{OBSTACLE_EMOJIS[obs.type]}</Text>
+              <Text style={runnerStyles.obstacleLabel}>
+                {obs.type === 'bus' ? 'BUS' : obs.type === 'train' ? 'TRAIN' : obs.type === 'barrier' ? 'STOP' : obs.type === 'cone' ? 'CONE' : 'ROCK'}
+              </Text>
+            </LinearGradient>
+          </View>
+        ))}
+
+        {coins.filter(c => !c.collected).map(c => (
+          <Animated.View
+            key={c.id}
+            style={[
+              runnerStyles.coin,
+              {
+                left: c.lane * LANE_WIDTH + LANE_WIDTH / 2 - COIN_SIZE / 2,
+                top: c.y,
+                transform: [{ scale: coinPulse }],
+              },
+            ]}
+          >
+            <Text style={runnerStyles.coinText}>\u{1FA99}</Text>
+          </Animated.View>
+        ))}
+
+        <Animated.View
+          style={[
+            runnerStyles.player,
+            {
+              top: playerTop,
+              transform: [{ translateX: playerX }, { translateY: playerBounce }],
+            },
+          ]}
+        >
+          <View style={runnerStyles.studentBody}>
+            <View style={runnerStyles.studentHead}>
+              <View style={runnerStyles.studentHair} />
+              <View style={runnerStyles.studentFace}>
+                <View style={runnerStyles.studentEyeL} />
+                <View style={runnerStyles.studentEyeR} />
+                <View style={runnerStyles.studentMouth} />
+              </View>
+            </View>
+            <View style={runnerStyles.studentTorso}>
+              <View style={runnerStyles.studentTie} />
+            </View>
+            <View style={runnerStyles.studentLegs}>
+              <View style={runnerStyles.studentLegL} />
+              <View style={runnerStyles.studentLegR} />
+            </View>
+          </View>
+        </Animated.View>
+
+        <Animated.View
+          style={[
+            runnerStyles.teacher,
+            {
+              left: LANE_WIDTH * 1 + LANE_WIDTH / 2 - 22,
+              top: teacherY - 80,
+              transform: [{ translateY: teacherBounce }],
+            },
+          ]}
+        >
+          <Text style={runnerStyles.teacherEmoji}>\u{1F468}\u{200D}\u{1F3EB}</Text>
+          <View style={runnerStyles.teacherSpeech}>
+            <Text style={runnerStyles.teacherSpeechText}>Hey! Stop!</Text>
+          </View>
+        </Animated.View>
+
+        {!started && !gameOver && (
+          <View style={runnerStyles.startOverlay}>
+            <View style={runnerStyles.startCard}>
+              <Animated.View style={{ transform: [{ scale: startPulse }] }}>
+                <View style={runnerStyles.startIconWrap}>
+                  <Text style={{ fontSize: 36 }}>\u{1F3C3}</Text>
+                </View>
+              </Animated.View>
+              <Text style={runnerStyles.startTitle}>Classroom Runner</Text>
+              <Text style={runnerStyles.startDesc}>
+                The student disturbed the teacher!{"\n"}Run! Dodge obstacles! Collect coins!
+              </Text>
+              <View style={runnerStyles.startHints}>
+                <View style={runnerStyles.hintPill}>
+                  <Text style={runnerStyles.hintText}>\u{1F448} Swipe Left</Text>
+                </View>
+                <View style={runnerStyles.hintPill}>
+                  <Text style={runnerStyles.hintText}>Swipe Right \u{1F449}</Text>
+                </View>
+              </View>
+              <View style={runnerStyles.tapStart}>
+                <Text style={runnerStyles.tapStartText}>Swipe to Start</Text>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {gameOver && (
+          <View style={runnerStyles.gameOverOverlay}>
+            <View style={runnerStyles.gameOverCard}>
+              <Text style={runnerStyles.gameOverEmoji}>\u{1F4A5}</Text>
+              <Text style={runnerStyles.gameOverTitle}>Caught!</Text>
+              <Text style={runnerStyles.gameOverDesc}>
+                The teacher caught up! You collected {score} coins.
+              </Text>
+              <View style={runnerStyles.gameOverStats}>
+                <View style={runnerStyles.goStatItem}>
+                  <Text style={runnerStyles.goStatVal}>{score}</Text>
+                  <Text style={runnerStyles.goStatLabel}>Coins</Text>
+                </View>
+                <View style={runnerStyles.goStatDivider} />
+                <View style={runnerStyles.goStatItem}>
+                  <Text style={runnerStyles.goStatVal}>{distance}m</Text>
+                  <Text style={runnerStyles.goStatLabel}>Distance</Text>
+                </View>
+              </View>
+              {canRevive ? (
+                <TouchableOpacity style={runnerStyles.reviveBtn} onPress={handleRevive}>
+                  <Text style={runnerStyles.reviveBtnText}>\u{1F4DA} Answer 5 GK Questions to Revive!</Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  style={runnerStyles.finishBtn}
+                  onPress={() => onFinish(score)}
+                >
+                  <Text style={runnerStyles.finishBtnText}>Finish ({score} XP earned)</Text>
+                </TouchableOpacity>
+              )}
+              {canRevive && (
+                <TouchableOpacity
+                  style={runnerStyles.skipBtn}
+                  onPress={() => onFinish(score)}
+                >
+                  <Text style={runnerStyles.skipBtnText}>Skip & Finish</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        )}
+      </View>
+    </View>
+  );
+}
+
+function RunnerReviveQuiz({ onResult }: { onResult: (passed: boolean) => void }) {
+  const [questions] = useState<GKQuestion[]>(() => getRandomToughGKQuestions(5));
+  const [currentIdx, setCurrentIdx] = useState(0);
+  const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
+  const [quizScore, setQuizScore] = useState(0);
+  const [answered, setAnswered] = useState(false);
+  const [finished, setFinished] = useState(false);
+  const { colors: themeColors } = useTheme();
+
+  const handleAnswer = useCallback((optionIdx: number) => {
+    if (answered) return;
+    setSelectedAnswer(optionIdx);
+    setAnswered(true);
+    if (optionIdx === questions[currentIdx].correctAnswer) {
+      setQuizScore(s => s + 1);
+    }
+  }, [answered, currentIdx, questions]);
+
+  const handleNext = useCallback(() => {
+    if (currentIdx < questions.length - 1) {
+      setCurrentIdx(i => i + 1);
+      setSelectedAnswer(null);
+      setAnswered(false);
+    } else {
+      setFinished(true);
+      const finalScore = selectedAnswer === questions[currentIdx].correctAnswer
+        ? quizScore : quizScore;
+      onResult(finalScore >= 3);
+    }
+  }, [currentIdx, questions, onResult, quizScore, selectedAnswer]);
+
+  if (finished) {
+    return (
+      <View style={gkStyles.resultContainer}>
+        <LinearGradient
+          colors={quizScore >= 3 ? ['#10b981', '#059669'] : ['#ef4444', '#dc2626']}
+          style={gkStyles.resultGradient}
+        >
+          {quizScore >= 3 ? <Trophy size={48} color="#fff" /> : <X size={48} color="#fff" />}
+          <Text style={gkStyles.resultScore}>{quizScore}/{questions.length}</Text>
+          <Text style={gkStyles.resultText}>
+            {quizScore >= 3 ? 'Revived! Continue running!' : 'Not enough correct answers. Game over!'}
+          </Text>
+        </LinearGradient>
+      </View>
+    );
+  }
+
+  const q = questions[currentIdx];
+
+  return (
+    <View style={gkStyles.container}>
+      <View style={{ alignItems: 'center', marginBottom: 12 }}>
+        <LinearGradient colors={['#f59e0b', '#ef4444']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ paddingHorizontal: 16, paddingVertical: 8, borderRadius: 12 }}>
+          <Text style={{ color: '#fff', fontWeight: '800' as const, fontSize: 14 }}>\u{1F4DA} REVIVE QUIZ - Answer 3/5 Correctly!</Text>
+        </LinearGradient>
+      </View>
+      <View style={gkStyles.progressRow}>
+        <Text style={[gkStyles.questionCount, { color: themeColors.textSecondary }]}>
+          Question {currentIdx + 1} of {questions.length}
+        </Text>
+        <View style={[gkStyles.progressBar, { backgroundColor: themeColors.border }]}>
+          <View style={[gkStyles.progressFill, { width: `${((currentIdx + 1) / questions.length) * 100}%` }]} />
+        </View>
+      </View>
+      <View style={[gkStyles.questionCard, { backgroundColor: themeColors.cardBg }]}>
+        <Brain size={24} color="#f59e0b" />
+        <Text style={[gkStyles.questionText, { color: themeColors.text }]}>{q.question}</Text>
+      </View>
+      <View style={gkStyles.optionsList}>
+        {q.options.map((opt, idx) => {
+          let optStyle = [gkStyles.optionBtn, { backgroundColor: themeColors.cardBg, borderColor: themeColors.border }] as any[];
+          let textColor = themeColors.text;
+          if (answered) {
+            if (idx === q.correctAnswer) {
+              optStyle = [...optStyle, gkStyles.optionCorrect];
+              textColor = '#fff';
+            } else if (idx === selectedAnswer && idx !== q.correctAnswer) {
+              optStyle = [...optStyle, gkStyles.optionWrong];
+              textColor = '#fff';
+            }
+          }
+          return (
+            <TouchableOpacity key={idx} style={optStyle} onPress={() => handleAnswer(idx)} disabled={answered} activeOpacity={0.7}>
+              <View style={[gkStyles.optionLetter, answered && idx === q.correctAnswer ? { backgroundColor: 'rgba(255,255,255,0.3)' } : { backgroundColor: themeColors.surfaceElevated }]}>
+                <Text style={[gkStyles.optionLetterText, answered && idx === q.correctAnswer ? { color: '#fff' } : { color: themeColors.textSecondary }]}>
+                  {String.fromCharCode(65 + idx)}
+                </Text>
+              </View>
+              <Text style={[gkStyles.optionText, { color: textColor }]}>{opt}</Text>
+              {answered && idx === q.correctAnswer && <Check size={20} color="#fff" />}
+              {answered && idx === selectedAnswer && idx !== q.correctAnswer && <X size={20} color="#fff" />}
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+      {answered && (
+        <TouchableOpacity style={gkStyles.nextBtn} onPress={handleNext}>
+          <Text style={gkStyles.nextBtnText}>{currentIdx < questions.length - 1 ? 'Next Question' : 'See Results'}</Text>
+          <ChevronRight size={20} color="#fff" />
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+}
+
 export default function FunLearning() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { recordGamePlay, recordGKQuiz, canPlayGame, userProgress } = useApp();
+  const { recordGamePlay, recordGKQuiz, canPlayGame, userProgress, addXP } = useApp();
   const { colors } = useTheme();
   const [screen, setScreen] = useState<GameScreen>('home');
   const fadeAnim = useRef(new Animated.Value(1)).current;
+  const [runnerCoins, setRunnerCoins] = useState(0);
+  const runnerGameRef = useRef<{ restart: () => void } | null>(null);
+  const [showReviveQuiz, setShowReviveQuiz] = useState(false);
 
   const hasPendingLoss = userProgress.funLearning.pendingXPLoss;
   const pacmanPlayed = !canPlayGame('pacman');
   const flappyPlayed = !canPlayGame('flappy');
   const tictactoePlayed = !canPlayGame('tictactoe');
+  const runnerPlayed = !canPlayGame('runner');
 
   const switchScreen = useCallback((to: GameScreen) => {
     Animated.timing(fadeAnim, { toValue: 0, duration: 150, useNativeDriver: true }).start(() => {
@@ -1302,6 +1846,48 @@ export default function FunLearning() {
       }
     }, 800);
   }, [recordGKQuiz, switchScreen]);
+
+  const handleRunnerFinish = useCallback((earnedCoins: number) => {
+    setRunnerCoins(earnedCoins);
+    recordGamePlay('runner', earnedCoins > 0);
+    if (earnedCoins > 0) {
+      addXP(earnedCoins, `Classroom Runner: ${earnedCoins} coins collected`);
+    }
+    setShowReviveQuiz(false);
+    setTimeout(() => {
+      if (earnedCoins > 0) {
+        Alert.alert('Run Complete!', `You earned ${earnedCoins} XP from coins!`, [
+          { text: 'OK', onPress: () => switchScreen('home') },
+        ]);
+      } else {
+        Alert.alert('Game Over!', 'You lost 1 XP. Take the GK Quiz (score 3+) to earn it back!', [
+          { text: 'Take Quiz', onPress: () => switchScreen('gk-quiz') },
+          { text: 'Later', style: 'cancel', onPress: () => switchScreen('home') },
+        ]);
+      }
+    }, 500);
+  }, [recordGamePlay, addXP, switchScreen]);
+
+  const handleRunnerRevive = useCallback(() => {
+    setShowReviveQuiz(true);
+  }, []);
+
+  const handleReviveResult = useCallback((passed: boolean) => {
+    setShowReviveQuiz(false);
+    if (passed) {
+      setTimeout(() => {
+        Alert.alert('Revived!', 'You passed the quiz! But the game session is over. Your coins are saved!', [
+          { text: 'OK', onPress: () => handleRunnerFinish(runnerCoins) },
+        ]);
+      }, 1200);
+    } else {
+      setTimeout(() => {
+        Alert.alert('Failed to Revive', 'You did not pass. Game over!', [
+          { text: 'OK', onPress: () => handleRunnerFinish(0) },
+        ]);
+      }, 1200);
+    }
+  }, [handleRunnerFinish, runnerCoins]);
 
   const renderHome = () => (
     <ScrollView
@@ -1441,6 +2027,46 @@ export default function FunLearning() {
         )}
       </TouchableOpacity>
 
+      <TouchableOpacity
+        style={[homeStyles.gameCard, { backgroundColor: colors.cardBg, borderColor: colors.border, borderWidth: 2, borderLeftWidth: 4, borderLeftColor: '#0f3460' }]}
+        onPress={() => {
+          if (runnerPlayed) {
+            Alert.alert('Already Played', 'You already played Classroom Runner today. Come back tomorrow!');
+            return;
+          }
+          setShowReviveQuiz(false);
+          setRunnerCoins(0);
+          switchScreen('runner');
+        }}
+        activeOpacity={0.8}
+      >
+        <LinearGradient
+          colors={['#0f3460', '#16213e']}
+          style={homeStyles.gameIconBg}
+        >
+          <Text style={{ fontSize: 24 }}>\u{1F3C3}</Text>
+        </LinearGradient>
+        <View style={homeStyles.gameCardContent}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Text style={[homeStyles.gameCardTitle, { color: colors.text }]}>Classroom Runner</Text>
+            <View style={{ backgroundColor: '#ef4444', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+              <Text style={{ fontSize: 9, fontWeight: '800' as const, color: '#fff' }}>HOT</Text>
+            </View>
+          </View>
+          <Text style={[homeStyles.gameCardDesc, { color: colors.textSecondary }]}>
+            Dodge obstacles! Coins = XP!
+          </Text>
+        </View>
+        {runnerPlayed ? (
+          <View style={homeStyles.playedBadge}>
+            <Lock size={14} color="#94a3b8" />
+            <Text style={homeStyles.playedText}>Played</Text>
+          </View>
+        ) : (
+          <PersonStanding size={24} color="#0f3460" />
+        )}
+      </TouchableOpacity>
+
       {hasPendingLoss && (
         <>
           <Text style={[homeStyles.sectionLabel, { color: colors.text, marginTop: 24 }]}>Reimburse XP</Text>
@@ -1514,7 +2140,7 @@ export default function FunLearning() {
           <ArrowLeft size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={[styles.navTitle, { color: colors.text }]}>
-          {screen === 'home' ? 'Fun with Learning' : screen === 'pacman' ? 'Fox in Forest' : screen === 'flappy' ? 'Jumping Fox' : screen === 'tictactoe' ? 'Tic-Tac-Toe' : 'GK Quiz'}
+          {screen === 'home' ? 'Fun with Learning' : screen === 'pacman' ? 'Fox in Forest' : screen === 'flappy' ? 'Jumping Fox' : screen === 'tictactoe' ? 'Tic-Tac-Toe' : screen === 'runner' ? 'Classroom Runner' : 'GK Quiz'}
         </Text>
         <View style={{ width: 40 }} />
       </View>
@@ -1539,6 +2165,19 @@ export default function FunLearning() {
         {screen === 'gk-quiz' && (
           <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 20 }}>
             <GKQuiz onFinish={handleGKFinish} colors={colors} />
+          </ScrollView>
+        )}
+        {screen === 'runner' && !showReviveQuiz && (
+          <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 20 }}>
+            <ClassroomRunnerGame
+              onFinish={handleRunnerFinish}
+              onRevive={handleRunnerRevive}
+            />
+          </ScrollView>
+        )}
+        {screen === 'runner' && showReviveQuiz && (
+          <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 20 }}>
+            <RunnerReviveQuiz onResult={handleReviveResult} />
           </ScrollView>
         )}
       </Animated.View>
@@ -2979,5 +3618,431 @@ const gkStyles = StyleSheet.create({
     color: 'rgba(255,255,255,0.9)',
     textAlign: 'center',
     fontWeight: '600' as const,
+  },
+});
+
+const runnerStyles = StyleSheet.create({
+  container: {
+    alignItems: 'center',
+  },
+  scoreBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: RUNNER_WIDTH,
+    marginBottom: 10,
+    paddingHorizontal: 4,
+  },
+  scorePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(15,52,96,0.15)',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 14,
+  },
+  coinEmoji: {
+    fontSize: 18,
+  },
+  scoreNum: {
+    fontSize: 20,
+    fontWeight: '900' as const,
+    color: '#f59e0b',
+  },
+  distPill: {
+    backgroundColor: 'rgba(15,52,96,0.15)',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 14,
+  },
+  distText: {
+    fontSize: 14,
+    fontWeight: '700' as const,
+    color: '#64748b',
+  },
+  gameArea: {
+    position: 'relative',
+    borderRadius: 20,
+    overflow: 'hidden',
+    ...Platform.select({
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.4, shadowRadius: 20 },
+      android: { elevation: 12 },
+      web: { boxShadow: '0 8px 32px rgba(0,0,0,0.4)' },
+    }),
+  },
+  bgPattern: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 0,
+  },
+  bgStar: {
+    position: 'absolute',
+    width: 2,
+    height: 2,
+    borderRadius: 1,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+  },
+  road: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 1,
+  },
+  roadEdge: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    width: 4,
+    backgroundColor: '#f59e0b',
+    opacity: 0.6,
+    zIndex: 2,
+  },
+  laneDivider: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    width: 2,
+    overflow: 'hidden',
+    zIndex: 2,
+  },
+  dashLine: {
+    width: 2,
+    height: ROAD_LINE_HEIGHT / 2,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    marginBottom: ROAD_LINE_HEIGHT / 2,
+  },
+  obstacle: {
+    position: 'absolute',
+    borderRadius: 10,
+    overflow: 'hidden',
+    zIndex: 5,
+  },
+  obstacleGradient: {
+    flex: 1,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  obstacleEmoji: {
+    fontSize: 22,
+  },
+  obstacleLabel: {
+    fontSize: 8,
+    fontWeight: '800' as const,
+    color: '#fff',
+    letterSpacing: 1,
+    marginTop: 1,
+  },
+  coin: {
+    position: 'absolute',
+    width: COIN_SIZE,
+    height: COIN_SIZE,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 6,
+  },
+  coinText: {
+    fontSize: 18,
+  },
+  player: {
+    position: 'absolute',
+    width: PLAYER_SIZE,
+    height: PLAYER_SIZE + 16,
+    zIndex: 10,
+  },
+  studentBody: {
+    alignItems: 'center',
+  },
+  studentHead: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#FBBF24',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 2,
+  },
+  studentHair: {
+    position: 'absolute',
+    top: -2,
+    left: 2,
+    right: 2,
+    height: 8,
+    borderTopLeftRadius: 8,
+    borderTopRightRadius: 8,
+    backgroundColor: '#1a1a2e',
+  },
+  studentFace: {
+    position: 'absolute',
+    bottom: 2,
+    width: 16,
+    height: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  studentEyeL: {
+    position: 'absolute',
+    left: 2,
+    top: 1,
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#1a1a2e',
+  },
+  studentEyeR: {
+    position: 'absolute',
+    right: 2,
+    top: 1,
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#1a1a2e',
+  },
+  studentMouth: {
+    position: 'absolute',
+    bottom: 0,
+    width: 6,
+    height: 2,
+    borderBottomLeftRadius: 3,
+    borderBottomRightRadius: 3,
+    backgroundColor: '#ef4444',
+  },
+  studentTorso: {
+    width: 22,
+    height: 18,
+    backgroundColor: '#ffffff',
+    borderRadius: 4,
+    marginTop: -2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  studentTie: {
+    width: 4,
+    height: 10,
+    backgroundColor: '#ef4444',
+    borderRadius: 2,
+  },
+  studentLegs: {
+    flexDirection: 'row',
+    gap: 4,
+    marginTop: 1,
+  },
+  studentLegL: {
+    width: 7,
+    height: 14,
+    backgroundColor: '#1e293b',
+    borderBottomLeftRadius: 4,
+    borderBottomRightRadius: 4,
+  },
+  studentLegR: {
+    width: 7,
+    height: 14,
+    backgroundColor: '#1e293b',
+    borderBottomLeftRadius: 4,
+    borderBottomRightRadius: 4,
+  },
+  teacher: {
+    position: 'absolute',
+    alignItems: 'center',
+    zIndex: 4,
+  },
+  teacherEmoji: {
+    fontSize: 40,
+  },
+  teacherSpeech: {
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    marginTop: 2,
+  },
+  teacherSpeechText: {
+    fontSize: 10,
+    fontWeight: '700' as const,
+    color: '#ef4444',
+  },
+  startOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(15,52,96,0.7)',
+    zIndex: 20,
+  },
+  startCard: {
+    backgroundColor: 'rgba(255,255,255,0.97)',
+    borderRadius: 28,
+    padding: 28,
+    alignItems: 'center',
+    width: '85%',
+    gap: 10,
+    ...Platform.select({
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.3, shadowRadius: 20 },
+      android: { elevation: 10 },
+      web: { boxShadow: '0 8px 32px rgba(0,0,0,0.3)' },
+    }),
+  },
+  startIconWrap: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: '#0f3460',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: '#1a4d8e',
+  },
+  startTitle: {
+    fontSize: 24,
+    fontWeight: '800' as const,
+    color: '#0f3460',
+  },
+  startDesc: {
+    fontSize: 13,
+    color: '#64748b',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  startHints: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 4,
+  },
+  hintPill: {
+    backgroundColor: 'rgba(15,52,96,0.1)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 10,
+  },
+  hintText: {
+    fontSize: 12,
+    fontWeight: '600' as const,
+    color: '#0f3460',
+  },
+  tapStart: {
+    marginTop: 8,
+    backgroundColor: '#0f3460',
+    paddingHorizontal: 28,
+    paddingVertical: 14,
+    borderRadius: 16,
+  },
+  tapStartText: {
+    fontSize: 14,
+    fontWeight: '700' as const,
+    color: '#fff',
+    letterSpacing: 1,
+  },
+  gameOverOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(15,52,96,0.7)',
+    zIndex: 20,
+  },
+  gameOverCard: {
+    backgroundColor: 'rgba(255,255,255,0.97)',
+    borderRadius: 28,
+    padding: 28,
+    alignItems: 'center',
+    width: '85%',
+    gap: 8,
+    ...Platform.select({
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.3, shadowRadius: 20 },
+      android: { elevation: 10 },
+      web: { boxShadow: '0 8px 32px rgba(0,0,0,0.3)' },
+    }),
+  },
+  gameOverEmoji: {
+    fontSize: 48,
+  },
+  gameOverTitle: {
+    fontSize: 24,
+    fontWeight: '800' as const,
+    color: '#0f3460',
+  },
+  gameOverDesc: {
+    fontSize: 14,
+    color: '#64748b',
+    textAlign: 'center',
+  },
+  gameOverStats: {
+    flexDirection: 'row',
+    gap: 24,
+    marginVertical: 8,
+  },
+  goStatItem: {
+    alignItems: 'center',
+  },
+  goStatVal: {
+    fontSize: 28,
+    fontWeight: '900' as const,
+    color: '#0f3460',
+  },
+  goStatLabel: {
+    fontSize: 12,
+    fontWeight: '600' as const,
+    color: '#94a3b8',
+    textTransform: 'uppercase' as const,
+    letterSpacing: 1,
+  },
+  goStatDivider: {
+    width: 1,
+    height: 40,
+    backgroundColor: '#e2e8f0',
+  },
+  reviveBtn: {
+    backgroundColor: '#f59e0b',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderRadius: 14,
+    marginTop: 8,
+    width: '100%',
+    alignItems: 'center',
+  },
+  reviveBtnText: {
+    fontSize: 13,
+    fontWeight: '700' as const,
+    color: '#fff',
+    textAlign: 'center',
+  },
+  finishBtn: {
+    backgroundColor: '#10b981',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderRadius: 14,
+    marginTop: 8,
+    width: '100%',
+    alignItems: 'center',
+  },
+  finishBtnText: {
+    fontSize: 15,
+    fontWeight: '700' as const,
+    color: '#fff',
+  },
+  skipBtn: {
+    marginTop: 8,
+    paddingVertical: 10,
+  },
+  skipBtnText: {
+    fontSize: 13,
+    fontWeight: '600' as const,
+    color: '#94a3b8',
   },
 });

@@ -377,7 +377,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
       if (!won) {
         funLearning.pendingXPLoss = true;
         newXP = Math.max(0, newXP - 1);
-        const gameNames: Record<string, string> = { pacman: 'Pacman', flappy: 'Jumping Fox', tictactoe: 'Tic-Tac-Toe' };
+        const gameNames: Record<string, string> = { pacman: 'Pacman', flappy: 'Jumping Fox', tictactoe: 'Tic-Tac-Toe', runner: 'Classroom Runner' };
         newHistory = [...newHistory, {
           id: Date.now().toString(),
           amount: -1,
@@ -424,7 +424,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
     });
   }, [saveProgress]);
 
-  const canPlayGame = useCallback((game: 'pacman' | 'flappy' | 'tictactoe') => {
+  const canPlayGame = useCallback((game: 'pacman' | 'flappy' | 'tictactoe' | 'runner') => {
     const today = new Date().toISOString().split('T')[0];
     const fl = userProgress.funLearning;
     if (fl.lastPlayDate !== today) return true;

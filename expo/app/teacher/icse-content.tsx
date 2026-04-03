@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { ChevronLeft, BookOpen, Atom, FlaskConical, Microscope, Calculator, Sparkles, Landmark, Cpu, BookText, Languages, Volume2, VolumeX, FileText } from 'lucide-react-native';
+import { ChevronLeft, BookOpen, Atom, FlaskConical, Microscope, Calculator, Sparkles, Landmark, Cpu, BookText, Languages, Volume2, VolumeX, FileText, Globe } from 'lucide-react-native';
 import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Platform, Modal, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState } from 'react';
@@ -10,7 +10,7 @@ import { useMutation } from '@tanstack/react-query';
 import { robustGenerateText } from '@/lib/ai-generate';
 import * as Speech from 'expo-speech';
 
-type SubjectType = 'Physics' | 'Chemistry' | 'Biology' | 'Mathematics' | 'History and Civics' | 'Computer Applications' | 'English Literature' | 'English Language';
+type SubjectType = 'Physics' | 'Chemistry' | 'Biology' | 'Mathematics' | 'History and Civics' | 'Computer Applications' | 'English Literature' | 'English Language' | 'Geography';
 
 const subjectIcons: Record<SubjectType, any> = {
   Physics: Atom,
@@ -21,6 +21,7 @@ const subjectIcons: Record<SubjectType, any> = {
   'Computer Applications': Cpu,
   'English Literature': BookText,
   'English Language': Languages,
+  'Geography': Globe,
 };
 
 const subjectColors: Record<SubjectType, string> = {
@@ -32,6 +33,7 @@ const subjectColors: Record<SubjectType, string> = {
   'Computer Applications': '#06b6d4',
   'English Literature': '#ef4444',
   'English Language': '#14b8a6',
+  'Geography': '#0ea5e9',
 };
 
 export default function TeacherICESEContentBrowser() {
@@ -430,6 +432,7 @@ Make it thorough, well-formatted, teaching-oriented, and aligned with ICSE sylla
         {renderSubjectSection('Computer Applications')}
         {renderSubjectSection('English Literature')}
         {renderSubjectSection('English Language')}
+        {renderSubjectSection('Geography')}
       </ScrollView>
 
       <Modal
