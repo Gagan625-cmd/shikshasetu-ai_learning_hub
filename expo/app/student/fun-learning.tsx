@@ -1427,7 +1427,7 @@ function ClassroomRunnerGame({ onFinish, onRevive }: { onFinish: (coins: number)
     <View style={runnerStyles.container}>
       <View style={runnerStyles.scoreBar}>
         <View style={runnerStyles.scorePill}>
-          <Text style={runnerStyles.coinEmoji}>\u{1FA99}</Text>
+          <Text style={runnerStyles.coinEmoji}>🪙</Text>
           <Text style={runnerStyles.scoreNum}>{score}</Text>
         </View>
         <View style={runnerStyles.distPill}>
