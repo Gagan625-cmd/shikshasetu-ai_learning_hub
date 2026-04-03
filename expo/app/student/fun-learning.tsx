@@ -1514,7 +1514,7 @@ function ClassroomRunnerGame({ onFinish, onRevive }: { onFinish: (coins: number)
               },
             ]}
           >
-            <Text style={runnerStyles.coinText}>\u{1FA99}</Text>
+            <Text style={runnerStyles.coinText}>🪙</Text>
           </Animated.View>
         ))}
 
