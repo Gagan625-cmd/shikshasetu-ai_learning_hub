@@ -1556,7 +1556,7 @@ function ClassroomRunnerGame({ onFinish, onRevive }: { onFinish: (coins: number)
             },
           ]}
         >
-          <Text style={runnerStyles.teacherEmoji}>\u{1F468}\u{200D}\u{1F3EB}</Text>
+          <Text style={runnerStyles.teacherEmoji}>{"\u{1F468}\u{200D}\u{1F3EB}"}</Text>
           <View style={runnerStyles.teacherSpeech}>
             <Text style={runnerStyles.teacherSpeechText}>Hey! Stop!</Text>
           </View>
@@ -1567,7 +1567,7 @@ function ClassroomRunnerGame({ onFinish, onRevive }: { onFinish: (coins: number)
             <View style={runnerStyles.startCard}>
               <Animated.View style={{ transform: [{ scale: startPulse }] }}>
                 <View style={runnerStyles.startIconWrap}>
-                  <Text style={{ fontSize: 36 }}>\u{1F3C3}</Text>
+                  <Text style={{ fontSize: 36 }}>{"\u{1F3C3}"}</Text>
                 </View>
               </Animated.View>
               <Text style={runnerStyles.startTitle}>Classroom Runner</Text>
@@ -1576,10 +1576,10 @@ function ClassroomRunnerGame({ onFinish, onRevive }: { onFinish: (coins: number)
               </Text>
               <View style={runnerStyles.startHints}>
                 <View style={runnerStyles.hintPill}>
-                  <Text style={runnerStyles.hintText}>\u{1F448} Swipe Left</Text>
+                  <Text style={runnerStyles.hintText}>{"\u{1F448} Swipe Left"}</Text>
                 </View>
                 <View style={runnerStyles.hintPill}>
-                  <Text style={runnerStyles.hintText}>Swipe Right \u{1F449}</Text>
+                  <Text style={runnerStyles.hintText}>{"Swipe Right \u{1F449}"}</Text>
                 </View>
               </View>
               <View style={runnerStyles.tapStart}>
@@ -1592,7 +1592,7 @@ function ClassroomRunnerGame({ onFinish, onRevive }: { onFinish: (coins: number)
         {gameOver && (
           <View style={runnerStyles.gameOverOverlay}>
             <View style={runnerStyles.gameOverCard}>
-              <Text style={runnerStyles.gameOverEmoji}>\u{1F4A5}</Text>
+              <Text style={runnerStyles.gameOverEmoji}>{"\u{1F4A5}"}</Text>
               <Text style={runnerStyles.gameOverTitle}>Caught!</Text>
               <Text style={runnerStyles.gameOverDesc}>
                 The teacher caught up! You collected {score} coins.
@@ -1610,7 +1610,7 @@ function ClassroomRunnerGame({ onFinish, onRevive }: { onFinish: (coins: number)
               </View>
               {canRevive ? (
                 <TouchableOpacity style={runnerStyles.reviveBtn} onPress={handleRevive}>
-                  <Text style={runnerStyles.reviveBtnText}>\u{1F4DA} Answer 5 GK Questions to Revive!</Text>
+                  <Text style={runnerStyles.reviveBtnText}>{"\u{1F4DA} Answer 5 GK Questions to Revive!"}</Text>
                 </TouchableOpacity>
               ) : (
                 <TouchableOpacity
@@ -1690,7 +1690,7 @@ function RunnerReviveQuiz({ onResult }: { onResult: (passed: boolean) => void })
     <View style={gkStyles.container}>
       <View style={{ alignItems: 'center', marginBottom: 12 }}>
         <LinearGradient colors={['#f59e0b', '#ef4444']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ paddingHorizontal: 16, paddingVertical: 8, borderRadius: 12 }}>
-          <Text style={{ color: '#fff', fontWeight: '800' as const, fontSize: 14 }}>\u{1F4DA} REVIVE QUIZ - Answer 3/5 Correctly!</Text>
+          <Text style={{ color: '#fff', fontWeight: '800' as const, fontSize: 14 }}>{"\u{1F4DA} REVIVE QUIZ - Answer 3/5 Correctly!"}</Text>
         </LinearGradient>
       </View>
       <View style={gkStyles.progressRow}>
@@ -2044,7 +2044,7 @@ export default function FunLearning() {
           colors={['#0f3460', '#16213e']}
           style={homeStyles.gameIconBg}
         >
-          <Text style={{ fontSize: 24 }}>\u{1F3C3}</Text>
+          <Text style={{ fontSize: 24 }}>{"\u{1F3C3}"}</Text>
         </LinearGradient>
         <View style={homeStyles.gameCardContent}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>

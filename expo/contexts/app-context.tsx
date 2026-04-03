@@ -361,7 +361,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
     }
   }, []);
 
-  const recordGamePlay = useCallback((game: 'pacman' | 'flappy' | 'tictactoe', won: boolean) => {
+  const recordGamePlay = useCallback((game: 'pacman' | 'flappy' | 'tictactoe' | 'runner', won: boolean) => {
     const today = new Date().toISOString().split('T')[0];
     setUserProgress(prev => {
       const record: GamePlayRecord = { date: today, game, won };
