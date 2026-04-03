@@ -1895,6 +1895,10 @@ IMPORTANT REQUIREMENTS:
     { id: 'notes' as const, label: 'Notes', icon: FileText, color: '#3b82f6' },
     { id: 'summary' as const, label: 'Summary', icon: ScrollText, color: '#10b981' },
     { id: 'worksheet' as const, label: 'Worksheet', icon: BookText, color: '#f59e0b' },
+    { id: 'mcqs' as const, label: 'MCQs', icon: FileText, color: '#0ea5e9' },
+    { id: 'casebased' as const, label: 'Case-Based', icon: FileText, color: '#14b8a6' },
+    { id: 'competency' as const, label: 'Competency', icon: FileText, color: '#f97316' },
+    { id: 'numerical' as const, label: 'Numericals', icon: FileText, color: '#6366f1' },
     { id: 'mindmap' as const, label: 'Mind Map', icon: Network, color: '#8b5cf6' },
     { id: 'questionpaper' as const, label: 'Question Paper', icon: FileText, color: '#ef4444' },
   ];
@@ -2394,8 +2398,8 @@ IMPORTANT REQUIREMENTS:
 
 
             <View style={[styles.resultCard, { backgroundColor: isDark ? colors.cardBg : '#ffffff', borderWidth: 1, borderColor: colors.border }]}>
-              <Text style={[styles.resultTitle, { color: '#1e293b' }]}>Generated Content</Text>
-              <Text style={[styles.resultContent, { color: '#000000' }]} selectable>{cleanMarkdown(generatedContent)}</Text>
+              <Text style={[styles.resultTitle, { color: isDark ? '#f1f5f9' : '#1e293b' }]}>Generated Content</Text>
+              <Text style={[styles.resultContent, { color: isDark ? '#e2e8f0' : '#000000' }]} selectable>{cleanMarkdown(generatedContent)}</Text>
             </View>
           </>
         )}

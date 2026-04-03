@@ -316,7 +316,7 @@ export default function WelcomeScreen() {
               style={styles.footerBadge}
             >
               <Rocket size={14} color="#00b4d8" />
-              <Text style={styles.footerText}>TECHFEST 2025-26 • Made for India 🇮🇳</Text>
+              <Text style={styles.footerText}>Made for India 🇮🇳</Text>
             </LinearGradient>
           </Animated.View>
         </View>

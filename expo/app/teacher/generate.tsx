@@ -627,7 +627,7 @@ Provide complete detailed solutions here.`;
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <ChevronLeft size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>AI Co-Pilot</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>AI Content Generator</Text>
         <View style={styles.backButton} />
       </View>
 
@@ -860,29 +860,29 @@ Provide complete detailed solutions here.`;
         )}
 
         {generatedContent && (
-          <View style={[styles.resultCard, { backgroundColor: '#ffffff', borderColor: '#e2e8f0' }]}>
+          <View style={[styles.resultCard, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
             <View style={styles.resultHeader}>
-              <Text style={[styles.resultTitle, { color: '#1e293b' }]}>Generated Content</Text>
+              <Text style={[styles.resultTitle, { color: colors.text }]}>Generated Content</Text>
               <View style={styles.actionButtons}>
-                <TouchableOpacity style={[styles.actionButton, { backgroundColor: '#f1f5f9', borderColor: '#e2e8f0' }]} onPress={handleTextToSpeech}>
+                <TouchableOpacity style={[styles.actionButton, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={handleTextToSpeech}>
                   {isSpeaking ? (
                     <VolumeX size={18} color="#8b5cf6" />
                   ) : (
                     <Volume2 size={18} color="#8b5cf6" />
                   )}
-                  <Text style={[styles.actionButtonText, { color: '#64748b' }]}>{isSpeaking ? 'Stop' : 'Listen'}</Text>
+                  <Text style={[styles.actionButtonText, { color: colors.textSecondary }]}>{isSpeaking ? 'Stop' : 'Listen'}</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={[styles.actionButton, { backgroundColor: '#f1f5f9', borderColor: '#e2e8f0' }]} onPress={handleExportPDF}>
+                <TouchableOpacity style={[styles.actionButton, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={handleExportPDF}>
                   <Download size={18} color="#f59e0b" />
-                  <Text style={[styles.actionButtonText, { color: '#64748b' }]}>Export</Text>
+                  <Text style={[styles.actionButtonText, { color: colors.textSecondary }]}>Export</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={[styles.actionButton, { backgroundColor: '#f1f5f9', borderColor: '#e2e8f0' }]} onPress={handleShare}>
+                <TouchableOpacity style={[styles.actionButton, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={handleShare}>
                   <Share2 size={18} color="#10b981" />
-                  <Text style={[styles.actionButtonText, { color: '#64748b' }]}>Share</Text>
+                  <Text style={[styles.actionButtonText, { color: colors.textSecondary }]}>Share</Text>
                 </TouchableOpacity>
               </View>
             </View>
-            <Text style={[styles.resultContent, { color: '#000000' }]} selectable>{cleanMarkdown(generatedContent)}</Text>
+            <Text style={[styles.resultContent, { color: colors.text }]} selectable>{cleanMarkdown(generatedContent)}</Text>
           </View>
         )}
       </ScrollView>

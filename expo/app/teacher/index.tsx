@@ -112,7 +112,7 @@ export default function TeacherDashboard() {
   const features = [
     { id: 'content', title: 'NCERT Content', description: 'Browse and teach from Grade 6-10', icon: BookOpen, color: '#3b82f6', route: '/teacher/content' },
     { id: 'icse-content', title: 'ICSE Content', description: 'Physics, Chemistry, Biology & Maths', icon: BookOpen, color: '#059669', route: '/teacher/icse-content' },
-    { id: 'generate', title: 'AI Co-Pilot', description: 'Generate teaching materials & resources', icon: BrainCircuit, color: '#8b5cf6', route: '/teacher/generate' },
+    { id: 'generate', title: 'AI Content Generator', description: 'Generate teaching materials & resources', icon: BrainCircuit, color: '#8b5cf6', route: '/teacher/generate' },
     { id: 'quiz', title: 'Quiz Generator', description: 'Create AI-powered assessment quizzes', icon: FileText, color: '#10b981', route: '/teacher/quiz' },
     { id: 'interview', title: 'Interview Assessment', description: 'Advanced interview with video & voice', icon: Video, color: '#f59e0b', route: '/teacher/interview' },
     { id: 'upload', title: 'Upload Content', description: 'Upload videos and text summaries', icon: Upload, color: '#06b6d4', route: '/teacher/upload' },
