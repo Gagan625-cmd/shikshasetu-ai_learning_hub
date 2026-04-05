@@ -6,6 +6,8 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { useApp } from '@/contexts/app-context';
 import { useTheme } from '@/contexts/theme-context';
 import { useAuth } from '@/contexts/auth-context';
+import { useSubscription } from '@/contexts/subscription-context';
+import PremiumGate from '@/components/PremiumGate';
 import { useMutation } from '@tanstack/react-query';
 import { robustGenerateObject } from '@/lib/ai-generate';
 import { z } from 'zod';
@@ -175,12 +177,31 @@ const quizStyles = StyleSheet.create({
   resultText: { fontSize: 13, fontWeight: '700' as const, textAlign: 'center' as const, marginTop: 6 },
 });
 
+const STUDY_ROOMS_PREMIUM_FEATURES = [
+  { text: 'Create & join study rooms with friends' },
+  { text: 'Real-time chat & note sharing' },
+  { text: 'AI-generated quiz challenges for groups' },
+  { text: 'Leaderboard & XP rewards' },
+  { text: 'Private rooms with invite codes' },
+];
+
 export default function StudyRooms() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { userProgress, addXP, selectedLanguage } = useApp();
   const { user } = useAuth();
   const { colors, isDark } = useTheme();
+  const { isPremium } = useSubscription();
+
+  if (!isPremium) {
+    return (
+      <PremiumGate
+        title="Study Rooms"
+        description="Collaborate with friends, share notes, and challenge each other with AI quizzes."
+        features={STUDY_ROOMS_PREMIUM_FEATURES}
+      />
+    );
+  }
 
   const [rooms, setRooms] = useState<StudyRoom[]>([]);
   const [activeRoom, setActiveRoom] = useState<StudyRoom | null>(null);

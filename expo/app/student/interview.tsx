@@ -5,14 +5,35 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState, useRef, useEffect } from 'react';
 import { useApp } from '@/contexts/app-context';
 import { useTheme } from '@/contexts/theme-context';
+import { useSubscription } from '@/contexts/subscription-context';
+import PremiumGate from '@/components/PremiumGate';
 import { useRorkAgent } from '@rork-ai/toolkit-sdk';
 import { NCERT_SUBJECTS } from '@/constants/ncert-data';
+
+const INTERVIEW_PREMIUM_FEATURES = [
+  { text: 'Personalized AI interview sessions' },
+  { text: 'Chapter-wise viva questions' },
+  { text: 'Real-time AI feedback and guidance' },
+  { text: 'Build confidence for oral exams' },
+  { text: 'Practice in your preferred language' },
+];
 
 export default function StudentInterview() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { selectedLanguage } = useApp();
   const { colors, isDark } = useTheme();
+  const { isPremium } = useSubscription();
+
+  if (!isPremium) {
+    return (
+      <PremiumGate
+        title="Interview Practice"
+        description="Practice with an AI interviewer tailored to your chapters and syllabus."
+        features={INTERVIEW_PREMIUM_FEATURES}
+      />
+    );
+  }
   const scrollViewRef = useRef<ScrollView>(null);
   
   const [selectedGrade, setSelectedGrade] = useState<number>(6);

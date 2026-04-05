@@ -5,6 +5,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState } from 'react';
 import { useApp } from '@/contexts/app-context';
 import { useTheme } from '@/contexts/theme-context';
+import { useSubscription } from '@/contexts/subscription-context';
+import PremiumGate from '@/components/PremiumGate';
 import { useMutation } from '@tanstack/react-query';
 import { robustGenerateObject } from '@/lib/ai-generate';
 import { z } from 'zod';
@@ -23,11 +25,30 @@ const QuizSchema = z.object({
   ),
 });
 
+const QUIZ_PREMIUM_FEATURES = [
+  { text: 'AI-generated quizzes for any chapter' },
+  { text: 'MCQ, assertion-reasoning & competency questions' },
+  { text: 'Instant scoring with detailed explanations' },
+  { text: 'Track performance across subjects' },
+  { text: 'Earn XP and level up with every quiz' },
+];
+
 export default function QuizGenerator() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { selectedLanguage, addQuizResult, maybeRequestReview, addXP, userProgress } = useApp();
   const { colors } = useTheme();
+  const { isPremium } = useSubscription();
+
+  if (!isPremium) {
+    return (
+      <PremiumGate
+        title="AI Quiz"
+        description="Practice with AI-generated quizzes tailored to your syllabus and track your performance."
+        features={QUIZ_PREMIUM_FEATURES}
+      />
+    );
+  }
   
   const [selectedBoard, setSelectedBoard] = useState<'NCERT' | 'ICSE'>('NCERT');
   const [selectedGrade, setSelectedGrade] = useState<number>(6);

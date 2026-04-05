@@ -990,7 +990,7 @@ const FunLearningCard = memo(({ feature, onPress }: { feature: any; onPress: () 
 
 FunLearningCard.displayName = 'FunLearningCard';
 
-const FeatureCard = memo(({ feature, onPress, isDark, index }: { feature: any; onPress: () => void; isDark: boolean; index: number }) => {
+const FeatureCard = memo(({ feature, onPress, isDark, index, isPremiumFeature }: { feature: any; onPress: () => void; isDark: boolean; index: number; isPremiumFeature?: boolean }) => {
   const Icon = feature.icon;
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -1040,7 +1040,15 @@ const FeatureCard = memo(({ feature, onPress, isDark, index }: { feature: any; o
             </LinearGradient>
           </View>
           <View style={styles.featureCardMiddle}>
-            <Text style={[styles.featureTitle, { color: isDark ? feature.color : '#1a1a2e' }]}>{feature.title}</Text>
+            <View style={styles.featureTitleRow}>
+              <Text style={[styles.featureTitle, { color: isDark ? feature.color : '#1a1a2e' }]}>{feature.title}</Text>
+              {isPremiumFeature && (
+                <View style={styles.premiumChip}>
+                  <Crown size={10} color="#fbbf24" />
+                  <Text style={styles.premiumChipText}>PRO</Text>
+                </View>
+              )}
+            </View>
             <Text style={[styles.featureDescription, { color: isDark ? '#b0bec5' : '#64748b' }]}>{feature.description}</Text>
           </View>
           <View style={[styles.featureArrow, { backgroundColor: isDark ? feature.color + '30' : feature.color + '15' }]}>
@@ -1269,6 +1277,12 @@ export default function StudentDashboard() {
       sendMessage(inputText.trim());
     }
   }, [inputText, sendMessage]);
+
+  const PREMIUM_FEATURE_IDS = useMemo(() => new Set([
+    'generate', 'flashcards', 'quiz', 'quick-revision', 'weak-topics',
+    'study-rooms', 'interview', 'exam-scanner', 'timetable', 'study-os',
+    'formula-sheet', 'handwritten-notes', 'comic-learn',
+  ]), []);
 
   const features = useMemo(() => [
     { id: 'content', title: 'NCERT Content', description: 'Browse chapters from Grade 6-10', icon: BookOpen, color: '#3b82f6', route: '/student/content' },
@@ -1556,7 +1570,7 @@ export default function StudentDashboard() {
             item.id === 'fun-learning' ? (
               <FunLearningCard key={item.id} feature={item} onPress={() => handleFeaturePress(item.route)} />
             ) : (
-              <FeatureCard key={item.id} feature={item} onPress={() => handleFeaturePress(item.route)} isDark={isDark} index={idx} />
+              <FeatureCard key={item.id} feature={item} onPress={() => handleFeaturePress(item.route)} isDark={isDark} index={idx} isPremiumFeature={PREMIUM_FEATURE_IDS.has(item.id)} />
             )
           ))}
         </View>
@@ -2016,9 +2030,32 @@ const styles = StyleSheet.create({
     marginBottom: 3,
     letterSpacing: -0.2,
   },
+  featureTitleRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 6,
+    flexWrap: 'wrap' as const,
+  },
   featureDescription: {
     fontSize: 13,
     lineHeight: 18,
+  },
+  premiumChip: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 3,
+    backgroundColor: 'rgba(251, 191, 36, 0.15)',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(251, 191, 36, 0.25)',
+  },
+  premiumChipText: {
+    fontSize: 9,
+    fontWeight: '800' as const,
+    color: '#f59e0b',
+    letterSpacing: 0.8,
   },
   featureArrow: {
     width: 34,
