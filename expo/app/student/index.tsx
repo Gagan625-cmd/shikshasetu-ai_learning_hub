@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { BookOpen, BrainCircuit, MessageSquare, Settings, FileText, LogOut, TrendingUp, MessageCircle, Info, ScanText, Target, Video, Bell, Link2, Palette, Zap, Star, Crown, Shield, Award, Trophy, Gamepad2, Moon, Sun, ChevronRight, Quote, Mail, Sparkles, Key, Layers, CalendarClock, Calculator, PenTool, Users, AlertTriangle, Lightbulb, TrendingDown, Brain, Clock, BookMarked } from 'lucide-react-native';
+import { BookOpen, BrainCircuit, MessageSquare, Settings, FileText, LogOut, TrendingUp, MessageCircle, Info, ScanText, Target, Video, Bell, Link2, Palette, Zap, Star, Crown, Shield, Award, Trophy, Gamepad2, Moon, Sun, ChevronRight, Quote, Mail, Sparkles, Key, Layers, CalendarClock, Calculator, PenTool, Users, AlertTriangle, Lightbulb, TrendingDown, Brain, Clock, BookMarked, Flame, GraduationCap, BookCheck, Coffee } from 'lucide-react-native';
 import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Platform, Modal, TextInput, Alert, Animated } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useApp } from '@/contexts/app-context';
@@ -11,6 +11,7 @@ import { useMutation } from '@tanstack/react-query';
 import { generateText } from '@rork-ai/toolkit-sdk';
 import { useTheme } from '@/contexts/theme-context';
 import { useMessaging } from '@/contexts/messaging-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -367,6 +368,399 @@ const quoteStyles = StyleSheet.create({
     fontWeight: '700' as const,
     color: '#ff9f1c',
     letterSpacing: 0.5,
+  },
+});
+
+interface OnboardingData {
+  board: string;
+  class: string;
+  examDate: string;
+  customExamDate?: string;
+  completedAt?: string;
+}
+
+const DAILY_STUDY_PLANS: Array<{ subject: string; topic: string; duration: string; color: string; icon: string; priority: 'high' | 'medium' | 'low' }> = [
+  { subject: 'Mathematics', topic: 'Quadratic Equations - Practice factoring', duration: '30 min', color: '#3b82f6', icon: '📐', priority: 'high' },
+  { subject: 'Science', topic: 'Chemical Reactions & Balancing', duration: '25 min', color: '#10b981', icon: '🧪', priority: 'high' },
+  { subject: 'English', topic: 'Letter Writing - Formal format', duration: '20 min', color: '#8b5cf6', icon: '✍️', priority: 'medium' },
+  { subject: 'Social Science', topic: 'French Revolution key events', duration: '20 min', color: '#f59e0b', icon: '🌍', priority: 'medium' },
+  { subject: 'Hindi', topic: 'Vyakaran - Samas Practice', duration: '15 min', color: '#ef4444', icon: '📖', priority: 'low' },
+  { subject: 'Mathematics', topic: 'Trigonometry - Sin, Cos, Tan identities', duration: '35 min', color: '#3b82f6', icon: '📐', priority: 'high' },
+  { subject: 'Science', topic: 'Electricity - Ohm\'s Law problems', duration: '30 min', color: '#10b981', icon: '⚡', priority: 'high' },
+  { subject: 'English', topic: 'Comprehension passage practice', duration: '20 min', color: '#8b5cf6', icon: '📝', priority: 'medium' },
+  { subject: 'Geography', topic: 'Resources & Development - Map work', duration: '20 min', color: '#06b6d4', icon: '🗺️', priority: 'medium' },
+  { subject: 'Mathematics', topic: 'Statistics - Mean, Median, Mode', duration: '25 min', color: '#3b82f6', icon: '📊', priority: 'high' },
+  { subject: 'Science', topic: 'Life Processes - Nutrition in plants', duration: '25 min', color: '#10b981', icon: '🌱', priority: 'high' },
+  { subject: 'Social Science', topic: 'Indian Economy - Sectors', duration: '20 min', color: '#f59e0b', icon: '💹', priority: 'medium' },
+  { subject: 'Mathematics', topic: 'Coordinate Geometry - Distance formula', duration: '30 min', color: '#3b82f6', icon: '📏', priority: 'high' },
+  { subject: 'Science', topic: 'Light - Reflection & Refraction', duration: '30 min', color: '#10b981', icon: '💡', priority: 'high' },
+  { subject: 'English', topic: 'Grammar - Active & Passive Voice', duration: '20 min', color: '#8b5cf6', icon: '📚', priority: 'medium' },
+];
+
+const DAILY_UPDATES: Array<{ title: string; message: string; type: 'tip' | 'motivation' | 'reminder' | 'fact'; color: string }> = [
+  { title: 'Study Smart', message: 'Students who study in 25-min focused blocks score 23% higher on average.', type: 'tip', color: '#0ea5e9' },
+  { title: 'Stay Hydrated', message: 'Drinking water before studying improves concentration by 14%. Keep a bottle nearby!', type: 'reminder', color: '#10b981' },
+  { title: 'You Got This!', message: 'Every expert was once a beginner. Keep pushing forward, your hard work will pay off.', type: 'motivation', color: '#f59e0b' },
+  { title: 'Did You Know?', message: 'NCERT books cover 80-90% of board exam questions. Focus on NCERT first!', type: 'fact', color: '#8b5cf6' },
+  { title: 'Quick Win', message: 'Revise yesterday\'s notes for just 10 minutes. It strengthens memory by 60%.', type: 'tip', color: '#0ea5e9' },
+  { title: 'Break Time', message: 'Taking a 5-min walk between study sessions boosts creativity and focus.', type: 'reminder', color: '#10b981' },
+  { title: 'Believe In Yourself', message: 'Consistency beats intensity. 1 hour daily > 7 hours on Sunday.', type: 'motivation', color: '#f59e0b' },
+  { title: 'Exam Hack', message: 'Practice previous year papers in exam conditions. It reduces anxiety by 40%.', type: 'fact', color: '#8b5cf6' },
+  { title: 'Morning Power', message: 'Your brain retains complex concepts best between 6-10 AM. Use mornings wisely!', type: 'tip', color: '#0ea5e9' },
+  { title: 'Sleep Matters', message: '7-8 hours of sleep consolidates memory. Never sacrifice sleep for studies.', type: 'reminder', color: '#10b981' },
+  { title: 'Almost There!', message: 'Every page you study brings you one step closer to your goal. Keep going!', type: 'motivation', color: '#f59e0b' },
+  { title: 'Pro Tip', message: 'Teach a concept to someone else. If you can explain it simply, you understand it.', type: 'fact', color: '#8b5cf6' },
+  { title: 'Focus Mode', message: 'Put your phone on DND while studying. Even seeing notifications drops focus by 20%.', type: 'tip', color: '#0ea5e9' },
+  { title: 'Healthy Brain', message: 'Almonds, walnuts & dark chocolate are brain superfoods. Snack smart during study!', type: 'reminder', color: '#10b981' },
+  { title: 'Keep Going', message: 'The last 30 days before exams are gold. Make every minute count!', type: 'motivation', color: '#f59e0b' },
+];
+
+function getDailyStudyPlan() {
+  const now = new Date();
+  const dayIndex = Math.floor(now.getTime() / (1000 * 60 * 60 * 24));
+  const plans: typeof DAILY_STUDY_PLANS = [];
+  for (let i = 0; i < 3; i++) {
+    plans.push(DAILY_STUDY_PLANS[(dayIndex + i * 4) % DAILY_STUDY_PLANS.length]);
+  }
+  return plans;
+}
+
+function getDailyUpdates() {
+  const now = new Date();
+  const dayIndex = Math.floor(now.getTime() / (1000 * 60 * 60 * 24));
+  return [
+    DAILY_UPDATES[dayIndex % DAILY_UPDATES.length],
+    DAILY_UPDATES[(dayIndex + 5) % DAILY_UPDATES.length],
+  ];
+}
+
+function getExamCountdown(examDate: string): string | null {
+  const examMap: Record<string, number> = {
+    weekly: 7,
+    monthly: 30,
+    '3months': 90,
+    board: 180,
+  };
+  const days = examMap[examDate];
+  if (!days) return null;
+  return `~${days} days`;
+}
+
+const WhatToStudySection = memo(({ isDark, onboardingData }: { isDark: boolean; onboardingData: OnboardingData | null }) => {
+  const plans = useMemo(() => getDailyStudyPlan(), []);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(25)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, { toValue: 1, duration: 700, delay: 200, useNativeDriver: true }),
+      Animated.spring(slideAnim, { toValue: 0, friction: 8, tension: 40, useNativeDriver: true }),
+    ]).start();
+  }, [fadeAnim, slideAnim]);
+
+  const examCountdown = onboardingData?.examDate ? getExamCountdown(onboardingData.examDate) : null;
+
+  return (
+    <Animated.View style={[studyPlanStyles.container, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+      <LinearGradient
+        colors={isDark ? ['#0c1f35', '#0e2a48', '#102d4a'] : ['#f0f9ff', '#e0f2fe', '#dbeafe']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={studyPlanStyles.gradient}
+      >
+        <View style={studyPlanStyles.headerRow}>
+          <LinearGradient colors={['#0ea5e9', '#0284c7']} style={studyPlanStyles.headerIcon}>
+            <BookCheck size={16} color="#fff" />
+          </LinearGradient>
+          <View style={{ flex: 1 }}>
+            <Text style={[studyPlanStyles.headerText, { color: isDark ? '#e2e8f0' : '#0c4a6e' }]}>What to Study Today</Text>
+            {onboardingData?.board && (
+              <Text style={[studyPlanStyles.headerSub, { color: isDark ? '#64748b' : '#64748b' }]}>
+                {onboardingData.board} · Class {onboardingData.class}
+                {examCountdown ? ` · Exam in ${examCountdown}` : ''}
+              </Text>
+            )}
+          </View>
+          <View style={[studyPlanStyles.dateBadge, { backgroundColor: isDark ? 'rgba(14,165,233,0.15)' : 'rgba(14,165,233,0.1)' }]}>
+            <Text style={studyPlanStyles.dateBadgeText}>
+              {new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+            </Text>
+          </View>
+        </View>
+
+        {plans.map((plan, idx) => (
+          <View
+            key={idx}
+            style={[
+              studyPlanStyles.planCard,
+              {
+                backgroundColor: isDark ? plan.color + '15' : plan.color + '0C',
+                borderColor: isDark ? plan.color + '30' : plan.color + '25',
+              },
+            ]}
+          >
+            <View style={studyPlanStyles.planLeft}>
+              <Text style={studyPlanStyles.planEmoji}>{plan.icon}</Text>
+              <View style={[
+                studyPlanStyles.priorityDot,
+                {
+                  backgroundColor:
+                    plan.priority === 'high' ? '#ef4444' :
+                    plan.priority === 'medium' ? '#f59e0b' : '#10b981'
+                }
+              ]} />
+            </View>
+            <View style={studyPlanStyles.planMiddle}>
+              <Text style={[studyPlanStyles.planSubject, { color: isDark ? '#e2e8f0' : '#1e293b' }]}>{plan.subject}</Text>
+              <Text style={[studyPlanStyles.planTopic, { color: isDark ? '#94a3b8' : '#64748b' }]}>{plan.topic}</Text>
+            </View>
+            <View style={[studyPlanStyles.durationBadge, { backgroundColor: isDark ? plan.color + '25' : plan.color + '15' }]}>
+              <Clock size={10} color={plan.color} />
+              <Text style={[studyPlanStyles.durationText, { color: plan.color }]}>{plan.duration}</Text>
+            </View>
+          </View>
+        ))}
+      </LinearGradient>
+    </Animated.View>
+  );
+});
+
+WhatToStudySection.displayName = 'WhatToStudySection';
+
+const studyPlanStyles = StyleSheet.create({
+  container: {
+    marginBottom: 20,
+    borderRadius: 22,
+    overflow: 'hidden',
+    ...Platform.select({
+      ios: { shadowColor: '#0284c7', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.2, shadowRadius: 16 },
+      android: { elevation: 6 },
+      web: { boxShadow: '0 6px 24px rgba(2, 132, 199, 0.15)' },
+    }),
+  },
+  gradient: {
+    padding: 18,
+    gap: 10,
+  },
+  headerRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 10,
+    marginBottom: 4,
+  },
+  headerIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    justifyContent: 'center' as const,
+    alignItems: 'center' as const,
+  },
+  headerText: {
+    fontSize: 17,
+    fontWeight: '800' as const,
+    letterSpacing: -0.2,
+  },
+  headerSub: {
+    fontSize: 12,
+    fontWeight: '500' as const,
+    marginTop: 1,
+  },
+  dateBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 10,
+  },
+  dateBadgeText: {
+    fontSize: 12,
+    fontWeight: '700' as const,
+    color: '#0ea5e9',
+  },
+  planCard: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    borderRadius: 14,
+    padding: 12,
+    borderWidth: 1,
+    gap: 10,
+  },
+  planLeft: {
+    position: 'relative' as const,
+  },
+  planEmoji: {
+    fontSize: 26,
+  },
+  priorityDot: {
+    position: 'absolute' as const,
+    top: -2,
+    right: -4,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.8)',
+  },
+  planMiddle: {
+    flex: 1,
+  },
+  planSubject: {
+    fontSize: 14,
+    fontWeight: '700' as const,
+    marginBottom: 2,
+  },
+  planTopic: {
+    fontSize: 12,
+    fontWeight: '500' as const,
+    lineHeight: 16,
+  },
+  durationBadge: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  durationText: {
+    fontSize: 11,
+    fontWeight: '700' as const,
+  },
+});
+
+const DailyUpdatesSection = memo(({ isDark }: { isDark: boolean }) => {
+  const updates = useMemo(() => getDailyUpdates(), []);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(20)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, { toValue: 1, duration: 600, delay: 400, useNativeDriver: true }),
+      Animated.spring(slideAnim, { toValue: 0, friction: 8, tension: 40, useNativeDriver: true }),
+    ]).start();
+  }, [fadeAnim, slideAnim]);
+
+  const typeIcons: Record<string, { icon: typeof Coffee; emoji: string }> = {
+    tip: { icon: Lightbulb, emoji: '💡' },
+    motivation: { icon: Flame, emoji: '🔥' },
+    reminder: { icon: Bell, emoji: '🔔' },
+    fact: { icon: BookOpen, emoji: '📌' },
+  };
+
+  return (
+    <Animated.View style={[updateStyles.container, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+      <View style={updateStyles.headerRow}>
+        <LinearGradient colors={['#f59e0b', '#d97706']} style={updateStyles.headerIcon}>
+          <Bell size={14} color="#fff" />
+        </LinearGradient>
+        <Text style={[updateStyles.headerText, { color: isDark ? '#fbbf24' : '#92400e' }]}>Daily Updates</Text>
+        <View style={[updateStyles.liveBadge]}>
+          <View style={updateStyles.liveDot} />
+          <Text style={updateStyles.liveText}>NEW</Text>
+        </View>
+      </View>
+      {updates.map((update, idx) => {
+        const typeInfo = typeIcons[update.type] || typeIcons.tip;
+        return (
+          <View
+            key={idx}
+            style={[
+              updateStyles.updateCard,
+              {
+                backgroundColor: isDark ? update.color + '12' : update.color + '08',
+                borderColor: isDark ? update.color + '30' : update.color + '20',
+              },
+            ]}
+          >
+            <View style={[updateStyles.updateIconWrap, { backgroundColor: update.color + '20' }]}>
+              <Text style={{ fontSize: 18 }}>{typeInfo.emoji}</Text>
+            </View>
+            <View style={updateStyles.updateTextCol}>
+              <Text style={[updateStyles.updateTitle, { color: isDark ? '#e2e8f0' : '#1e293b' }]}>{update.title}</Text>
+              <Text style={[updateStyles.updateMsg, { color: isDark ? '#94a3b8' : '#64748b' }]}>{update.message}</Text>
+            </View>
+          </View>
+        );
+      })}
+    </Animated.View>
+  );
+});
+
+DailyUpdatesSection.displayName = 'DailyUpdatesSection';
+
+const updateStyles = StyleSheet.create({
+  container: {
+    marginBottom: 20,
+    gap: 10,
+  },
+  headerRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 10,
+    marginBottom: 4,
+  },
+  headerIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 9,
+    justifyContent: 'center' as const,
+    alignItems: 'center' as const,
+  },
+  headerText: {
+    fontSize: 17,
+    fontWeight: '800' as const,
+    flex: 1,
+    letterSpacing: -0.2,
+  },
+  liveBadge: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 5,
+    backgroundColor: 'rgba(239, 68, 68, 0.12)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.2)',
+  },
+  liveDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#ef4444',
+  },
+  liveText: {
+    fontSize: 10,
+    fontWeight: '800' as const,
+    color: '#ef4444',
+    letterSpacing: 1,
+  },
+  updateCard: {
+    flexDirection: 'row' as const,
+    borderRadius: 16,
+    padding: 14,
+    gap: 12,
+    borderWidth: 1,
+    alignItems: 'flex-start' as const,
+  },
+  updateIconWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    justifyContent: 'center' as const,
+    alignItems: 'center' as const,
+    marginTop: 2,
+  },
+  updateTextCol: {
+    flex: 1,
+  },
+  updateTitle: {
+    fontSize: 14,
+    fontWeight: '700' as const,
+    marginBottom: 3,
+  },
+  updateMsg: {
+    fontSize: 13,
+    lineHeight: 19,
+    fontWeight: '500' as const,
   },
 });
 
@@ -781,10 +1175,26 @@ export default function StudentDashboard() {
   const [showChatbot, setShowChatbot] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
+  const [onboardingData, setOnboardingData] = useState<OnboardingData | null>(null);
   const progressAnim = useRef(new Animated.Value(0)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const headerSlide = useRef(new Animated.Value(-20)).current;
   const headerFade = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const loadOnboarding = async () => {
+      try {
+        const stored = await AsyncStorage.getItem('student_onboarding');
+        if (stored) {
+          setOnboardingData(JSON.parse(stored));
+          console.log('Loaded onboarding data:', stored);
+        }
+      } catch (e) {
+        console.log('Error loading onboarding data:', e);
+      }
+    };
+    void loadOnboarding();
+  }, []);
 
   useEffect(() => {
     if (user && !user.isGuest) {
@@ -1063,7 +1473,28 @@ export default function StudentDashboard() {
         showsVerticalScrollIndicator={false}
         removeClippedSubviews={true}
       >
+        <View style={styles.greetingSection}>
+          <View style={styles.greetingTextRow}>
+            <Text style={[styles.greetingHi, { color: isDark ? '#e2e8f0' : '#0c4a6e' }]}>
+              {getGreetingText()}
+            </Text>
+            <Text style={[styles.greetingName, { color: isDark ? '#38bdf8' : '#0077b6' }]}>
+              {user?.isGuest ? 'Student' : user?.name?.split(' ')[0] || 'Student'}
+            </Text>
+          </View>
+          {onboardingData && (
+            <View style={[styles.boardClassChip, { backgroundColor: isDark ? 'rgba(14,165,233,0.12)' : 'rgba(14,165,233,0.08)' }]}>
+              <GraduationCap size={12} color="#0ea5e9" />
+              <Text style={[styles.boardClassText, { color: isDark ? '#7dd3fc' : '#0369a1' }]}>
+                {onboardingData.board} · Class {onboardingData.class}
+              </Text>
+            </View>
+          )}
+        </View>
+
         <DailyQuoteCard isDark={isDark} />
+
+        <WhatToStudySection isDark={isDark} onboardingData={onboardingData} />
 
         <View style={styles.quickStatsRow}>
           <View style={[styles.quickStatCard, { backgroundColor: isDark ? 'rgba(59,130,246,0.12)' : '#eff6ff', borderColor: isDark ? 'rgba(59,130,246,0.2)' : '#dbeafe' }]}>
@@ -1088,6 +1519,8 @@ export default function StudentDashboard() {
             <Text style={[styles.quickStatLabel, { color: isDark ? '#64748b' : '#6b7280' }]}>Study</Text>
           </View>
         </View>
+
+        <DailyUpdatesSection isDark={isDark} />
 
         <DailyTipsSection isDark={isDark} />
 
@@ -1244,9 +1677,50 @@ export default function StudentDashboard() {
   );
 }
 
+function getGreetingText(): string {
+  const hour = new Date().getHours();
+  if (hour < 5) return 'Late Night,';
+  if (hour < 12) return 'Good Morning,';
+  if (hour < 17) return 'Good Afternoon,';
+  if (hour < 21) return 'Good Evening,';
+  return 'Good Night,';
+}
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  greetingSection: {
+    marginBottom: 18,
+  },
+  greetingTextRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'baseline' as const,
+    gap: 6,
+    flexWrap: 'wrap' as const,
+  },
+  greetingHi: {
+    fontSize: 22,
+    fontWeight: '600' as const,
+  },
+  greetingName: {
+    fontSize: 24,
+    fontWeight: '800' as const,
+    letterSpacing: -0.3,
+  },
+  boardClassChip: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 6,
+    alignSelf: 'flex-start' as const,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 10,
+    marginTop: 8,
+  },
+  boardClassText: {
+    fontSize: 12,
+    fontWeight: '600' as const,
   },
   header: {
     paddingHorizontal: 20,
