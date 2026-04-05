@@ -29,7 +29,7 @@ try {
   console.log('[RevenueCat] Configuration error:', e);
 }
 
-const PREMIUM_EMAILS = ['gagandeepn49@gmail.com'];
+const PREMIUM_EMAILS = ['gagandeepn49@gmail.com', 'ngagandeep2@gmail.com', 'gagandepn49@gmail.com', 'gagandeep123@gmail.com'];
 
 export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
   const queryClient = useQueryClient();
