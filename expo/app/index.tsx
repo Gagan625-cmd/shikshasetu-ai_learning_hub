@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/auth-context';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useEffect, useState, useRef } from 'react';
 import * as Haptics from 'expo-haptics';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function WelcomeScreen() {
   const router = useRouter();
@@ -99,7 +100,16 @@ export default function WelcomeScreen() {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     await selectRole(role);
     if (role === 'student') {
-      router.replace('/student/' as any);
+      try {
+        const onboardingDone = await AsyncStorage.getItem('student_onboarding_done');
+        if (onboardingDone === 'true') {
+          router.replace('/student/' as any);
+        } else {
+          router.replace('/student-onboarding' as any);
+        }
+      } catch {
+        router.replace('/student-onboarding' as any);
+      }
     } else {
       router.replace('/teacher/' as any);
     }

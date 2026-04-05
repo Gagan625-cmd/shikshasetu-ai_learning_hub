@@ -33,6 +33,7 @@ function RootLayoutNav() {
       <Stack.Screen name="auth" options={{ headerShown: false }} />
       <Stack.Screen name="index" options={{ headerShown: false }} />
       <Stack.Screen name="student" options={{ headerShown: false }} />
+      <Stack.Screen name="student-onboarding" options={{ headerShown: false }} />
       <Stack.Screen name="teacher" options={{ headerShown: false }} />
       <Stack.Screen name="paywall" options={{ headerShown: false, presentation: "modal" }} />
     </Stack>

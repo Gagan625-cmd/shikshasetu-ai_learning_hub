@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { BookOpen, BrainCircuit, MessageSquare, Settings, FileText, LogOut, TrendingUp, MessageCircle, Info, ScanText, Target, Video, Bell, Link2, Palette, Zap, Star, Crown, Shield, Award, Trophy, Gamepad2, Moon, Sun, ChevronRight, Quote, Mail, Sparkles, Key, Layers, CalendarClock, Calculator, PenTool, Users, AlertTriangle } from 'lucide-react-native';
+import { BookOpen, BrainCircuit, MessageSquare, Settings, FileText, LogOut, TrendingUp, MessageCircle, Info, ScanText, Target, Video, Bell, Link2, Palette, Zap, Star, Crown, Shield, Award, Trophy, Gamepad2, Moon, Sun, ChevronRight, Quote, Mail, Sparkles, Key, Layers, CalendarClock, Calculator, PenTool, Users, AlertTriangle, Lightbulb, TrendingDown, Brain, Clock, BookMarked } from 'lucide-react-native';
 import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Platform, Modal, TextInput, Alert, Animated } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useApp } from '@/contexts/app-context';
@@ -50,10 +50,37 @@ const DAILY_QUOTES = [
   { text: "You are never too old to set another goal or to dream a new dream.", author: "C.S. Lewis" },
 ];
 
+const DAILY_STUDY_TIPS = [
+  { icon: Brain, color: '#8b5cf6', title: 'Spaced Repetition', tip: 'Review material at increasing intervals — 1 day, 3 days, 7 days. This strengthens long-term memory retention.' },
+  { icon: Clock, color: '#0ea5e9', title: 'Pomodoro Technique', tip: 'Study for 25 minutes, then take a 5-minute break. After 4 rounds, take a 15-minute break.' },
+  { icon: BookMarked, color: '#10b981', title: 'Active Recall', tip: 'Close your book and try to recall what you just read. This is 3x more effective than re-reading!' },
+  { icon: Lightbulb, color: '#f59e0b', title: 'Teach to Learn', tip: 'Explain a concept to a friend or even to yourself out loud. Teaching forces deeper understanding.' },
+  { icon: TrendingDown, color: '#ef4444', title: 'Tackle Weak Topics First', tip: 'Start your study session with your weakest subject when your focus is at its peak.' },
+  { icon: Brain, color: '#ec4899', title: 'Mind Maps', tip: 'Create visual mind maps to connect ideas. Visual learners retain 65% more with diagrams.' },
+  { icon: Clock, color: '#14b8a6', title: 'Morning Study', tip: 'Your brain is freshest in the morning. Use this time for complex topics like Maths & Science.' },
+  { icon: BookMarked, color: '#6366f1', title: 'Interleaving', tip: 'Mix different subjects in one session instead of studying one subject for hours. It improves flexibility.' },
+  { icon: Lightbulb, color: '#f97316', title: 'Before You Sleep', tip: 'Revise key formulas and concepts right before sleeping. Your brain consolidates memories during sleep.' },
+  { icon: TrendingDown, color: '#0077b6', title: 'Practice Tests', tip: 'Take timed practice tests regularly. It reduces exam anxiety and improves time management.' },
+  { icon: Brain, color: '#059669', title: 'Hydrate & Snack Smart', tip: 'Drink water and eat brain foods like nuts, berries, and dark chocolate to boost concentration.' },
+  { icon: Clock, color: '#d946ef', title: 'The 80/20 Rule', tip: '80% of exam questions come from 20% of the syllabus. Focus on high-weightage topics first.' },
+  { icon: Lightbulb, color: '#dc2626', title: 'Write It Down', tip: 'Writing notes by hand improves memory retention by 40% compared to typing.' },
+  { icon: BookMarked, color: '#7c3aed', title: 'Group Study', tip: 'Discuss difficult concepts with peers. Different perspectives help fill knowledge gaps.' },
+  { icon: Brain, color: '#0891b2', title: 'Stay Consistent', tip: 'Studying 1 hour daily is better than 7 hours on one day. Consistency builds habits.' },
+];
+
 function getDailyQuote() {
   const now = new Date();
   const dayIndex = Math.floor(now.getTime() / (1000 * 60 * 60 * 24)) % DAILY_QUOTES.length;
   return DAILY_QUOTES[dayIndex];
+}
+
+function getDailyTips() {
+  const now = new Date();
+  const dayIndex = Math.floor(now.getTime() / (1000 * 60 * 60 * 24));
+  const tip1 = DAILY_STUDY_TIPS[dayIndex % DAILY_STUDY_TIPS.length];
+  const tip2 = DAILY_STUDY_TIPS[(dayIndex + 7) % DAILY_STUDY_TIPS.length];
+  const tip3 = DAILY_STUDY_TIPS[(dayIndex + 3) % DAILY_STUDY_TIPS.length];
+  return [tip1, tip2, tip3];
 }
 
 const AnimatedFire = memo(() => {
@@ -340,6 +367,127 @@ const quoteStyles = StyleSheet.create({
     fontWeight: '700' as const,
     color: '#ff9f1c',
     letterSpacing: 0.5,
+  },
+});
+
+const DailyTipsSection = memo(({ isDark }: { isDark: boolean }) => {
+  const tips = useMemo(() => getDailyTips(), []);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(20)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, { toValue: 1, duration: 700, delay: 300, useNativeDriver: true }),
+      Animated.spring(slideAnim, { toValue: 0, friction: 8, tension: 40, delay: 300, useNativeDriver: true }),
+    ]).start();
+  }, [fadeAnim, slideAnim]);
+
+  return (
+    <Animated.View style={[tipStyles.container, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+      <View style={tipStyles.headerRow}>
+        <LinearGradient colors={['#10b981', '#059669']} style={tipStyles.headerIcon}>
+          <Lightbulb size={14} color="#fff" />
+        </LinearGradient>
+        <Text style={[tipStyles.headerText, { color: isDark ? '#7dd3fc' : '#0a1628' }]}>Today's Study Tips</Text>
+        <View style={tipStyles.newBadge}>
+          <Text style={tipStyles.newBadgeText}>DAILY</Text>
+        </View>
+      </View>
+      {tips.map((tip, idx) => {
+        const TipIcon = tip.icon;
+        return (
+          <View
+            key={idx}
+            style={[
+              tipStyles.tipCard,
+              {
+                backgroundColor: isDark ? tip.color + '12' : tip.color + '0A',
+                borderColor: isDark ? tip.color + '30' : tip.color + '20',
+              },
+            ]}
+          >
+            <View style={[tipStyles.tipIconWrap, { backgroundColor: tip.color + '20' }]}>
+              <TipIcon size={18} color={tip.color} />
+            </View>
+            <View style={tipStyles.tipTextCol}>
+              <Text style={[tipStyles.tipTitle, { color: isDark ? '#e2e8f0' : '#1e293b' }]}>{tip.title}</Text>
+              <Text style={[tipStyles.tipDesc, { color: isDark ? '#94a3b8' : '#64748b' }]}>{tip.tip}</Text>
+            </View>
+          </View>
+        );
+      })}
+    </Animated.View>
+  );
+});
+
+DailyTipsSection.displayName = 'DailyTipsSection';
+
+const tipStyles = StyleSheet.create({
+  container: {
+    marginBottom: 24,
+    gap: 10,
+  },
+  headerRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 10,
+    marginBottom: 6,
+  },
+  headerIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 9,
+    justifyContent: 'center' as const,
+    alignItems: 'center' as const,
+  },
+  headerText: {
+    fontSize: 17,
+    fontWeight: '800' as const,
+    flex: 1,
+    letterSpacing: -0.2,
+  },
+  newBadge: {
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.25)',
+  },
+  newBadgeText: {
+    fontSize: 10,
+    fontWeight: '800' as const,
+    color: '#10b981',
+    letterSpacing: 1,
+  },
+  tipCard: {
+    flexDirection: 'row' as const,
+    borderRadius: 16,
+    padding: 14,
+    gap: 12,
+    borderWidth: 1,
+    alignItems: 'flex-start' as const,
+  },
+  tipIconWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    justifyContent: 'center' as const,
+    alignItems: 'center' as const,
+    marginTop: 2,
+  },
+  tipTextCol: {
+    flex: 1,
+  },
+  tipTitle: {
+    fontSize: 14,
+    fontWeight: '700' as const,
+    marginBottom: 3,
+  },
+  tipDesc: {
+    fontSize: 13,
+    lineHeight: 19,
+    fontWeight: '500' as const,
   },
 });
 
@@ -916,6 +1064,32 @@ export default function StudentDashboard() {
         removeClippedSubviews={true}
       >
         <DailyQuoteCard isDark={isDark} />
+
+        <View style={styles.quickStatsRow}>
+          <View style={[styles.quickStatCard, { backgroundColor: isDark ? 'rgba(59,130,246,0.12)' : '#eff6ff', borderColor: isDark ? 'rgba(59,130,246,0.2)' : '#dbeafe' }]}>
+            <View style={[styles.quickStatIcon, { backgroundColor: '#3b82f620' }]}>
+              <FileText size={16} color="#3b82f6" />
+            </View>
+            <Text style={[styles.quickStatValue, { color: isDark ? '#93c5fd' : '#1e40af' }]}>{userProgress.quizzesCompleted.length}</Text>
+            <Text style={[styles.quickStatLabel, { color: isDark ? '#64748b' : '#6b7280' }]}>Quizzes</Text>
+          </View>
+          <View style={[styles.quickStatCard, { backgroundColor: isDark ? 'rgba(16,185,129,0.12)' : '#ecfdf5', borderColor: isDark ? 'rgba(16,185,129,0.2)' : '#d1fae5' }]}>
+            <View style={[styles.quickStatIcon, { backgroundColor: '#10b98120' }]}>
+              <TrendingUp size={16} color="#10b981" />
+            </View>
+            <Text style={[styles.quickStatValue, { color: isDark ? '#6ee7b7' : '#065f46' }]}>{userProgress.currentStreak}</Text>
+            <Text style={[styles.quickStatLabel, { color: isDark ? '#64748b' : '#6b7280' }]}>Streak</Text>
+          </View>
+          <View style={[styles.quickStatCard, { backgroundColor: isDark ? 'rgba(245,158,11,0.12)' : '#fffbeb', borderColor: isDark ? 'rgba(245,158,11,0.2)' : '#fef3c7' }]}>
+            <View style={[styles.quickStatIcon, { backgroundColor: '#f59e0b20' }]}>
+              <Clock size={16} color="#f59e0b" />
+            </View>
+            <Text style={[styles.quickStatValue, { color: isDark ? '#fbbf24' : '#92400e' }]}>{userProgress.totalStudyTime}m</Text>
+            <Text style={[styles.quickStatLabel, { color: isDark ? '#64748b' : '#6b7280' }]}>Study</Text>
+          </View>
+        </View>
+
+        <DailyTipsSection isDark={isDark} />
 
         {userProgress.teacherUploads.length > 0 && (
           <View style={styles.uploadsSection}>
@@ -1829,5 +2003,34 @@ const styles = StyleSheet.create({
     color: '#7dd3fc',
     textAlign: 'center' as const,
     fontWeight: '500' as const,
+  },
+  quickStatsRow: {
+    flexDirection: 'row' as const,
+    gap: 10,
+    marginBottom: 20,
+  },
+  quickStatCard: {
+    flex: 1,
+    borderRadius: 16,
+    padding: 14,
+    alignItems: 'center' as const,
+    borderWidth: 1,
+    gap: 6,
+  },
+  quickStatIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    justifyContent: 'center' as const,
+    alignItems: 'center' as const,
+  },
+  quickStatValue: {
+    fontSize: 20,
+    fontWeight: '800' as const,
+    letterSpacing: -0.3,
+  },
+  quickStatLabel: {
+    fontSize: 11,
+    fontWeight: '600' as const,
   },
 });
