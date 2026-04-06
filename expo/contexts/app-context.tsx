@@ -47,6 +47,8 @@ export const [AppProvider, useApp] = createContextHook(() => {
   const emailRef = useRef<string | undefined>(currentUserEmail);
   const prevUserRef = useRef<string | undefined>(undefined);
   const isInitialLoadRef = useRef(true);
+  const hasLoadedRef = useRef(false);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [userRole, setUserRole] = useState<UserRole | null>(null);
   const [selectedLanguage, setSelectedLanguage] = useState<Language>('english');
@@ -57,16 +59,28 @@ export const [AppProvider, useApp] = createContextHook(() => {
     emailRef.current = currentUserEmail;
   }, [currentUserEmail]);
 
-  const saveProgress = useCallback(async (progress: UserProgress) => {
+  const saveProgressDirect = useCallback(async (progress: UserProgress) => {
     try {
       const email = emailRef.current;
       const key = getUserStorageKey(email, 'userProgress');
       await AsyncStorage.setItem(key, JSON.stringify(progress));
-      console.log('Saved progress for key:', key, 'email:', email);
+      console.log('Saved progress for key:', key, 'email:', email, 'quizzes:', progress.quizzesCompleted.length);
     } catch (error) {
       console.log('Error saving progress:', error);
     }
   }, []);
+
+  useEffect(() => {
+    if (!hasLoadedRef.current || isLoading) return;
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      console.log('Auto-saving progress, quizzes:', userProgress.quizzesCompleted.length, 'xp:', userProgress.totalXP);
+      void saveProgressDirect(userProgress);
+    }, 300);
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    };
+  }, [userProgress, isLoading, saveProgressDirect]);
 
   const updateStreak = useCallback((lastActive: string) => {
     const today = new Date().toISOString().split('T')[0];
@@ -111,7 +125,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
             pendingXPLoss: false,
           };
 
-      const updated = {
+      return {
         ...prev,
         currentStreak: newStreak,
         lastActiveDate: today,
@@ -120,10 +134,8 @@ export const [AppProvider, useApp] = createContextHook(() => {
         streakXPAwarded: updatedStreakXPAwarded,
         funLearning,
       };
-      void saveProgress(updated);
-      return updated;
     });
-  }, [saveProgress]);
+  }, []);
 
   const loadSettingsForUser = useCallback(async (email: string | undefined) => {
     try {
@@ -169,10 +181,13 @@ export const [AppProvider, useApp] = createContextHook(() => {
             pendingXPLoss: false,
           },
         };
+        console.log('Loaded progress: quizzes:', normalizedProgress.quizzesCompleted.length, 'xp:', normalizedProgress.totalXP);
         setUserProgress(normalizedProgress);
+        hasLoadedRef.current = true;
         updateStreak(normalizedProgress.lastActiveDate);
       } else {
         setUserProgress({ ...DEFAULT_PROGRESS });
+        hasLoadedRef.current = true;
       }
     } catch (error) {
       console.log('Error loading settings:', error);
@@ -246,86 +261,65 @@ export const [AppProvider, useApp] = createContextHook(() => {
         console.log('XP Reward activated! Free premium for 30 days.');
       }
 
-      const updated = {
+      return {
         ...prev,
         totalXP: newTotalXP,
         xpHistory: [...prev.xpHistory, entry],
         xpReward,
       };
-      void saveProgress(updated);
-      return updated;
     });
-  }, [saveProgress]);
+  }, []);
 
   const addQuizResult = useCallback((result: QuizResult) => {
+    console.log('addQuizResult called:', result.subject, result.chapter, 'score:', result.score);
     setUserProgress(prev => {
       const updated = {
         ...prev,
         quizzesCompleted: [...prev.quizzesCompleted, result],
       };
-      void saveProgress(updated);
-      updateStreak(prev.lastActiveDate);
+      console.log('Quiz added to progress. Total quizzes now:', updated.quizzesCompleted.length);
       return updated;
     });
-  }, [saveProgress, updateStreak]);
+    updateStreak(userProgress.lastActiveDate);
+  }, [updateStreak, userProgress.lastActiveDate]);
 
   const addContentActivity = useCallback((activity: ContentActivity) => {
-    setUserProgress(prev => {
-      const updated = {
-        ...prev,
-        contentActivities: [...prev.contentActivities, activity],
-      };
-      void saveProgress(updated);
-      updateStreak(prev.lastActiveDate);
-      return updated;
-    });
-  }, [saveProgress, updateStreak]);
+    setUserProgress(prev => ({
+      ...prev,
+      contentActivities: [...prev.contentActivities, activity],
+    }));
+    updateStreak(userProgress.lastActiveDate);
+  }, [updateStreak, userProgress.lastActiveDate]);
 
   const addStudyTime = useCallback((minutes: number) => {
-    setUserProgress(prev => {
-      const updated = {
-        ...prev,
-        totalStudyTime: prev.totalStudyTime + minutes,
-      };
-      void saveProgress(updated);
-      return updated;
-    });
-  }, [saveProgress]);
+    setUserProgress(prev => ({
+      ...prev,
+      totalStudyTime: prev.totalStudyTime + minutes,
+    }));
+  }, []);
 
   const addTeacherActivity = useCallback((activity: TeacherActivity) => {
-    setUserProgress(prev => {
-      const updated = {
-        ...prev,
-        teacherActivities: [...prev.teacherActivities, activity],
-      };
-      void saveProgress(updated);
-      updateStreak(prev.lastActiveDate);
-      return updated;
-    });
-  }, [saveProgress, updateStreak]);
+    setUserProgress(prev => ({
+      ...prev,
+      teacherActivities: [...prev.teacherActivities, activity],
+    }));
+    updateStreak(userProgress.lastActiveDate);
+  }, [updateStreak, userProgress.lastActiveDate]);
 
   const addExamActivity = useCallback((activity: ExamActivity) => {
-    setUserProgress(prev => {
-      const updated = {
-        ...prev,
-        examActivities: [...prev.examActivities, activity],
-      };
-      void saveProgress(updated);
-      updateStreak(prev.lastActiveDate);
-      return updated;
-    });
-  }, [saveProgress, updateStreak]);
+    setUserProgress(prev => ({
+      ...prev,
+      examActivities: [...prev.examActivities, activity],
+    }));
+    updateStreak(userProgress.lastActiveDate);
+  }, [updateStreak, userProgress.lastActiveDate]);
 
   const addTeacherUpload = useCallback((upload: TeacherUpload) => {
-    setUserProgress(prev => {
-      const updated = {
-        ...prev,
-        teacherUploads: [...prev.teacherUploads, upload],
-      };
-      void saveProgress(updated);
-      return updated;
-    });
-  }, [saveProgress]);
+    setUserProgress(prev => ({
+      ...prev,
+      teacherUploads: [...prev.teacherUploads, upload],
+    }));
+  }, []);
 
   const maybeRequestReview = useCallback(async () => {
     if (Platform.OS === 'web') return;
@@ -387,11 +381,9 @@ export const [AppProvider, useApp] = createContextHook(() => {
         console.log('Game lost: -1 XP');
       }
 
-      const updated = { ...prev, totalXP: newXP, xpHistory: newHistory, funLearning };
-      void saveProgress(updated);
-      return updated;
+      return { ...prev, totalXP: newXP, xpHistory: newHistory, funLearning };
     });
-  }, [saveProgress]);
+  }, []);
 
   const recordGKQuiz = useCallback((score: number, totalQuestions: number) => {
     const today = new Date().toISOString().split('T')[0];
@@ -418,11 +410,9 @@ export const [AppProvider, useApp] = createContextHook(() => {
         console.log('GK Quiz passed: +1 XP reimbursement');
       }
 
-      const updated = { ...prev, totalXP: newXP, xpHistory: newHistory, funLearning };
-      void saveProgress(updated);
-      return updated;
+      return { ...prev, totalXP: newXP, xpHistory: newHistory, funLearning };
     });
-  }, [saveProgress]);
+  }, []);
 
   const canPlayGame = useCallback((game: 'pacman' | 'flappy' | 'tictactoe' | 'runner') => {
     const today = new Date().toISOString().split('T')[0];
