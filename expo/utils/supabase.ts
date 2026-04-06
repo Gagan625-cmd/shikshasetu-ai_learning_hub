@@ -28,4 +28,4 @@ function createSupabaseClient(): SupabaseClient {
 
 export const supabase = createSupabaseClient();
 
-export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
+export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey && supabaseUrl !== 'https://placeholder.supabase.co');

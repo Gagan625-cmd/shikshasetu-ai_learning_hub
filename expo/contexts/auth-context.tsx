@@ -1,7 +1,7 @@
 import createContextHook from '@nkzw/create-context-hook';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { supabase } from '@/utils/supabase';
+import { supabase, isSupabaseConfigured } from '@/utils/supabase';
 
 export interface User {
   email: string;
@@ -58,12 +58,16 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
         throw new Error('Email already registered');
       }
 
-      console.log('Sending real OTP email to:', email);
-      const { error } = await supabase.auth.signInWithOtp({ email });
-
-      if (error) {
-        console.log('Supabase OTP error:', error.message);
-        throw new Error(error.message);
+      if (isSupabaseConfigured) {
+        console.log('Sending real OTP email to:', email);
+        const { error } = await supabase.auth.signInWithOtp({ email });
+        if (error) {
+          console.log('Supabase OTP error:', error.message);
+          throw new Error(error.message);
+        }
+        console.log('Real OTP email sent successfully to:', email);
+      } else {
+        console.log('Supabase not configured, using local auth for:', email);
       }
 
       setPendingEmail(email);
@@ -71,7 +75,6 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       setPendingName(name);
       setPendingIsSignUp(true);
 
-      console.log('Real OTP email sent successfully to:', email);
       return { success: true, email };
     } catch (error: any) {
       console.log('initiateSignUp error:', error.message);
@@ -88,12 +91,16 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
         throw new Error('Incorrect password');
       }
 
-      console.log('Sending real OTP email to:', email);
-      const { error } = await supabase.auth.signInWithOtp({ email });
-
-      if (error) {
-        console.log('Supabase OTP error:', error.message);
-        throw new Error(error.message);
+      if (isSupabaseConfigured) {
+        console.log('Sending real OTP email to:', email);
+        const { error } = await supabase.auth.signInWithOtp({ email });
+        if (error) {
+          console.log('Supabase OTP error:', error.message);
+          throw new Error(error.message);
+        }
+        console.log('Real OTP email sent successfully to:', email);
+      } else {
+        console.log('Supabase not configured, using local auth for:', email);
       }
 
       const name = users[email]?.name || email.split('@')[0];
@@ -102,7 +109,6 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       setPendingName(name);
       setPendingIsSignUp(!users[email]);
 
-      console.log('Real OTP email sent successfully to:', email);
       return { success: true, email };
     } catch (error: any) {
       console.log('initiateSignIn error:', error.message);
@@ -116,19 +122,23 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
         throw new Error('No pending verification. Please try again.');
       }
 
-      console.log('Verifying real OTP for:', pendingEmail);
-      const { error } = await supabase.auth.verifyOtp({
-        email: pendingEmail,
-        token: enteredOTP,
-        type: 'email',
-      });
+      if (isSupabaseConfigured) {
+        console.log('Verifying real OTP for:', pendingEmail);
+        const { error } = await supabase.auth.verifyOtp({
+          email: pendingEmail,
+          token: enteredOTP,
+          type: 'email',
+        });
 
-      if (error) {
-        console.log('Supabase verify OTP error:', error.message);
-        if (error.message.includes('expired')) {
-          throw new Error('Verification code expired. Please request a new one.');
+        if (error) {
+          console.log('Supabase verify OTP error:', error.message);
+          if (error.message.includes('expired')) {
+            throw new Error('Verification code expired. Please request a new one.');
+          }
+          throw new Error('Invalid verification code. Please check and try again.');
         }
-        throw new Error('Invalid verification code. Please check and try again.');
+      } else {
+        console.log('Supabase not configured, skipping OTP verification for:', pendingEmail);
       }
 
       const email = pendingEmail;
@@ -172,15 +182,18 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     if (!pendingEmail) return { success: false, error: 'No pending verification' };
 
     try {
-      console.log('Resending real OTP email to:', pendingEmail);
-      const { error } = await supabase.auth.signInWithOtp({ email: pendingEmail });
-
-      if (error) {
-        console.log('Supabase resend OTP error:', error.message);
-        return { success: false, error: error.message };
+      if (isSupabaseConfigured) {
+        console.log('Resending real OTP email to:', pendingEmail);
+        const { error } = await supabase.auth.signInWithOtp({ email: pendingEmail });
+        if (error) {
+          console.log('Supabase resend OTP error:', error.message);
+          return { success: false, error: error.message };
+        }
+        console.log('OTP resent successfully to:', pendingEmail);
+      } else {
+        console.log('Supabase not configured, simulating resend for:', pendingEmail);
       }
 
-      console.log('OTP resent successfully to:', pendingEmail);
       return { success: true, email: pendingEmail };
     } catch (error: any) {
       console.log('resendOTP error:', error.message);
@@ -231,7 +244,9 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     setPendingName(null);
     setPendingIsSignUp(false);
     await AsyncStorage.removeItem('user');
-    await supabase.auth.signOut().catch(() => {});
+    if (isSupabaseConfigured) {
+      await supabase.auth.signOut().catch(() => {});
+    }
   }, []);
 
   const continueAsGuest = useCallback(async () => {
