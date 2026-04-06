@@ -10,6 +10,7 @@ import { robustGenerateObject } from '@/lib/ai-generate';
 import { z } from 'zod';
 import { NCERT_SUBJECTS } from '@/constants/ncert-data';
 import { ICSE_SUBJECTS } from '@/constants/icse-data';
+import { useStudyTimeTracker } from '@/hooks/useStudyTimeTracker';
 
 const QuizSchema = z.object({
   questions: z.array(
@@ -25,6 +26,7 @@ const QuizSchema = z.object({
 
 
 export default function QuizGenerator() {
+  useStudyTimeTracker('Quiz');
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { selectedLanguage, addQuizResult, maybeRequestReview, addXP, userProgress } = useApp();

@@ -14,6 +14,7 @@ import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import * as Speech from 'expo-speech';
 import { generatePdfHtml } from '@/lib/pdf-formatter';
+import { useStudyTimeTracker } from '@/hooks/useStudyTimeTracker';
 
 const getICSEQuestionPaperPrompt = (
   subjectName: string,
@@ -1336,6 +1337,7 @@ Provide complete detailed solutions here at the end.`;
 
 
 export default function ContentGenerator() {
+  useStudyTimeTracker('Generate');
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { selectedLanguage, addContentActivity } = useApp();

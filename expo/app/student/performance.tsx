@@ -397,7 +397,7 @@ export default function StudentPerformance() {
             <View style={[styles.statIcon, { backgroundColor: '#fce7f3' }]}>
               <Clock size={24} color="#ec4899" />
             </View>
-            <Text style={[styles.statValue, { color: colors.text }]}>{Math.floor(stats.totalStudyTime / 60)}h</Text>
+            <Text style={[styles.statValue, { color: colors.text }]}>{stats.totalStudyTime >= 60 ? `${Math.floor(stats.totalStudyTime / 60)}h ${stats.totalStudyTime % 60}m` : `${stats.totalStudyTime}m`}</Text>
             <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Study Time</Text>
           </View>
         </View>

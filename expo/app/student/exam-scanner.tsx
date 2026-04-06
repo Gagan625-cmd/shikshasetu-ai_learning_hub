@@ -10,6 +10,7 @@ import { useMutation } from '@tanstack/react-query';
 import { robustGenerateObject } from '@/lib/ai-generate';
 import * as ImagePicker from 'expo-image-picker';
 import { z } from 'zod';
+import { useStudyTimeTracker } from '@/hooks/useStudyTimeTracker';
 
 interface UploadedImage {
   uri: string;
@@ -48,6 +49,7 @@ function getGradeColor(percentage: number): string {
 }
 
 export default function ExamScanner() {
+  useStudyTimeTracker('ExamScanner');
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { isPremium } = useSubscription();

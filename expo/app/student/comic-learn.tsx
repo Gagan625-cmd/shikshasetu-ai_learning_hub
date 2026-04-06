@@ -18,6 +18,7 @@ import { robustGenerateText } from '@/lib/ai-generate';
 import { NCERT_SUBJECTS } from '@/constants/ncert-data';
 import { ICSE_SUBJECTS } from '@/constants/icse-data';
 import { useTheme } from '@/contexts/theme-context';
+import { useStudyTimeTracker } from '@/hooks/useStudyTimeTracker';
 
 
 interface ComicPanel {
@@ -62,6 +63,7 @@ const MOOD_BACKGROUNDS: Record<string, string[]> = {
 
 
 export default function ComicLearnScreen() {
+  useStudyTimeTracker('ComicLearn');
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
   const scrollRef = useRef<ScrollView>(null);

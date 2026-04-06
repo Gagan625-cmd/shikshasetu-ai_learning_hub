@@ -8,10 +8,12 @@ import { useTheme } from '@/contexts/theme-context';
 
 import { useRorkAgent } from '@rork-ai/toolkit-sdk';
 import { NCERT_SUBJECTS } from '@/constants/ncert-data';
+import { useStudyTimeTracker } from '@/hooks/useStudyTimeTracker';
 
 
 
 export default function StudentInterview() {
+  useStudyTimeTracker('Interview');
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { selectedLanguage } = useApp();

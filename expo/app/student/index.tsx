@@ -1630,7 +1630,7 @@ export default function StudentDashboard() {
             <View style={[styles.quickStatIcon, { backgroundColor: '#f59e0b20' }]}>
               <Clock size={16} color="#f59e0b" />
             </View>
-            <Text style={[styles.quickStatValue, { color: isDark ? '#fbbf24' : '#92400e' }]}>{userProgress.totalStudyTime}m</Text>
+            <Text style={[styles.quickStatValue, { color: isDark ? '#fbbf24' : '#92400e' }]}>{userProgress.totalStudyTime >= 60 ? `${Math.floor(userProgress.totalStudyTime / 60)}h ${userProgress.totalStudyTime % 60}m` : `${userProgress.totalStudyTime}m`}</Text>
             <Text style={[styles.quickStatLabel, { color: isDark ? '#64748b' : '#6b7280' }]}>Study</Text>
           </View>
         </View>

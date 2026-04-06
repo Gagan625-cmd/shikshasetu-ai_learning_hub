@@ -11,6 +11,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
+import { useStudyTimeTracker } from '@/hooks/useStudyTimeTracker';
 
 type SubjectKey = 'Mathematics' | 'Physics' | 'Chemistry';
 type BoardKey = 'NCERT' | 'ICSE';
@@ -160,6 +161,7 @@ function parseFormulaSections(text: string): { title: string; content: string }[
 }
 
 export default function FormulaSheetScreen() {
+  useStudyTimeTracker('FormulaSheet');
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { selectedLanguage } = useApp();

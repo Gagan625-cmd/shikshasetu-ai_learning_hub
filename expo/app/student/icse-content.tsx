@@ -9,6 +9,7 @@ import { useTheme } from '@/contexts/theme-context';
 import { useMutation } from '@tanstack/react-query';
 import { generateText } from '@rork-ai/toolkit-sdk';
 import * as Speech from 'expo-speech';
+import { useStudyTimeTracker } from '@/hooks/useStudyTimeTracker';
 
 type SubjectType = 'Physics' | 'Chemistry' | 'Biology' | 'Mathematics' | 'History and Civics' | 'Computer Applications' | 'English Literature' | 'English Language' | 'Geography';
 
@@ -37,6 +38,7 @@ const subjectColors: Record<SubjectType, string> = {
 };
 
 export default function ICESEContentBrowser() {
+  useStudyTimeTracker('ICSEContent');
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { selectedLanguage } = useApp();

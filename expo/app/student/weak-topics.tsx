@@ -11,6 +11,7 @@ import { robustGenerateObject } from '@/lib/ai-generate';
 import { z } from 'zod';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
+import { useStudyTimeTracker } from '@/hooks/useStudyTimeTracker';
 
 const RevisionPlanSchema = z.object({
   weakTopics: z.array(z.object({
@@ -153,6 +154,7 @@ const topicStyles = StyleSheet.create({
 
 
 export default function WeakTopicIdentifier() {
+  useStudyTimeTracker('WeakTopics');
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { userProgress, selectedLanguage } = useApp();

@@ -11,6 +11,7 @@ import { NCERT_SUBJECTS } from '@/constants/ncert-data';
 import { ICSE_SUBJECTS } from '@/constants/icse-data';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
+import { useStudyTimeTracker } from '@/hooks/useStudyTimeTracker';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_WIDTH = SCREEN_WIDTH - 64;
@@ -366,6 +367,7 @@ const cardStyles = StyleSheet.create({
 });
 
 export default function FlashcardsScreen() {
+  useStudyTimeTracker('Flashcards');
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { selectedLanguage } = useApp();

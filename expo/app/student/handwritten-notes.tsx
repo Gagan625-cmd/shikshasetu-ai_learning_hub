@@ -14,6 +14,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
+import { useStudyTimeTracker } from '@/hooks/useStudyTimeTracker';
 
 type BoardKey = 'NCERT' | 'ICSE';
 
@@ -903,6 +904,7 @@ function parseNoteSections(text: string): NoteSection[] {
 }
 
 export default function HandwrittenNotesScreen() {
+  useStudyTimeTracker('HandwrittenNotes');
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { selectedLanguage } = useApp();

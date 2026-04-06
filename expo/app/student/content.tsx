@@ -9,8 +9,10 @@ import { useTheme } from '@/contexts/theme-context';
 import { useMutation } from '@tanstack/react-query';
 import { generateText } from '@rork-ai/toolkit-sdk';
 import * as Speech from 'expo-speech';
+import { useStudyTimeTracker } from '@/hooks/useStudyTimeTracker';
 
 export default function ContentBrowser() {
+  useStudyTimeTracker('Content');
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { selectedLanguage } = useApp();
