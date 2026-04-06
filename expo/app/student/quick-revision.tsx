@@ -531,7 +531,8 @@ Mark importance as "critical" for must-know items, "important" for frequently te
                   const card = cards[currentIndex];
                   const subjectName = subjects.find(s => s.id === selectedSubject)?.name || '';
                   const prompt = `Create a clean educational diagram for ${selectedBoard} Grade ${selectedGrade} ${subjectName}: ${card.title}. ${card.content.slice(0, 200)}. Make it a clear, labeled educational illustration with professional colors, suitable for quick revision. No text-heavy content.`;
-                  const response = await fetch('https://toolkit.rork.com/images/generate/', {
+                  const toolkitBase = process.env.EXPO_PUBLIC_TOOLKIT_URL || 'https://toolkit.rork.com';
+                  const response = await fetch(`${toolkitBase.replace(/\/$/, '')}/images/generate/`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ prompt, size: '1024x1024' }),

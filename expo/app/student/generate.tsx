@@ -1985,6 +1985,11 @@ IMPORTANT REQUIREMENTS:
     });
   };
 
+  const getToolkitImageUrl = () => {
+    const base = process.env.EXPO_PUBLIC_TOOLKIT_URL || 'https://toolkit.rork.com';
+    return `${base.replace(/\/$/, '')}/images/generate/`;
+  };
+
   const generateDiagramImages = async (content: string) => {
     const descriptions = extractDiagramDescriptions(content);
     const toGenerate = descriptions.slice(0, 4);
@@ -2009,6 +2014,9 @@ IMPORTANT REQUIREMENTS:
     setDiagramImages([]);
 
     const results: Array<{ description: string; imageUri: string; index: number }> = [];
+    const imageUrl = getToolkitImageUrl();
+    console.log('[Diagrams] Using image generation URL:', imageUrl);
+    console.log('[Diagrams] Total diagrams to generate:', toGenerate.length);
 
     for (let i = 0; i < toGenerate.length; i++) {
       const item = toGenerate[i];
@@ -2016,21 +2024,35 @@ IMPORTANT REQUIREMENTS:
       try {
         console.log(`[Diagrams] Generating image ${i + 1}/${toGenerate.length}: ${item.description.slice(0, 80)}...`);
         const imagePrompt = `Create a clean, professional educational diagram: ${item.description}. Style: Clear black lines on white background, properly labeled with arrows, suitable for a printed exam question paper. No decorative elements, focus on accuracy and clarity. Scientific/textbook illustration style.`;
-        const response = await fetch('https://toolkit.rork.com/images/generate/', {
+        const response = await fetch(imageUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ prompt: imagePrompt, size: '1024x1024' }),
         });
-        if (!response.ok) throw new Error(`Image generation failed: ${response.status}`);
+        console.log(`[Diagrams] Image ${i + 1} response status:`, response.status);
+        if (!response.ok) {
+          const errorText = await response.text().catch(() => 'Unknown error');
+          console.error(`[Diagrams] Image ${i + 1} error response:`, errorText);
+          throw new Error(`Image generation failed: ${response.status} - ${errorText}`);
+        }
         const data = await response.json();
+        console.log(`[Diagrams] Image ${i + 1} response keys:`, data ? Object.keys(data) : 'null');
+        console.log(`[Diagrams] Image ${i + 1} has base64Data:`, !!data?.image?.base64Data);
+        console.log(`[Diagrams] Image ${i + 1} mimeType:`, data?.image?.mimeType);
+        console.log(`[Diagrams] Image ${i + 1} base64Data length:`, data?.image?.base64Data?.length || 0);
         if (data?.image?.base64Data) {
+          const mimeType = data.image.mimeType || 'image/png';
+          const imageUri = `data:${mimeType};base64,${data.image.base64Data}`;
+          console.log(`[Diagrams] Image ${i + 1} URI length:`, imageUri.length);
           results.push({
             description: item.description,
-            imageUri: `data:${data.image.mimeType};base64,${data.image.base64Data}`,
+            imageUri,
             index: item.index,
           });
           setDiagramImages([...results]);
-          console.log(`[Diagrams] Successfully generated image ${i + 1}`);
+          console.log(`[Diagrams] Successfully generated image ${i + 1}, total results: ${results.length}`);
+        } else {
+          console.warn(`[Diagrams] Image ${i + 1} returned no base64Data. Full response:`, JSON.stringify(data).slice(0, 500));
         }
       } catch (error: any) {
         console.error(`[Diagrams] Failed to generate image ${i + 1}:`, error?.message);
@@ -2053,21 +2075,31 @@ IMPORTANT REQUIREMENTS:
       const chapterTitle = selectedChapterData?.title || customTopic || 'Topic';
       const imagePrompt = `Create a clean, educational diagram or illustration for ${selectedBoard} Grade ${selectedGrade} ${subjectName} - ${chapterTitle}. The image should be a clear, labeled educational diagram suitable for a ${contentType === 'questionpaper' ? 'question paper' : 'study material'}. Use clean lines, clear labels, and professional colors. No text-heavy content, focus on visual representation of the concept.`;
 
-      const response = await fetch('https://toolkit.rork.com/images/generate/', {
+      const imageUrl = getToolkitImageUrl();
+      console.log('[ImageGen] Generating image from:', imageUrl);
+      const response = await fetch(imageUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt: imagePrompt, size: '1024x1024' }),
       });
 
-      if (!response.ok) throw new Error('Image generation failed');
+      console.log('[ImageGen] Response status:', response.status);
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => 'Unknown error');
+        console.error('[ImageGen] Error response:', errorText);
+        throw new Error(`Image generation failed: ${response.status}`);
+      }
       const data = await response.json();
+      console.log('[ImageGen] Response has base64Data:', !!data?.image?.base64Data, 'length:', data?.image?.base64Data?.length || 0);
       if (data?.image?.base64Data) {
-        setGeneratedImage(`data:${data.image.mimeType};base64,${data.image.base64Data}`);
+        const mimeType = data.image.mimeType || 'image/png';
+        setGeneratedImage(`data:${mimeType};base64,${data.image.base64Data}`);
       } else {
+        console.error('[ImageGen] No image data in response:', JSON.stringify(data).slice(0, 300));
         throw new Error('No image data returned');
       }
     } catch (error: any) {
-      console.error('Image generation error:', error);
+      console.error('[ImageGen] Image generation error:', error?.message);
       Alert.alert('Error', 'Failed to generate illustration. Please try again.');
     } finally {
       setIsGeneratingImage(false);
@@ -2590,11 +2622,21 @@ IMPORTANT REQUIREMENTS:
                   <View key={idx} style={[styles.diagramCard, { borderColor: colors.border }]}>
                     <Text style={[styles.diagramLabel, { color: isDark ? '#f1f5f9' : '#1e293b' }]}>Diagram {idx + 1}</Text>
                     <Text style={[styles.diagramDescription, { color: isDark ? '#94a3b8' : '#64748b' }]} numberOfLines={3}>{diagram.description}</Text>
-                    <Image
-                      source={{ uri: diagram.imageUri }}
-                      style={styles.diagramImage}
-                      resizeMode="contain"
-                    />
+                    {diagram.imageUri ? (
+                      <View style={styles.diagramImageWrapper}>
+                        <Image
+                          source={{ uri: diagram.imageUri }}
+                          style={styles.diagramImage}
+                          resizeMode="contain"
+                          onLoad={() => console.log(`[Diagrams] Image ${idx + 1} loaded successfully`)}
+                          onError={(e) => console.error(`[Diagrams] Image ${idx + 1} failed to load:`, e.nativeEvent?.error)}
+                        />
+                      </View>
+                    ) : (
+                      <View style={[styles.diagramImage, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#f1f5f9' }]}>
+                        <Text style={{ color: '#94a3b8', fontSize: 14 }}>Image failed to load</Text>
+                      </View>
+                    )}
                   </View>
                 ))}
                 {!isGeneratingDiagrams && diagramImages.length > 0 && (
@@ -3151,9 +3193,16 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     fontStyle: 'italic' as const,
   },
+  diagramImageWrapper: {
+    width: '100%' as const,
+    minHeight: 280,
+    borderRadius: 10,
+    backgroundColor: '#ffffff',
+    overflow: 'hidden' as const,
+  },
   diagramImage: {
     width: '100%' as const,
-    height: 280,
+    height: 300,
     borderRadius: 10,
     backgroundColor: '#ffffff',
   },
