@@ -1,25 +1,13 @@
 import createContextHook from '@nkzw/create-context-hook';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { supabase } from '@/utils/supabase';
 
 export interface User {
   email: string;
   name: string;
   isGuest?: boolean;
   authCode?: string;
-}
-
-interface PendingAuth {
-  email: string;
-  password: string;
-  name: string;
-  otp: string;
-  isSignUp: boolean;
-  expiresAt: number;
-}
-
-function generateOTP(): string {
-  return String(Math.floor(1000 + Math.random() * 9000));
 }
 
 async function generateUniqueAuthCode(): Promise<string> {
@@ -39,7 +27,10 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [lastAuthCode, setLastAuthCode] = useState<string | null>(null);
-  const [pendingAuth, setPendingAuth] = useState<PendingAuth | null>(null);
+  const [pendingEmail, setPendingEmail] = useState<string | null>(null);
+  const [pendingName, setPendingName] = useState<string | null>(null);
+  const [pendingPassword, setPendingPassword] = useState<string | null>(null);
+  const [pendingIsSignUp, setPendingIsSignUp] = useState(false);
 
   const loadUser = useCallback(async () => {
     try {
@@ -67,12 +58,23 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
         throw new Error('Email already registered');
       }
 
-      const otp = generateOTP();
-      const expiresAt = Date.now() + 5 * 60 * 1000;
-      setPendingAuth({ email, password, name, otp, isSignUp: true, expiresAt });
-      console.log('OTP generated for sign up:', otp, 'email:', email);
-      return { success: true, otp, email };
+      console.log('Sending real OTP email to:', email);
+      const { error } = await supabase.auth.signInWithOtp({ email });
+
+      if (error) {
+        console.log('Supabase OTP error:', error.message);
+        throw new Error(error.message);
+      }
+
+      setPendingEmail(email);
+      setPendingPassword(password);
+      setPendingName(name);
+      setPendingIsSignUp(true);
+
+      console.log('Real OTP email sent successfully to:', email);
+      return { success: true, email };
     } catch (error: any) {
+      console.log('initiateSignUp error:', error.message);
       return { success: false, error: error.message };
     }
   }, []);
@@ -86,33 +88,54 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
         throw new Error('Incorrect password');
       }
 
-      const otp = generateOTP();
-      const expiresAt = Date.now() + 5 * 60 * 1000;
+      console.log('Sending real OTP email to:', email);
+      const { error } = await supabase.auth.signInWithOtp({ email });
+
+      if (error) {
+        console.log('Supabase OTP error:', error.message);
+        throw new Error(error.message);
+      }
+
       const name = users[email]?.name || email.split('@')[0];
-      setPendingAuth({ email, password, name, otp, isSignUp: !users[email], expiresAt });
-      console.log('OTP generated for sign in:', otp, 'email:', email);
-      return { success: true, otp, email };
+      setPendingEmail(email);
+      setPendingPassword(password);
+      setPendingName(name);
+      setPendingIsSignUp(!users[email]);
+
+      console.log('Real OTP email sent successfully to:', email);
+      return { success: true, email };
     } catch (error: any) {
+      console.log('initiateSignIn error:', error.message);
       return { success: false, error: error.message };
     }
   }, []);
 
   const verifyOTP = useCallback(async (enteredOTP: string) => {
     try {
-      if (!pendingAuth) {
+      if (!pendingEmail) {
         throw new Error('No pending verification. Please try again.');
       }
 
-      if (Date.now() > pendingAuth.expiresAt) {
-        setPendingAuth(null);
-        throw new Error('Verification code expired. Please try again.');
-      }
+      console.log('Verifying real OTP for:', pendingEmail);
+      const { error } = await supabase.auth.verifyOtp({
+        email: pendingEmail,
+        token: enteredOTP,
+        type: 'email',
+      });
 
-      if (enteredOTP !== pendingAuth.otp) {
+      if (error) {
+        console.log('Supabase verify OTP error:', error.message);
+        if (error.message.includes('expired')) {
+          throw new Error('Verification code expired. Please request a new one.');
+        }
         throw new Error('Invalid verification code. Please check and try again.');
       }
 
-      const { email, password, name, isSignUp } = pendingAuth;
+      const email = pendingEmail;
+      const password = pendingPassword || '';
+      const name = pendingName || email.split('@')[0];
+      const isSignUp = pendingIsSignUp;
+
       const existingUsers = await AsyncStorage.getItem('users');
       const users = existingUsers ? JSON.parse(existingUsers) : {};
 
@@ -131,26 +154,45 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       setUser(loggedInUser);
       setLastAuthCode(authCode);
       await AsyncStorage.setItem('user', JSON.stringify(loggedInUser));
-      setPendingAuth(null);
 
-      console.log('OTP verified, sign in complete. Auth code:', authCode);
+      setPendingEmail(null);
+      setPendingPassword(null);
+      setPendingName(null);
+      setPendingIsSignUp(false);
+
+      console.log('OTP verified successfully, sign in complete. Auth code:', authCode);
       return { success: true, authCode, isNewUser: isSignUp };
     } catch (error: any) {
+      console.log('verifyOTP error:', error.message);
       return { success: false, error: error.message };
     }
-  }, [pendingAuth]);
+  }, [pendingEmail, pendingPassword, pendingName, pendingIsSignUp]);
 
-  const resendOTP = useCallback(() => {
-    if (!pendingAuth) return { success: false, error: 'No pending verification' };
-    const newOTP = generateOTP();
-    const newExpiresAt = Date.now() + 5 * 60 * 1000;
-    setPendingAuth({ ...pendingAuth, otp: newOTP, expiresAt: newExpiresAt });
-    console.log('New OTP generated:', newOTP, 'for email:', pendingAuth.email);
-    return { success: true, otp: newOTP, email: pendingAuth.email };
-  }, [pendingAuth]);
+  const resendOTP = useCallback(async () => {
+    if (!pendingEmail) return { success: false, error: 'No pending verification' };
+
+    try {
+      console.log('Resending real OTP email to:', pendingEmail);
+      const { error } = await supabase.auth.signInWithOtp({ email: pendingEmail });
+
+      if (error) {
+        console.log('Supabase resend OTP error:', error.message);
+        return { success: false, error: error.message };
+      }
+
+      console.log('OTP resent successfully to:', pendingEmail);
+      return { success: true, email: pendingEmail };
+    } catch (error: any) {
+      console.log('resendOTP error:', error.message);
+      return { success: false, error: error.message };
+    }
+  }, [pendingEmail]);
 
   const cancelVerification = useCallback(() => {
-    setPendingAuth(null);
+    setPendingEmail(null);
+    setPendingPassword(null);
+    setPendingName(null);
+    setPendingIsSignUp(false);
   }, []);
 
   const signInWithCode = useCallback(async (code: string) => {
@@ -184,8 +226,12 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
   const signOut = useCallback(async () => {
     setUser(null);
     setLastAuthCode(null);
-    setPendingAuth(null);
+    setPendingEmail(null);
+    setPendingPassword(null);
+    setPendingName(null);
+    setPendingIsSignUp(false);
     await AsyncStorage.removeItem('user');
+    await supabase.auth.signOut().catch(() => {});
   }, []);
 
   const continueAsGuest = useCallback(async () => {
@@ -199,7 +245,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     user,
     isLoading,
     lastAuthCode,
-    pendingAuth: pendingAuth ? { email: pendingAuth.email, expiresAt: pendingAuth.expiresAt } : null,
+    pendingEmail,
     initiateSignUp,
     initiateSignIn,
     verifyOTP,
@@ -208,5 +254,5 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     signInWithCode,
     signOut,
     continueAsGuest,
-  }), [user, isLoading, lastAuthCode, pendingAuth, initiateSignUp, initiateSignIn, verifyOTP, resendOTP, cancelVerification, signInWithCode, signOut, continueAsGuest]);
+  }), [user, isLoading, lastAuthCode, pendingEmail, initiateSignUp, initiateSignIn, verifyOTP, resendOTP, cancelVerification, signInWithCode, signOut, continueAsGuest]);
 });

@@ -16,17 +16,17 @@ export default function AuthScreen() {
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [authCode, setAuthCode] = useState('');
-  const [otpDigits, setOtpDigits] = useState(['', '', '', '']);
+  const [otpDigits, setOtpDigits] = useState(['', '', '', '', '', '']);
   const [error, setError] = useState('');
   const [showAuthCodeModal, setShowAuthCodeModal] = useState(false);
   const [displayedAuthCode, setDisplayedAuthCode] = useState('');
   const [otpTimer, setOtpTimer] = useState(0);
-  const [_sentOtp, setSentOtp] = useState('');
+  const [isSending, setIsSending] = useState(false);
   const { initiateSignUp, initiateSignIn, verifyOTP, resendOTP, cancelVerification, signInWithCode, continueAsGuest } = useAuth();
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
-  const otpRefs = useRef<Array<TextInput | null>>([null, null, null, null]);
+  const otpRefs = useRef<Array<TextInput | null>>([null, null, null, null, null, null]);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(40)).current;
   const logoScale = useRef(new Animated.Value(0.5)).current;
@@ -101,9 +101,8 @@ export default function AuthScreen() {
       ? await initiateSignUp(email, password, name)
       : await initiateSignIn(email, password);
 
-    if (result.success && result.otp) {
-      setSentOtp(result.otp);
-      setOtpDigits(['', '', '', '']);
+    if (result.success) {
+      setOtpDigits(['', '', '', '', '', '']);
       setOtpTimer(120);
       setStep('otp');
       animateOTPStep();
@@ -111,7 +110,7 @@ export default function AuthScreen() {
       setTimeout(() => {
         Alert.alert(
           'Verification Code Sent',
-          `A 4-digit code has been sent to ${email}.\n\nFor demo: Your code is ${result.otp}`,
+          `A 6-digit verification code has been sent to ${email}. Please check your inbox (and spam folder).`,
           [{ text: 'OK' }]
         );
       }, 500);
@@ -123,13 +122,13 @@ export default function AuthScreen() {
   const handleOTPChange = (index: number, value: string) => {
     const cleaned = value.replace(/[^0-9]/g, '');
     if (cleaned.length > 1) {
-      const digits = cleaned.slice(0, 4).split('');
+      const digits = cleaned.slice(0, 6).split('');
       const newOtp = [...otpDigits];
       digits.forEach((d, i) => {
-        if (index + i < 4) newOtp[index + i] = d;
+        if (index + i < 6) newOtp[index + i] = d;
       });
       setOtpDigits(newOtp);
-      const focusIdx = Math.min(index + digits.length, 3);
+      const focusIdx = Math.min(index + digits.length, 5);
       otpRefs.current[focusIdx]?.focus();
       return;
     }
@@ -137,7 +136,7 @@ export default function AuthScreen() {
     newOtp[index] = cleaned;
     setOtpDigits(newOtp);
 
-    if (cleaned && index < 3) {
+    if (cleaned && index < 5) {
       otpRefs.current[index + 1]?.focus();
     }
   };
@@ -154,10 +153,11 @@ export default function AuthScreen() {
   const handleVerifyOTP = async () => {
     setError('');
     const code = otpDigits.join('');
-    if (code.length !== 4) {
-      setError('Please enter the complete 4-digit code');
+    if (code.length !== 6) {
+      setError('Please enter the complete 6-digit code');
       return;
     }
+  };
 
     animatePress();
     const result = await verifyOTP(code);
@@ -175,29 +175,34 @@ export default function AuthScreen() {
     }
   };
 
-  const handleResendOTP = () => {
-    if (otpTimer > 0) return;
-    const result = resendOTP();
-    if (result.success && result.otp) {
-      setSentOtp(result.otp);
-      setOtpDigits(['', '', '', '']);
-      setOtpTimer(120);
-      setError('');
-      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      Alert.alert(
-        'Code Resent',
-        `A new code has been sent to ${result.email}.\n\nFor demo: Your code is ${result.otp}`,
-        [{ text: 'OK' }]
-      );
+  const handleResendOTP = async () => {
+    if (otpTimer > 0 || isSending) return;
+    setIsSending(true);
+    try {
+      const result = await resendOTP();
+      if (result.success) {
+        setOtpDigits(['', '', '', '', '', '']);
+        setOtpTimer(120);
+        setError('');
+        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        Alert.alert(
+          'Code Resent',
+          `A new verification code has been sent to ${result.email}. Check your inbox.`,
+          [{ text: 'OK' }]
+        );
+      } else {
+        setError(result.error || 'Failed to resend code');
+      }
+    } finally {
+      setIsSending(false);
     }
   };
 
   const handleBackFromOTP = () => {
     cancelVerification();
     setStep('form');
-    setOtpDigits(['', '', '', '']);
+    setOtpDigits(['', '', '', '', '', '']);
     setError('');
-    setSentOtp('');
   };
 
   const handleCodeLogin = async () => {
@@ -250,7 +255,7 @@ export default function AuthScreen() {
         </LinearGradient>
         <Text style={styles.otpTitle}>Verify Your Email</Text>
         <Text style={styles.otpSubtitle}>
-          We sent a 4-digit code to
+          We sent a 6-digit code to
         </Text>
         <Text style={styles.otpEmail}>{email}</Text>
       </View>
@@ -268,7 +273,7 @@ export default function AuthScreen() {
             onChangeText={(v) => handleOTPChange(i, v)}
             onKeyPress={({ nativeEvent }) => handleOTPKeyPress(i, nativeEvent.key)}
             keyboardType="number-pad"
-            maxLength={4}
+            maxLength={6}
             selectTextOnFocus
             autoFocus={i === 0}
           />
@@ -653,13 +658,13 @@ const styles = StyleSheet.create({
   otpSubtitle: { fontSize: 14, color: '#94a3b8', textAlign: 'center' as const },
   otpEmail: { fontSize: 15, fontWeight: '700' as const, color: '#38bdf8', marginTop: 4 },
   otpInputRow: {
-    flexDirection: 'row', justifyContent: 'center', gap: 14, marginBottom: 24,
+    flexDirection: 'row', justifyContent: 'center', gap: 8, marginBottom: 24,
   },
   otpBox: {
-    width: 60, height: 68, borderRadius: 16,
+    width: 46, height: 58, borderRadius: 14,
     backgroundColor: 'rgba(30, 41, 59, 0.8)',
     borderWidth: 2, borderColor: 'rgba(51, 65, 85, 0.6)',
-    textAlign: 'center' as const, fontSize: 28, fontWeight: '800' as const, color: '#f1f5f9',
+    textAlign: 'center' as const, fontSize: 24, fontWeight: '800' as const, color: '#f1f5f9',
   },
   otpBoxFilled: {
     borderColor: '#10b981',
