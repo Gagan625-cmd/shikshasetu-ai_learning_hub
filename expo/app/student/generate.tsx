@@ -2017,12 +2017,13 @@ IMPORTANT REQUIREMENTS:
         }
         const data = await response.json();
         console.log(`[Diagrams] Image ${i + 1} response keys:`, data ? Object.keys(data) : 'null');
-        console.log(`[Diagrams] Image ${i + 1} has base64Data:`, !!data?.image?.base64Data);
+        const base64 = data?.image?.base64Data || data?.image?.base64;
+        console.log(`[Diagrams] Image ${i + 1} has base64:`, !!base64);
         console.log(`[Diagrams] Image ${i + 1} mimeType:`, data?.image?.mimeType);
-        console.log(`[Diagrams] Image ${i + 1} base64Data length:`, data?.image?.base64Data?.length || 0);
-        if (data?.image?.base64Data) {
+        console.log(`[Diagrams] Image ${i + 1} base64 length:`, base64?.length || 0);
+        if (base64) {
           const mimeType = data.image.mimeType || 'image/png';
-          const imageUri = `data:${mimeType};base64,${data.image.base64Data}`;
+          const imageUri = `data:${mimeType};base64,${base64}`;
           console.log(`[Diagrams] Image ${i + 1} URI length:`, imageUri.length);
           results.push({
             description: item.description,
@@ -2032,7 +2033,7 @@ IMPORTANT REQUIREMENTS:
           setDiagramImages([...results]);
           console.log(`[Diagrams] Successfully generated image ${i + 1}, total results: ${results.length}`);
         } else {
-          console.warn(`[Diagrams] Image ${i + 1} returned no base64Data. Full response:`, JSON.stringify(data).slice(0, 500));
+          console.warn(`[Diagrams] Image ${i + 1} returned no base64 data. Full response:`, JSON.stringify(data).slice(0, 500));
         }
       } catch (error: any) {
         console.error(`[Diagrams] Failed to generate image ${i + 1}:`, error?.message);

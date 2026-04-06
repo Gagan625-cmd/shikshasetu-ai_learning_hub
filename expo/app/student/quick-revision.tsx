@@ -550,10 +550,11 @@ Mark importance as "critical" for must-know items, "important" for frequently te
                   }
                   const data = await response.json();
                   console.log('[QuickRevision] Response keys:', data ? Object.keys(data) : 'null');
-                  console.log('[QuickRevision] Has base64Data:', !!data?.image?.base64Data, 'length:', data?.image?.base64Data?.length || 0);
-                  if (data?.image?.base64Data) {
+                  const base64 = data?.image?.base64Data || data?.image?.base64;
+                  console.log('[QuickRevision] Has base64:', !!base64, 'length:', base64?.length || 0);
+                  if (base64) {
                     const mimeType = data.image.mimeType || 'image/png';
-                    const imageUri = `data:${mimeType};base64,${data.image.base64Data}`;
+                    const imageUri = `data:${mimeType};base64,${base64}`;
                     console.log('[QuickRevision] Image URI length:', imageUri.length);
                     setCardImage(imageUri);
                   } else if (data?.image?.url) {
