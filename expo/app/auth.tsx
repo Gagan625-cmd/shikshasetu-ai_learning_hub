@@ -157,7 +157,6 @@ export default function AuthScreen() {
       setError('Please enter the complete 6-digit code');
       return;
     }
-  };
 
     animatePress();
     const result = await verifyOTP(code);
