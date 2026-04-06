@@ -1382,9 +1382,7 @@ export default function StudentDashboard() {
   }, [inputText, sendMessage]);
 
   const PREMIUM_FEATURE_IDS = useMemo(() => new Set([
-    'generate', 'flashcards', 'quiz', 'quick-revision', 'weak-topics',
-    'study-rooms', 'interview', 'exam-scanner', 'timetable', 'study-os',
-    'formula-sheet', 'handwritten-notes', 'comic-learn',
+    'quick-revision', 'handwritten-notes', 'exam-scanner', 'study-os',
   ]), []);
 
   const features = useMemo(() => [

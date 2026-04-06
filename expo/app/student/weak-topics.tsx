@@ -5,8 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { useApp } from '@/contexts/app-context';
 import { useTheme } from '@/contexts/theme-context';
-import { useSubscription } from '@/contexts/subscription-context';
-import PremiumGate from '@/components/PremiumGate';
+
 import { useMutation } from '@tanstack/react-query';
 import { robustGenerateObject } from '@/lib/ai-generate';
 import { z } from 'zod';
@@ -151,31 +150,13 @@ const topicStyles = StyleSheet.create({
   expandHint: { fontSize: 11, fontWeight: '600' as const, textAlign: 'center' as const, marginTop: 12 },
 });
 
-const WEAK_TOPICS_PREMIUM_FEATURES = [
-  { text: 'AI detects your weakest areas from quiz data' },
-  { text: 'Personalized revision plan with priorities' },
-  { text: 'Day-by-day study schedule generator' },
-  { text: 'Resource recommendations per topic' },
-  { text: 'Track improvement over time' },
-];
+
 
 export default function WeakTopicIdentifier() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { userProgress, selectedLanguage } = useApp();
   const { colors, isDark } = useTheme();
-  const { isPremium } = useSubscription();
-
-  if (!isPremium) {
-    return (
-      <PremiumGate
-        title="Weak Topic Finder"
-        description="AI analyzes your performance to identify weak areas and build a personalized improvement plan."
-        features={WEAK_TOPICS_PREMIUM_FEATURES}
-      />
-    );
-  }
-
   const [weakTopics, setWeakTopics] = useState<WeakTopic[]>([]);
   const [overallAnalysis, setOverallAnalysis] = useState('');
   const [studySchedule, setStudySchedule] = useState<StudyDay[]>([]);

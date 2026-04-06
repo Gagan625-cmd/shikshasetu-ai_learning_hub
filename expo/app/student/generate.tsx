@@ -1,12 +1,11 @@
 import { useRouter } from 'expo-router';
 import { ChevronLeft, Sparkles, FileText, BookText, ScrollText, Loader2, Download, Share2, Network, Volume2, VolumeX, ImageIcon } from 'lucide-react-native';
-import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Platform, TextInput, Alert, Image, ActivityIndicator } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Platform, TextInput, Alert, ActivityIndicator } from 'react-native';
+import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState } from 'react';
 import { useApp } from '@/contexts/app-context';
 import { useTheme } from '@/contexts/theme-context';
-import { useSubscription } from '@/contexts/subscription-context';
-import PremiumGate from '@/components/PremiumGate';
 import { useMutation } from '@tanstack/react-query';
 import { robustGenerateText } from '@/lib/ai-generate';
 import { NCERT_SUBJECTS } from '@/constants/ncert-data';
@@ -1335,31 +1334,12 @@ ANSWER KEY
 Provide complete detailed solutions here at the end.`;
 };
 
-const GENERATE_PREMIUM_FEATURES = [
-  { text: 'AI-generated notes, summaries & worksheets' },
-  { text: 'MCQ, case-based & competency questions' },
-  { text: 'Mind maps & numerical problem sets' },
-  { text: 'Download as PDF & share instantly' },
-  { text: 'Text-to-speech for hands-free learning' },
-];
 
 export default function ContentGenerator() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { selectedLanguage, addContentActivity } = useApp();
   const { colors, isDark } = useTheme();
-  const { isPremium } = useSubscription();
-
-  if (!isPremium) {
-    return (
-      <PremiumGate
-        title="AI Content Generator"
-        description="Generate comprehensive notes, worksheets, mind maps, and question papers powered by AI."
-        features={GENERATE_PREMIUM_FEATURES}
-      />
-    );
-  }
-  
   const [selectedBoard, setSelectedBoard] = useState<'NCERT' | 'ICSE'>('NCERT');
   const [selectedGrade, setSelectedGrade] = useState<number>(6);
   const [selectedSubject, setSelectedSubject] = useState<string>('');
@@ -2627,9 +2607,10 @@ IMPORTANT REQUIREMENTS:
                         <Image
                           source={{ uri: diagram.imageUri }}
                           style={styles.diagramImage}
-                          resizeMode="contain"
+                          contentFit="contain"
+                          cachePolicy="memory-disk"
                           onLoad={() => console.log(`[Diagrams] Image ${idx + 1} loaded successfully`)}
-                          onError={(e) => console.error(`[Diagrams] Image ${idx + 1} failed to load:`, e.nativeEvent?.error)}
+                          onError={(e) => console.error(`[Diagrams] Image ${idx + 1} failed to load:`, e)}
                         />
                       </View>
                     ) : (
@@ -2675,7 +2656,8 @@ IMPORTANT REQUIREMENTS:
                 <Image
                   source={{ uri: generatedImage }}
                   style={styles.generatedImage}
-                  resizeMode="contain"
+                  contentFit="contain"
+                  cachePolicy="memory-disk"
                 />
               </View>
             )}

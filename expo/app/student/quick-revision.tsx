@@ -1,6 +1,7 @@
 import { useRouter } from 'expo-router';
 import { ChevronLeft, Zap, Clock, Loader2, RefreshCw, ChevronRight as ChevronRightIcon, ChevronLeft as ChevronLeftIcon, Sparkles, Brain, Lightbulb, FlaskConical, ImageIcon } from 'lucide-react-native';
-import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Platform, Animated, Dimensions, Alert, Image, ActivityIndicator } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Platform, Animated, Dimensions, Alert, ActivityIndicator } from 'react-native';
+import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { useApp } from '@/contexts/app-context';
@@ -587,10 +588,11 @@ Mark importance as "critical" for must-know items, "important" for frequently te
                   <Image
                     source={{ uri: cardImage }}
                     style={styles.cardImage}
-                    resizeMode="contain"
+                    contentFit="contain"
+                    cachePolicy="memory-disk"
                     onLoad={() => console.log('[QuickRevision] Image loaded successfully')}
                     onError={(e) => {
-                      console.error('[QuickRevision] Image failed to load:', e.nativeEvent?.error);
+                      console.error('[QuickRevision] Image failed to load:', e);
                       setImageError(true);
                     }}
                   />

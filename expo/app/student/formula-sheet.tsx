@@ -5,7 +5,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useApp } from '@/contexts/app-context';
 import { useTheme } from '@/contexts/theme-context';
-import { useSubscription } from '@/contexts/subscription-context';
 import { useMutation } from '@tanstack/react-query';
 import { robustGenerateText } from '@/lib/ai-generate';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -165,7 +164,7 @@ export default function FormulaSheetScreen() {
   const insets = useSafeAreaInsets();
   const { selectedLanguage } = useApp();
   const { colors, isDark } = useTheme();
-  const { isPremium } = useSubscription();
+
 
   const [selectedBoard, setSelectedBoard] = useState<BoardKey>('NCERT');
   const [selectedSubject, setSelectedSubject] = useState<SubjectConfig | null>(null);
@@ -182,10 +181,6 @@ export default function FormulaSheetScreen() {
 
   const generateMutation = useMutation({
     mutationFn: async () => {
-      if (!isPremium) {
-        Alert.alert('Premium Feature', 'Formula sheets are a premium feature. Please upgrade to access comprehensive formula sheets.');
-        throw new Error('Premium required');
-      }
       if (!selectedSubject || !selectedGrade) {
         Alert.alert('Selection Required', 'Please select a subject and grade.');
         throw new Error('Missing selection');

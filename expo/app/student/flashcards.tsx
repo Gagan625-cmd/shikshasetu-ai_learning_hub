@@ -1,11 +1,10 @@
 import { useRouter } from 'expo-router';
 import { ChevronLeft, Sparkles, RotateCcw, ChevronRight as ChevronRightIcon, ChevronLeft as ChevronLeftIcon, Loader2, Crown, Zap, BookOpen, Layers } from 'lucide-react-native';
-import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Platform, Animated, Dimensions, Alert } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Platform, Animated, Dimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { useApp } from '@/contexts/app-context';
 import { useTheme } from '@/contexts/theme-context';
-import { useSubscription } from '@/contexts/subscription-context';
 import { useMutation } from '@tanstack/react-query';
 import { robustGenerateText } from '@/lib/ai-generate';
 import { NCERT_SUBJECTS } from '@/constants/ncert-data';
@@ -371,7 +370,7 @@ export default function FlashcardsScreen() {
   const insets = useSafeAreaInsets();
   const { selectedLanguage } = useApp();
   const { colors, isDark } = useTheme();
-  const { isPremium } = useSubscription();
+
 
   const [selectedBoard, setSelectedBoard] = useState<'NCERT' | 'ICSE'>('NCERT');
   const [selectedGrade, setSelectedGrade] = useState<number>(6);
@@ -479,11 +478,6 @@ export default function FlashcardsScreen() {
 
   const generateMutation = useMutation({
     mutationFn: async () => {
-      if (!isPremium) {
-        Alert.alert('Premium Feature', 'Flashcards are a premium feature. Please upgrade to access AI-generated flashcards for all subjects and chapters.');
-        throw new Error('Premium required');
-      }
-
       const subjectName = subjects.find((s) => s.id === selectedSubject)?.name || '';
       const chapterInfo = selectedChapterData
         ? `Chapter ${selectedChapterData.number}: ${selectedChapterData.title} - ${selectedChapterData.description}`

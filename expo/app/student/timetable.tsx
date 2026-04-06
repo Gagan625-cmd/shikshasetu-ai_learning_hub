@@ -4,8 +4,7 @@ import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Platform, TextInp
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useTheme } from '@/contexts/theme-context';
-import { useSubscription } from '@/contexts/subscription-context';
-import PremiumGate from '@/components/PremiumGate';
+
 import { useMutation } from '@tanstack/react-query';
 import { robustGenerateText } from '@/lib/ai-generate';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -232,30 +231,12 @@ function parseTimetable(text: string): GeneratedTimetable {
   };
 }
 
-const TIMETABLE_PREMIUM_FEATURES = [
-  { text: 'AI-generated smart study timetable' },
-  { text: 'Subject-wise prioritized scheduling' },
-  { text: 'Customizable hours per day' },
-  { text: 'Daily tips & motivation included' },
-  { text: 'Track progress with checkmarks' },
-];
+
 
 export default function TimetableScreen() {
   const router = useRouter();
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
-  const { isPremium } = useSubscription();
-
-  if (!isPremium) {
-    return (
-      <PremiumGate
-        title="AI Study Planner"
-        description="Generate a smart, AI-powered study timetable customized to your exam schedule."
-        features={TIMETABLE_PREMIUM_FEATURES}
-      />
-    );
-  }
-
   const [board, setBoard] = useState<Board>('CBSE');
   const [grade, setGrade] = useState<number>(10);
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);

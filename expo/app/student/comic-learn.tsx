@@ -18,8 +18,7 @@ import { robustGenerateText } from '@/lib/ai-generate';
 import { NCERT_SUBJECTS } from '@/constants/ncert-data';
 import { ICSE_SUBJECTS } from '@/constants/icse-data';
 import { useTheme } from '@/contexts/theme-context';
-import { useSubscription } from '@/contexts/subscription-context';
-import PremiumGate from '@/components/PremiumGate';
+
 
 interface ComicPanel {
   id: number;
@@ -60,28 +59,11 @@ const MOOD_BACKGROUNDS: Record<string, string[]> = {
   teaching: ['#f0fdf4', '#dcfce7'],
 };
 
-const COMIC_PREMIUM_FEATURES = [
-  { text: 'Learn any chapter through fun comics' },
-  { text: 'AI-generated characters & dialogues' },
-  { text: 'Key points highlighted in every panel' },
-  { text: 'Fun facts to boost retention' },
-  { text: 'Supports NCERT & ICSE syllabus' },
-];
+
 
 export default function ComicLearnScreen() {
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
-  const { isPremium } = useSubscription();
-
-  if (!isPremium) {
-    return (
-      <PremiumGate
-        title="Comic Learn"
-        description="Learn chapters through engaging AI-generated comics with characters, dialogues, and key points."
-        features={COMIC_PREMIUM_FEATURES}
-      />
-    );
-  }
   const scrollRef = useRef<ScrollView>(null);
   
   const [selectedBoard, setSelectedBoard] = useState<string>('');
