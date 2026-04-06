@@ -47,6 +47,16 @@ CRITICAL - For all formulas:
 - Mark these questions with [COMPETENCY-BASED] tag
 - These should test higher-order thinking skills (HOTs)
 
+🖼️ MANDATORY IMAGE/DIAGRAM-BASED QUESTIONS (At least 2):
+- You MUST include AT LEAST 2 diagram/figure/image-based questions in the paper
+- Each diagram question MUST include a tag in this EXACT format: [DIAGRAM: detailed description of the diagram]
+- The description inside [DIAGRAM: ...] should be very detailed so an AI image generator can create it
+- Examples of good [DIAGRAM: ...] tags:
+  [DIAGRAM: A ray diagram showing refraction of light through a glass prism with incident ray, refracted ray, emergent ray, angles labeled]
+  [DIAGRAM: A labeled cross-section of a human heart showing four chambers, valves, aorta, pulmonary artery, vena cava with arrows showing blood flow]
+  [DIAGRAM: A laboratory setup for preparation of HCl gas showing flask with NaCl, funnel for acid, delivery tube, gas jar, and collection apparatus]
+- These diagram questions test visual interpretation, labeling, and concept application
+
 `;
 
   if (subjectName === 'English Language') {
@@ -1699,6 +1709,17 @@ ${isHigherGrade ? `🎯 COMPETENCY-BASED QUESTIONS (50% of total marks = 40 mark
 
 Difficulty: Easy (30%), Medium (40%), Hard (30%)
 
+🖼️ MANDATORY IMAGE/DIAGRAM-BASED QUESTIONS (At least 2):
+- You MUST include AT LEAST 2 diagram/figure/image-based questions in the paper
+- Each diagram question MUST include a tag in this EXACT format: [DIAGRAM: detailed description of the diagram]
+- The description inside [DIAGRAM: ...] should be very detailed so an AI image generator can create it
+- Examples of good [DIAGRAM: ...] tags:
+  [DIAGRAM: A ray diagram showing refraction of light through a glass prism with incident ray, refracted ray, emergent ray, angles of incidence and emergence labeled, and the spectrum of colors on the other side]
+  [DIAGRAM: A labeled cross-section of a human heart showing four chambers (left atrium, right atrium, left ventricle, right ventricle), valves (tricuspid, bicuspid, semilunar), aorta, pulmonary artery, and vena cava with arrows showing blood flow direction]
+  [DIAGRAM: A circuit diagram with a battery of 12V, three resistors R1=2Ω, R2=3Ω, R3=6Ω connected in parallel, an ammeter in series, and a voltmeter across the parallel combination]
+- Place these questions in Section B/C for short answer or Section E for long answer
+- These diagram questions test visual interpretation, labeling, and concept application
+
 ═══════════════════════════════════════════════════════════════
                     CBSE BOARD EXAMINATION
                         CLASS ${selectedGrade}
@@ -1780,6 +1801,8 @@ ${isHigherGrade ? `- Q30: Numerical problem (5 marks) [NUMERICAL] - Multi-step c
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+REMEMBER: You MUST include at least 2 questions with [DIAGRAM: detailed description] tags. The descriptions must be detailed enough for an AI to generate the image.
+
 CRITICAL RULE: DO NOT include answers alongside questions. ALL answers must ONLY appear in "ANSWER KEY" at the very end.
 
 ANSWER KEY
@@ -1841,6 +1864,9 @@ IMPORTANT REQUIREMENTS:
           completedAt: new Date(),
         };
         addContentActivity(activity);
+      }
+      if (contentType === 'questionpaper') {
+        void generateDiagramImages(data);
       }
     },
   });
@@ -1926,10 +1952,98 @@ IMPORTANT REQUIREMENTS:
 
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+  const [diagramImages, setDiagramImages] = useState<Array<{ description: string; imageUri: string; index: number }>>([]);
+  const [isGeneratingDiagrams, setIsGeneratingDiagrams] = useState(false);
+  const [diagramProgress, setDiagramProgress] = useState(0);
+  const [totalDiagrams, setTotalDiagrams] = useState(0);
 
   const canGenerate = isMultiChapterMode 
     ? selectedChapters.length >= 2 && selectedSubject
     : (selectedChapter || customTopic.trim().length > 0) && selectedSubject;
+
+  const extractDiagramDescriptions = (text: string): Array<{ description: string; index: number }> => {
+    const diagrams: Array<{ description: string; index: number }> = [];
+    const patterns = [
+      /\[DIAGRAM:\s*([^\]]+)\]/gi,
+      /\[FIGURE:\s*([^\]]+)\]/gi,
+      /\[PICTURE:\s*([^\]]+)\]/gi,
+      /\[IMAGE:\s*([^\]]+)\]/gi,
+    ];
+    for (const pattern of patterns) {
+      let match;
+      while ((match = pattern.exec(text)) !== null) {
+        diagrams.push({ description: match[1].trim(), index: match.index });
+      }
+    }
+    diagrams.sort((a, b) => a.index - b.index);
+    const seen = new Set<string>();
+    return diagrams.filter(d => {
+      const key = d.description.toLowerCase().slice(0, 50);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  };
+
+  const generateDiagramImages = async (content: string) => {
+    const descriptions = extractDiagramDescriptions(content);
+    const toGenerate = descriptions.slice(0, 4);
+    if (toGenerate.length === 0) {
+      console.log('[Diagrams] No diagram descriptions found, generating 2 default diagrams');
+      const subjectName = subjects.find((s) => s.id === selectedSubject)?.name || '';
+      const chapterTitle = selectedChapterData?.title || selectedChaptersData.map(c => c.title).join(', ') || customTopic || 'Topic';
+      const defaultDescriptions = [
+        { description: `A clear, labeled educational diagram for ${selectedBoard} Grade ${selectedGrade} ${subjectName} - ${chapterTitle}. Show the most important concept visually with proper labels, arrows, and annotations. Clean scientific diagram style.`, index: 0 },
+        { description: `A detailed figure or chart for ${selectedBoard} Grade ${selectedGrade} ${subjectName} - ${chapterTitle}. Show a different key concept with measurements, labels, and clear visual representation. Educational textbook diagram style.`, index: 1 },
+      ];
+      toGenerate.push(...defaultDescriptions);
+    } else if (toGenerate.length < 2) {
+      const subjectName = subjects.find((s) => s.id === selectedSubject)?.name || '';
+      const chapterTitle = selectedChapterData?.title || customTopic || 'Topic';
+      toGenerate.push({ description: `A detailed educational figure for ${selectedBoard} Grade ${selectedGrade} ${subjectName} - ${chapterTitle}. Educational textbook diagram with labels and annotations.`, index: 999 });
+    }
+
+    setIsGeneratingDiagrams(true);
+    setDiagramProgress(0);
+    setTotalDiagrams(toGenerate.length);
+    setDiagramImages([]);
+
+    const results: Array<{ description: string; imageUri: string; index: number }> = [];
+
+    for (let i = 0; i < toGenerate.length; i++) {
+      const item = toGenerate[i];
+      setDiagramProgress(i + 1);
+      try {
+        console.log(`[Diagrams] Generating image ${i + 1}/${toGenerate.length}: ${item.description.slice(0, 80)}...`);
+        const imagePrompt = `Create a clean, professional educational diagram: ${item.description}. Style: Clear black lines on white background, properly labeled with arrows, suitable for a printed exam question paper. No decorative elements, focus on accuracy and clarity. Scientific/textbook illustration style.`;
+        const response = await fetch('https://toolkit.rork.com/images/generate/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: imagePrompt, size: '1024x1024' }),
+        });
+        if (!response.ok) throw new Error(`Image generation failed: ${response.status}`);
+        const data = await response.json();
+        if (data?.image?.base64Data) {
+          results.push({
+            description: item.description,
+            imageUri: `data:${data.image.mimeType};base64,${data.image.base64Data}`,
+            index: item.index,
+          });
+          setDiagramImages([...results]);
+          console.log(`[Diagrams] Successfully generated image ${i + 1}`);
+        }
+      } catch (error: any) {
+        console.error(`[Diagrams] Failed to generate image ${i + 1}:`, error?.message);
+      }
+    }
+
+    setIsGeneratingDiagrams(false);
+    if (results.length === 0) {
+      console.warn('[Diagrams] No diagram images could be generated');
+    } else {
+      console.log(`[Diagrams] Generated ${results.length} diagram images successfully`);
+    }
+  };
 
   const handleGenerateImage = async () => {
     if (!generatedContent) return;
@@ -2386,7 +2500,7 @@ IMPORTANT REQUIREMENTS:
 
         <TouchableOpacity
           style={[styles.generateButton, !canGenerate && styles.generateButtonDisabled]}
-          onPress={() => { setGeneratedImage(null); generateMutation.mutate(); }}
+          onPress={() => { setGeneratedImage(null); setDiagramImages([]); generateMutation.mutate(); }}
           disabled={!canGenerate || generateMutation.isPending}
         >
           {generateMutation.isPending ? (
@@ -2456,23 +2570,64 @@ IMPORTANT REQUIREMENTS:
             </View>
 
 
-            <TouchableOpacity
-              style={[styles.imageGenButton, isGeneratingImage && { opacity: 0.6 }]}
-              onPress={handleGenerateImage}
-              disabled={isGeneratingImage}
-              activeOpacity={0.8}
-            >
-              {isGeneratingImage ? (
-                <ActivityIndicator size="small" color="#f97316" />
-              ) : (
-                <ImageIcon size={18} color="#f97316" />
-              )}
-              <Text style={styles.imageGenButtonText}>
-                {isGeneratingImage ? 'Generating Illustration...' : 'Generate Illustration'}
-              </Text>
-            </TouchableOpacity>
+            {contentType === 'questionpaper' && (isGeneratingDiagrams || diagramImages.length > 0) && (
+              <View style={[styles.diagramsSection, { backgroundColor: isDark ? colors.cardBg : '#ffffff', borderColor: colors.border }]}>
+                <View style={styles.diagramsSectionHeader}>
+                  <ImageIcon size={20} color="#f97316" />
+                  <Text style={[styles.diagramsSectionTitle, { color: isDark ? '#f1f5f9' : '#1e293b' }]}>
+                    Diagram-Based Questions ({diagramImages.length}{isGeneratingDiagrams ? `/${totalDiagrams}` : ''} generated)
+                  </Text>
+                </View>
+                {isGeneratingDiagrams && (
+                  <View style={styles.diagramProgressBar}>
+                    <View style={[styles.diagramProgressFill, { width: `${(diagramProgress / totalDiagrams) * 100}%` }]} />
+                    <Text style={styles.diagramProgressText}>
+                      Generating diagram {diagramProgress} of {totalDiagrams}...
+                    </Text>
+                  </View>
+                )}
+                {diagramImages.map((diagram, idx) => (
+                  <View key={idx} style={[styles.diagramCard, { borderColor: colors.border }]}>
+                    <Text style={[styles.diagramLabel, { color: isDark ? '#f1f5f9' : '#1e293b' }]}>Diagram {idx + 1}</Text>
+                    <Text style={[styles.diagramDescription, { color: isDark ? '#94a3b8' : '#64748b' }]} numberOfLines={3}>{diagram.description}</Text>
+                    <Image
+                      source={{ uri: diagram.imageUri }}
+                      style={styles.diagramImage}
+                      resizeMode="contain"
+                    />
+                  </View>
+                ))}
+                {!isGeneratingDiagrams && diagramImages.length > 0 && (
+                  <TouchableOpacity
+                    style={styles.regenerateDiagramsButton}
+                    onPress={() => void generateDiagramImages(generatedContent)}
+                  >
+                    <ImageIcon size={16} color="#f97316" />
+                    <Text style={styles.regenerateDiagramsText}>Regenerate Diagrams</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
 
-            {generatedImage && (
+            {contentType !== 'questionpaper' && (
+              <TouchableOpacity
+                style={[styles.imageGenButton, isGeneratingImage && { opacity: 0.6 }]}
+                onPress={handleGenerateImage}
+                disabled={isGeneratingImage}
+                activeOpacity={0.8}
+              >
+                {isGeneratingImage ? (
+                  <ActivityIndicator size="small" color="#f97316" />
+                ) : (
+                  <ImageIcon size={18} color="#f97316" />
+                )}
+                <Text style={styles.imageGenButtonText}>
+                  {isGeneratingImage ? 'Generating Illustration...' : 'Generate Illustration'}
+                </Text>
+              </TouchableOpacity>
+            )}
+
+            {generatedImage && contentType !== 'questionpaper' && (
               <View style={styles.generatedImageCard}>
                 <Text style={[styles.resultTitle, { color: isDark ? '#f1f5f9' : '#1e293b', marginBottom: 12 }]}>Generated Illustration</Text>
                 <Image
@@ -2922,5 +3077,100 @@ const styles = StyleSheet.create({
     width: '100%' as const,
     height: 300,
     borderRadius: 12,
+  },
+  diagramsSection: {
+    marginTop: 16,
+    padding: 16,
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+      },
+      android: { elevation: 4 },
+      web: { boxShadow: '0 2px 8px rgba(0,0,0,0.1)' },
+    }),
+  },
+  diagramsSectionHeader: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 10,
+    marginBottom: 16,
+  },
+  diagramsSectionTitle: {
+    fontSize: 17,
+    fontWeight: '700' as const,
+    color: '#1e293b',
+  },
+  diagramProgressBar: {
+    height: 28,
+    backgroundColor: '#f1f5f9',
+    borderRadius: 14,
+    marginBottom: 16,
+    overflow: 'hidden' as const,
+    justifyContent: 'center' as const,
+  },
+  diagramProgressFill: {
+    position: 'absolute' as const,
+    left: 0,
+    top: 0,
+    bottom: 0,
+    backgroundColor: '#f97316',
+    borderRadius: 14,
+    opacity: 0.2,
+  },
+  diagramProgressText: {
+    fontSize: 12,
+    fontWeight: '600' as const,
+    color: '#f97316',
+    textAlign: 'center' as const,
+  },
+  diagramCard: {
+    marginBottom: 16,
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    backgroundColor: '#fafafa',
+  },
+  diagramLabel: {
+    fontSize: 15,
+    fontWeight: '700' as const,
+    color: '#1e293b',
+    marginBottom: 4,
+  },
+  diagramDescription: {
+    fontSize: 12,
+    color: '#64748b',
+    marginBottom: 12,
+    lineHeight: 18,
+    fontStyle: 'italic' as const,
+  },
+  diagramImage: {
+    width: '100%' as const,
+    height: 280,
+    borderRadius: 10,
+    backgroundColor: '#ffffff',
+  },
+  regenerateDiagramsButton: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    gap: 8,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: 'rgba(249, 115, 22, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(249, 115, 22, 0.25)',
+  },
+  regenerateDiagramsText: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: '#f97316',
   },
 });
