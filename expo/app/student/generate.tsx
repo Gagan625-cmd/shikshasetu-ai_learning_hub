@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
-import { ChevronLeft, Sparkles, FileText, BookText, ScrollText, Loader2, Download, Share2, Network, Volume2, VolumeX } from 'lucide-react-native';
-import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Platform, TextInput, Alert } from 'react-native';
+import { ChevronLeft, Sparkles, FileText, BookText, ScrollText, Loader2, Download, Share2, Network, Volume2, VolumeX, ImageIcon } from 'lucide-react-native';
+import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Platform, TextInput, Alert, Image, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState } from 'react';
 import { useApp } from '@/contexts/app-context';
@@ -1924,9 +1924,41 @@ IMPORTANT REQUIREMENTS:
     { id: 'questionpaper' as const, label: 'Question Paper', icon: FileText, color: '#ef4444' },
   ];
 
+  const [generatedImage, setGeneratedImage] = useState<string | null>(null);
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+
   const canGenerate = isMultiChapterMode 
-    ? selectedChapters.length > 0 && selectedSubject
+    ? selectedChapters.length >= 2 && selectedSubject
     : (selectedChapter || customTopic.trim().length > 0) && selectedSubject;
+
+  const handleGenerateImage = async () => {
+    if (!generatedContent) return;
+    setIsGeneratingImage(true);
+    try {
+      const subjectName = subjects.find((s) => s.id === selectedSubject)?.name || '';
+      const chapterTitle = selectedChapterData?.title || customTopic || 'Topic';
+      const imagePrompt = `Create a clean, educational diagram or illustration for ${selectedBoard} Grade ${selectedGrade} ${subjectName} - ${chapterTitle}. The image should be a clear, labeled educational diagram suitable for a ${contentType === 'questionpaper' ? 'question paper' : 'study material'}. Use clean lines, clear labels, and professional colors. No text-heavy content, focus on visual representation of the concept.`;
+
+      const response = await fetch('https://toolkit.rork.com/images/generate/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: imagePrompt, size: '1024x1024' }),
+      });
+
+      if (!response.ok) throw new Error('Image generation failed');
+      const data = await response.json();
+      if (data?.image?.base64Data) {
+        setGeneratedImage(`data:${data.image.mimeType};base64,${data.image.base64Data}`);
+      } else {
+        throw new Error('No image data returned');
+      }
+    } catch (error: any) {
+      console.error('Image generation error:', error);
+      Alert.alert('Error', 'Failed to generate illustration. Please try again.');
+    } finally {
+      setIsGeneratingImage(false);
+    }
+  };
 
   const speakChunks = async (text: string, language: string) => {
     const MAX_CHUNK_SIZE = 3500;
@@ -2346,9 +2378,15 @@ IMPORTANT REQUIREMENTS:
           </View>
         </View>
 
+        {isMultiChapterMode && selectedSubject && selectedChapters.length > 0 && selectedChapters.length < 2 && (
+          <View style={styles.minChaptersWarning}>
+            <Text style={styles.minChaptersText}>Please select at least 2 chapters for a question paper</Text>
+          </View>
+        )}
+
         <TouchableOpacity
           style={[styles.generateButton, !canGenerate && styles.generateButtonDisabled]}
-          onPress={() => generateMutation.mutate()}
+          onPress={() => { setGeneratedImage(null); generateMutation.mutate(); }}
           disabled={!canGenerate || generateMutation.isPending}
         >
           {generateMutation.isPending ? (
@@ -2417,6 +2455,33 @@ IMPORTANT REQUIREMENTS:
               </TouchableOpacity>
             </View>
 
+
+            <TouchableOpacity
+              style={[styles.imageGenButton, isGeneratingImage && { opacity: 0.6 }]}
+              onPress={handleGenerateImage}
+              disabled={isGeneratingImage}
+              activeOpacity={0.8}
+            >
+              {isGeneratingImage ? (
+                <ActivityIndicator size="small" color="#f97316" />
+              ) : (
+                <ImageIcon size={18} color="#f97316" />
+              )}
+              <Text style={styles.imageGenButtonText}>
+                {isGeneratingImage ? 'Generating Illustration...' : 'Generate Illustration'}
+              </Text>
+            </TouchableOpacity>
+
+            {generatedImage && (
+              <View style={styles.generatedImageCard}>
+                <Text style={[styles.resultTitle, { color: isDark ? '#f1f5f9' : '#1e293b', marginBottom: 12 }]}>Generated Illustration</Text>
+                <Image
+                  source={{ uri: generatedImage }}
+                  style={styles.generatedImage}
+                  resizeMode="contain"
+                />
+              </View>
+            )}
 
             <View style={[styles.resultCard, { backgroundColor: isDark ? colors.cardBg : '#ffffff', borderWidth: 1, borderColor: colors.border }]}>
               <Text style={[styles.resultTitle, { color: isDark ? '#f1f5f9' : '#1e293b' }]}>Generated Content</Text>
@@ -2803,5 +2868,59 @@ const styles = StyleSheet.create({
     lineHeight: 26,
     letterSpacing: 0.2,
   },
-
+  minChaptersWarning: {
+    backgroundColor: '#fef3c7',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#fbbf24',
+  },
+  minChaptersText: {
+    fontSize: 13,
+    fontWeight: '600' as const,
+    color: '#92400e',
+    textAlign: 'center' as const,
+  },
+  imageGenButton: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    gap: 8,
+    marginTop: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 14,
+    backgroundColor: 'rgba(249, 115, 22, 0.08)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(249, 115, 22, 0.25)',
+  },
+  imageGenButtonText: {
+    fontSize: 14,
+    fontWeight: '700' as const,
+    color: '#f97316',
+  },
+  generatedImageCard: {
+    marginTop: 16,
+    padding: 16,
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+      },
+      android: { elevation: 4 },
+      web: { boxShadow: '0 2px 8px rgba(0,0,0,0.1)' },
+    }),
+  },
+  generatedImage: {
+    width: '100%' as const,
+    height: 300,
+    borderRadius: 12,
+  },
 });

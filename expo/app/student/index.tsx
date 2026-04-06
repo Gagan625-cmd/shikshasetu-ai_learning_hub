@@ -379,7 +379,91 @@ interface OnboardingData {
   completedAt?: string;
 }
 
-const DAILY_STUDY_PLANS: Array<{ subject: string; topic: string; duration: string; color: string; icon: string; priority: 'high' | 'medium' | 'low' }> = [
+type StudyPlan = { subject: string; topic: string; duration: string; color: string; icon: string; priority: 'high' | 'medium' | 'low' };
+
+const BOARD_CLASS_STUDY_PLANS: Record<string, StudyPlan[]> = {
+  'CBSE_10': [
+    { subject: 'Mathematics', topic: 'Quadratic Equations - Practice factoring', duration: '30 min', color: '#3b82f6', icon: '📐', priority: 'high' },
+    { subject: 'Science', topic: 'Chemical Reactions & Balancing', duration: '25 min', color: '#10b981', icon: '🧪', priority: 'high' },
+    { subject: 'English', topic: 'Letter Writing - Formal format', duration: '20 min', color: '#8b5cf6', icon: '✍️', priority: 'medium' },
+    { subject: 'Social Science', topic: 'French Revolution key events', duration: '20 min', color: '#f59e0b', icon: '🌍', priority: 'medium' },
+    { subject: 'Hindi', topic: 'Vyakaran - Samas Practice', duration: '15 min', color: '#ef4444', icon: '📖', priority: 'low' },
+    { subject: 'Mathematics', topic: 'Trigonometry - Sin, Cos, Tan identities', duration: '35 min', color: '#3b82f6', icon: '📐', priority: 'high' },
+    { subject: 'Science', topic: 'Electricity - Ohm\'s Law problems', duration: '30 min', color: '#10b981', icon: '⚡', priority: 'high' },
+    { subject: 'English', topic: 'Comprehension passage practice', duration: '20 min', color: '#8b5cf6', icon: '📝', priority: 'medium' },
+    { subject: 'Social Science', topic: 'Resources & Development - Map work', duration: '20 min', color: '#06b6d4', icon: '🗺️', priority: 'medium' },
+    { subject: 'Mathematics', topic: 'Statistics - Mean, Median, Mode', duration: '25 min', color: '#3b82f6', icon: '📊', priority: 'high' },
+    { subject: 'Science', topic: 'Life Processes - Nutrition in plants', duration: '25 min', color: '#10b981', icon: '🌱', priority: 'high' },
+    { subject: 'Social Science', topic: 'Indian Economy - Sectors', duration: '20 min', color: '#f59e0b', icon: '💹', priority: 'medium' },
+    { subject: 'Mathematics', topic: 'Coordinate Geometry - Distance formula', duration: '30 min', color: '#3b82f6', icon: '📏', priority: 'high' },
+    { subject: 'Science', topic: 'Light - Reflection & Refraction', duration: '30 min', color: '#10b981', icon: '💡', priority: 'high' },
+    { subject: 'English', topic: 'Grammar - Active & Passive Voice', duration: '20 min', color: '#8b5cf6', icon: '📚', priority: 'medium' },
+  ],
+  'CBSE_9': [
+    { subject: 'Mathematics', topic: 'Number Systems - Rational & Irrational', duration: '30 min', color: '#3b82f6', icon: '📐', priority: 'high' },
+    { subject: 'Science', topic: 'Matter in Our Surroundings', duration: '25 min', color: '#10b981', icon: '🧪', priority: 'high' },
+    { subject: 'English', topic: 'Beehive - The Fun They Had', duration: '20 min', color: '#8b5cf6', icon: '📖', priority: 'medium' },
+    { subject: 'Social Science', topic: 'India - Size and Location', duration: '20 min', color: '#f59e0b', icon: '🌍', priority: 'medium' },
+    { subject: 'Mathematics', topic: 'Polynomials - Factorization', duration: '30 min', color: '#3b82f6', icon: '📊', priority: 'high' },
+    { subject: 'Science', topic: 'Motion - Speed, Velocity, Acceleration', duration: '30 min', color: '#10b981', icon: '⚡', priority: 'high' },
+    { subject: 'Social Science', topic: 'French Revolution - Causes & Impact', duration: '20 min', color: '#f59e0b', icon: '🏛️', priority: 'medium' },
+    { subject: 'Mathematics', topic: 'Linear Equations in Two Variables', duration: '25 min', color: '#3b82f6', icon: '📏', priority: 'high' },
+    { subject: 'Science', topic: 'Atoms and Molecules - Mole Concept', duration: '30 min', color: '#10b981', icon: '🔬', priority: 'high' },
+    { subject: 'English', topic: 'Grammar - Tenses & Transformation', duration: '20 min', color: '#8b5cf6', icon: '✍️', priority: 'medium' },
+    { subject: 'Social Science', topic: 'Democracy - What & Why', duration: '15 min', color: '#f59e0b', icon: '🗳️', priority: 'low' },
+    { subject: 'Mathematics', topic: 'Triangles - Congruence Theorems', duration: '25 min', color: '#3b82f6', icon: '📐', priority: 'high' },
+  ],
+  'CBSE_8': [
+    { subject: 'Mathematics', topic: 'Rational Numbers - Operations', duration: '25 min', color: '#3b82f6', icon: '📐', priority: 'high' },
+    { subject: 'Science', topic: 'Crop Production & Management', duration: '20 min', color: '#10b981', icon: '🌾', priority: 'medium' },
+    { subject: 'English', topic: 'Honeydew - The Best Christmas Present', duration: '20 min', color: '#8b5cf6', icon: '📖', priority: 'medium' },
+    { subject: 'Social Science', topic: 'How, When and Where - History', duration: '20 min', color: '#f59e0b', icon: '📜', priority: 'medium' },
+    { subject: 'Mathematics', topic: 'Linear Equations in One Variable', duration: '30 min', color: '#3b82f6', icon: '📊', priority: 'high' },
+    { subject: 'Science', topic: 'Synthetic Fibres and Plastics', duration: '20 min', color: '#10b981', icon: '🧵', priority: 'medium' },
+    { subject: 'Mathematics', topic: 'Data Handling - Graphs & Charts', duration: '25 min', color: '#3b82f6', icon: '📈', priority: 'high' },
+    { subject: 'Science', topic: 'Force and Pressure', duration: '25 min', color: '#10b981', icon: '💪', priority: 'high' },
+    { subject: 'Social Science', topic: 'Resources - Types & Conservation', duration: '20 min', color: '#f59e0b', icon: '🌿', priority: 'medium' },
+  ],
+  'ICSE_10': [
+    { subject: 'Physics', topic: 'Force, Work, Power & Energy', duration: '35 min', color: '#3b82f6', icon: '⚡', priority: 'high' },
+    { subject: 'Chemistry', topic: 'Periodic Table - Groups & Periods', duration: '30 min', color: '#10b981', icon: '🧪', priority: 'high' },
+    { subject: 'Mathematics', topic: 'Quadratic Equations - Discriminant', duration: '30 min', color: '#8b5cf6', icon: '📐', priority: 'high' },
+    { subject: 'Biology', topic: 'Cell Division - Mitosis & Meiosis', duration: '25 min', color: '#ef4444', icon: '🔬', priority: 'high' },
+    { subject: 'English Literature', topic: 'Merchant of Venice - Act 1', duration: '20 min', color: '#f59e0b', icon: '📚', priority: 'medium' },
+    { subject: 'Geography', topic: 'Map Study - Topographic Sheets', duration: '25 min', color: '#06b6d4', icon: '🗺️', priority: 'medium' },
+    { subject: 'History', topic: 'First War of Independence 1857', duration: '20 min', color: '#f97316', icon: '🏛️', priority: 'medium' },
+    { subject: 'Physics', topic: 'Refraction of Light - Snell\'s Law', duration: '30 min', color: '#3b82f6', icon: '💡', priority: 'high' },
+    { subject: 'Chemistry', topic: 'Mole Concept & Stoichiometry', duration: '35 min', color: '#10b981', icon: '⚗️', priority: 'high' },
+    { subject: 'Mathematics', topic: 'Trigonometry - Heights & Distances', duration: '30 min', color: '#8b5cf6', icon: '📏', priority: 'high' },
+    { subject: 'Biology', topic: 'Human Nervous System', duration: '25 min', color: '#ef4444', icon: '🧠', priority: 'high' },
+    { subject: 'Computer Applications', topic: 'Arrays & String functions', duration: '25 min', color: '#14b8a6', icon: '💻', priority: 'medium' },
+  ],
+  'ICSE_9': [
+    { subject: 'Physics', topic: 'Measurements & Experimentation', duration: '25 min', color: '#3b82f6', icon: '📏', priority: 'high' },
+    { subject: 'Chemistry', topic: 'Language of Chemistry - Formulae', duration: '25 min', color: '#10b981', icon: '🧪', priority: 'high' },
+    { subject: 'Mathematics', topic: 'Compound Interest - Problems', duration: '30 min', color: '#8b5cf6', icon: '📐', priority: 'high' },
+    { subject: 'Biology', topic: 'Plant & Animal Tissues', duration: '25 min', color: '#ef4444', icon: '🌱', priority: 'high' },
+    { subject: 'English', topic: 'Grammar - Reported Speech', duration: '20 min', color: '#f59e0b', icon: '✍️', priority: 'medium' },
+    { subject: 'Geography', topic: 'Weathering & Soil Formation', duration: '20 min', color: '#06b6d4', icon: '🌍', priority: 'medium' },
+    { subject: 'History', topic: 'Harappan Civilization', duration: '20 min', color: '#f97316', icon: '🏺', priority: 'medium' },
+    { subject: 'Physics', topic: 'Motion in One Dimension', duration: '30 min', color: '#3b82f6', icon: '🏃', priority: 'high' },
+    { subject: 'Chemistry', topic: 'Atomic Structure - Bohr Model', duration: '25 min', color: '#10b981', icon: '⚛️', priority: 'high' },
+    { subject: 'Mathematics', topic: 'Expansions & Factorization', duration: '30 min', color: '#8b5cf6', icon: '📊', priority: 'high' },
+  ],
+  'State Board_10': [
+    { subject: 'Mathematics', topic: 'Algebra - Linear Equations', duration: '30 min', color: '#3b82f6', icon: '📐', priority: 'high' },
+    { subject: 'Science', topic: 'Chemical Reactions - Types', duration: '25 min', color: '#10b981', icon: '🧪', priority: 'high' },
+    { subject: 'English', topic: 'Essay Writing Practice', duration: '20 min', color: '#8b5cf6', icon: '✍️', priority: 'medium' },
+    { subject: 'Social Science', topic: 'Indian Constitution', duration: '20 min', color: '#f59e0b', icon: '📜', priority: 'medium' },
+    { subject: 'Mathematics', topic: 'Geometry - Circle Theorems', duration: '30 min', color: '#3b82f6', icon: '📊', priority: 'high' },
+    { subject: 'Science', topic: 'Heredity & Evolution', duration: '25 min', color: '#10b981', icon: '🧬', priority: 'high' },
+    { subject: 'Mathematics', topic: 'Probability & Statistics', duration: '25 min', color: '#3b82f6', icon: '📈', priority: 'high' },
+    { subject: 'Science', topic: 'Electricity & Magnetism', duration: '30 min', color: '#10b981', icon: '⚡', priority: 'high' },
+    { subject: 'Social Science', topic: 'Geography - Resources', duration: '20 min', color: '#f59e0b', icon: '🌍', priority: 'medium' },
+  ],
+};
+
+const DEFAULT_STUDY_PLANS: StudyPlan[] = [
   { subject: 'Mathematics', topic: 'Quadratic Equations - Practice factoring', duration: '30 min', color: '#3b82f6', icon: '📐', priority: 'high' },
   { subject: 'Science', topic: 'Chemical Reactions & Balancing', duration: '25 min', color: '#10b981', icon: '🧪', priority: 'high' },
   { subject: 'English', topic: 'Letter Writing - Formal format', duration: '20 min', color: '#8b5cf6', icon: '✍️', priority: 'medium' },
@@ -415,12 +499,31 @@ const DAILY_UPDATES: Array<{ title: string; message: string; type: 'tip' | 'moti
   { title: 'Keep Going', message: 'The last 30 days before exams are gold. Make every minute count!', type: 'motivation', color: '#f59e0b' },
 ];
 
-function getDailyStudyPlan() {
+function getDailyStudyPlan(board?: string, classId?: string): StudyPlan[] {
   const now = new Date();
   const dayIndex = Math.floor(now.getTime() / (1000 * 60 * 60 * 24));
-  const plans: typeof DAILY_STUDY_PLANS = [];
+
+  let planPool = DEFAULT_STUDY_PLANS;
+  if (board && classId) {
+    const key = `${board}_${classId}`;
+    if (BOARD_CLASS_STUDY_PLANS[key]) {
+      planPool = BOARD_CLASS_STUDY_PLANS[key];
+    } else {
+      const boardKeys = Object.keys(BOARD_CLASS_STUDY_PLANS).filter(k => k.startsWith(board + '_'));
+      if (boardKeys.length > 0) {
+        const closestKey = boardKeys.reduce((a, b) => {
+          const aDiff = Math.abs(parseInt(a.split('_')[1]) - parseInt(classId));
+          const bDiff = Math.abs(parseInt(b.split('_')[1]) - parseInt(classId));
+          return aDiff <= bDiff ? a : b;
+        });
+        planPool = BOARD_CLASS_STUDY_PLANS[closestKey];
+      }
+    }
+  }
+
+  const plans: StudyPlan[] = [];
   for (let i = 0; i < 3; i++) {
-    plans.push(DAILY_STUDY_PLANS[(dayIndex + i * 4) % DAILY_STUDY_PLANS.length]);
+    plans.push(planPool[(dayIndex + i * 4) % planPool.length]);
   }
   return plans;
 }
@@ -447,7 +550,7 @@ function getExamCountdown(examDate: string): string | null {
 }
 
 const WhatToStudySection = memo(({ isDark, onboardingData }: { isDark: boolean; onboardingData: OnboardingData | null }) => {
-  const plans = useMemo(() => getDailyStudyPlan(), []);
+  const plans = useMemo(() => getDailyStudyPlan(onboardingData?.board, onboardingData?.class), [onboardingData?.board, onboardingData?.class]);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(25)).current;
 

@@ -9,6 +9,19 @@ export interface User {
   authCode?: string;
 }
 
+interface PendingAuth {
+  email: string;
+  password: string;
+  name: string;
+  otp: string;
+  isSignUp: boolean;
+  expiresAt: number;
+}
+
+function generateOTP(): string {
+  return String(Math.floor(1000 + Math.random() * 9000));
+}
+
 async function generateUniqueAuthCode(): Promise<string> {
   const existingCodes = JSON.parse((await AsyncStorage.getItem('authCodes')) || '{}');
   let code: string;
@@ -26,6 +39,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [lastAuthCode, setLastAuthCode] = useState<string | null>(null);
+  const [pendingAuth, setPendingAuth] = useState<PendingAuth | null>(null);
 
   const loadUser = useCallback(async () => {
     try {
@@ -44,7 +58,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     void loadUser();
   }, [loadUser]);
 
-  const signUp = useCallback(async (email: string, password: string, name: string) => {
+  const initiateSignUp = useCallback(async (email: string, password: string, name: string) => {
     try {
       const existingUsers = await AsyncStorage.getItem('users');
       const users = existingUsers ? JSON.parse(existingUsers) : {};
@@ -53,57 +67,61 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
         throw new Error('Email already registered');
       }
 
-      const authCode = await generateUniqueAuthCode();
-      users[email] = { password, name, authCode };
-      await AsyncStorage.setItem('users', JSON.stringify(users));
-
-      const authCodes = JSON.parse((await AsyncStorage.getItem('authCodes')) || '{}');
-      authCodes[authCode] = email;
-      await AsyncStorage.setItem('authCodes', JSON.stringify(authCodes));
-
-      const newUser: User = { email, name, authCode };
-      setUser(newUser);
-      setLastAuthCode(authCode);
-      await AsyncStorage.setItem('user', JSON.stringify(newUser));
-
-      console.log('Sign up successful, auth code:', authCode);
-      return { success: true, authCode };
+      const otp = generateOTP();
+      const expiresAt = Date.now() + 5 * 60 * 1000;
+      setPendingAuth({ email, password, name, otp, isSignUp: true, expiresAt });
+      console.log('OTP generated for sign up:', otp, 'email:', email);
+      return { success: true, otp, email };
     } catch (error: any) {
       return { success: false, error: error.message };
     }
   }, []);
 
-  const signIn = useCallback(async (email: string, password: string) => {
+  const initiateSignIn = useCallback(async (email: string, password: string) => {
     try {
       const existingUsers = await AsyncStorage.getItem('users');
       const users = existingUsers ? JSON.parse(existingUsers) : {};
 
-      if (!users[email]) {
-        const authCode = await generateUniqueAuthCode();
-        users[email] = { password, name: email.split('@')[0], authCode };
-        await AsyncStorage.setItem('users', JSON.stringify(users));
-
-        const authCodes = JSON.parse((await AsyncStorage.getItem('authCodes')) || '{}');
-        authCodes[authCode] = email;
-        await AsyncStorage.setItem('authCodes', JSON.stringify(authCodes));
-
-        const newUser: User = { email, name: users[email].name, authCode };
-        setUser(newUser);
-        setLastAuthCode(authCode);
-        await AsyncStorage.setItem('user', JSON.stringify(newUser));
-
-        console.log('Auto-registered and signed in, auth code:', authCode);
-        return { success: true, authCode, isNewUser: true };
-      }
-
-      if (users[email].password !== password) {
+      if (users[email] && users[email].password !== password) {
         throw new Error('Incorrect password');
       }
 
-      const authCode = users[email].authCode || await generateUniqueAuthCode();
-      if (!users[email].authCode) {
-        users[email].authCode = authCode;
+      const otp = generateOTP();
+      const expiresAt = Date.now() + 5 * 60 * 1000;
+      const name = users[email]?.name || email.split('@')[0];
+      setPendingAuth({ email, password, name, otp, isSignUp: !users[email], expiresAt });
+      console.log('OTP generated for sign in:', otp, 'email:', email);
+      return { success: true, otp, email };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  }, []);
+
+  const verifyOTP = useCallback(async (enteredOTP: string) => {
+    try {
+      if (!pendingAuth) {
+        throw new Error('No pending verification. Please try again.');
+      }
+
+      if (Date.now() > pendingAuth.expiresAt) {
+        setPendingAuth(null);
+        throw new Error('Verification code expired. Please try again.');
+      }
+
+      if (enteredOTP !== pendingAuth.otp) {
+        throw new Error('Invalid verification code. Please check and try again.');
+      }
+
+      const { email, password, name, isSignUp } = pendingAuth;
+      const existingUsers = await AsyncStorage.getItem('users');
+      const users = existingUsers ? JSON.parse(existingUsers) : {};
+
+      const authCode = users[email]?.authCode || await generateUniqueAuthCode();
+
+      if (isSignUp || !users[email]) {
+        users[email] = { password, name, authCode };
         await AsyncStorage.setItem('users', JSON.stringify(users));
+
         const authCodes = JSON.parse((await AsyncStorage.getItem('authCodes')) || '{}');
         authCodes[authCode] = email;
         await AsyncStorage.setItem('authCodes', JSON.stringify(authCodes));
@@ -113,12 +131,26 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       setUser(loggedInUser);
       setLastAuthCode(authCode);
       await AsyncStorage.setItem('user', JSON.stringify(loggedInUser));
+      setPendingAuth(null);
 
-      console.log('Sign in successful, auth code:', authCode);
-      return { success: true, authCode };
+      console.log('OTP verified, sign in complete. Auth code:', authCode);
+      return { success: true, authCode, isNewUser: isSignUp };
     } catch (error: any) {
       return { success: false, error: error.message };
     }
+  }, [pendingAuth]);
+
+  const resendOTP = useCallback(() => {
+    if (!pendingAuth) return { success: false, error: 'No pending verification' };
+    const newOTP = generateOTP();
+    const newExpiresAt = Date.now() + 5 * 60 * 1000;
+    setPendingAuth({ ...pendingAuth, otp: newOTP, expiresAt: newExpiresAt });
+    console.log('New OTP generated:', newOTP, 'for email:', pendingAuth.email);
+    return { success: true, otp: newOTP, email: pendingAuth.email };
+  }, [pendingAuth]);
+
+  const cancelVerification = useCallback(() => {
+    setPendingAuth(null);
   }, []);
 
   const signInWithCode = useCallback(async (code: string) => {
@@ -152,6 +184,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
   const signOut = useCallback(async () => {
     setUser(null);
     setLastAuthCode(null);
+    setPendingAuth(null);
     await AsyncStorage.removeItem('user');
   }, []);
 
@@ -166,10 +199,14 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     user,
     isLoading,
     lastAuthCode,
-    signUp,
-    signIn,
+    pendingAuth: pendingAuth ? { email: pendingAuth.email, expiresAt: pendingAuth.expiresAt } : null,
+    initiateSignUp,
+    initiateSignIn,
+    verifyOTP,
+    resendOTP,
+    cancelVerification,
     signInWithCode,
     signOut,
     continueAsGuest,
-  }), [user, isLoading, lastAuthCode, signUp, signIn, signInWithCode, signOut, continueAsGuest]);
+  }), [user, isLoading, lastAuthCode, pendingAuth, initiateSignUp, initiateSignIn, verifyOTP, resendOTP, cancelVerification, signInWithCode, signOut, continueAsGuest]);
 });

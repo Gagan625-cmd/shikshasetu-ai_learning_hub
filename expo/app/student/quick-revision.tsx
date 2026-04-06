@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
-import { ChevronLeft, Zap, Clock, Loader2, RefreshCw, ChevronRight as ChevronRightIcon, ChevronLeft as ChevronLeftIcon, Sparkles, Brain, Lightbulb, FlaskConical } from 'lucide-react-native';
-import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Platform, Animated, Dimensions, Alert } from 'react-native';
+import { ChevronLeft, Zap, Clock, Loader2, RefreshCw, ChevronRight as ChevronRightIcon, ChevronLeft as ChevronLeftIcon, Sparkles, Brain, Lightbulb, FlaskConical, ImageIcon } from 'lucide-react-native';
+import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Platform, Animated, Dimensions, Alert, Image, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { useApp } from '@/contexts/app-context';
@@ -235,6 +235,8 @@ export default function QuickRevisionMode() {
   const timerAnim = useRef(new Animated.Value(1)).current;
   const [timerRunning, setTimerRunning] = useState(false);
   const [timeLeft, setTimeLeft] = useState(300);
+  const [cardImage, setCardImage] = useState<string | null>(null);
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
 
   const allSubjects = useMemo(() =>
     selectedBoard === 'NCERT' ? NCERT_SUBJECTS : ICSE_SUBJECTS,
@@ -519,6 +521,50 @@ Mark importance as "critical" for must-know items, "important" for frequently te
               isDark={isDark}
             />
 
+            <TouchableOpacity
+              style={[styles.imageGenBtn, isGeneratingImage && { opacity: 0.6 }]}
+              onPress={async () => {
+                if (isGeneratingImage) return;
+                setIsGeneratingImage(true);
+                setCardImage(null);
+                try {
+                  const card = cards[currentIndex];
+                  const subjectName = subjects.find(s => s.id === selectedSubject)?.name || '';
+                  const prompt = `Create a clean educational diagram for ${selectedBoard} Grade ${selectedGrade} ${subjectName}: ${card.title}. ${card.content.slice(0, 200)}. Make it a clear, labeled educational illustration with professional colors, suitable for quick revision. No text-heavy content.`;
+                  const response = await fetch('https://toolkit.rork.com/images/generate/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt, size: '1024x1024' }),
+                  });
+                  if (!response.ok) throw new Error('Failed');
+                  const data = await response.json();
+                  if (data?.image?.base64Data) {
+                    setCardImage(`data:${data.image.mimeType};base64,${data.image.base64Data}`);
+                  }
+                } catch {
+                  Alert.alert('Error', 'Failed to generate illustration.');
+                } finally {
+                  setIsGeneratingImage(false);
+                }
+              }}
+              disabled={isGeneratingImage}
+            >
+              {isGeneratingImage ? (
+                <ActivityIndicator size="small" color="#f97316" />
+              ) : (
+                <ImageIcon size={16} color="#f97316" />
+              )}
+              <Text style={styles.imageGenBtnText}>
+                {isGeneratingImage ? 'Generating...' : 'Generate Illustration'}
+              </Text>
+            </TouchableOpacity>
+
+            {cardImage && (
+              <View style={[styles.cardImageWrap, { backgroundColor: isDark ? '#0d1a2d' : '#ffffff' }]}>
+                <Image source={{ uri: cardImage }} style={styles.cardImage} resizeMode="contain" />
+              </View>
+            )}
+
             <View style={styles.progressBarContainer}>
               <View style={[styles.progressBarBg, { backgroundColor: isDark ? '#152a45' : '#e2e8f0' }]}>
                 <View style={[styles.progressBarFill, { width: `${((currentIndex + 1) / cards.length) * 100}%` }]} />
@@ -667,4 +713,37 @@ const styles = StyleSheet.create({
     borderRadius: 14,
   },
   newSessionText: { fontSize: 15, fontWeight: '700' as const },
+  imageGenBtn: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    gap: 8,
+    marginBottom: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 14,
+    backgroundColor: 'rgba(249, 115, 22, 0.08)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(249, 115, 22, 0.25)',
+  },
+  imageGenBtnText: {
+    fontSize: 13,
+    fontWeight: '700' as const,
+    color: '#f97316',
+  },
+  cardImageWrap: {
+    borderRadius: 16,
+    overflow: 'hidden' as const,
+    marginBottom: 16,
+    ...Platform.select({
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 12 },
+      android: { elevation: 4 },
+      web: { boxShadow: '0 4px 16px rgba(0,0,0,0.08)' },
+    }),
+  },
+  cardImage: {
+    width: '100%' as const,
+    height: 260,
+    borderRadius: 14,
+  },
 });
