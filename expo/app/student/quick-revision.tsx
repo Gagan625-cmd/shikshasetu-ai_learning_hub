@@ -237,6 +237,7 @@ export default function QuickRevisionMode() {
   const [timeLeft, setTimeLeft] = useState(300);
   const [cardImage, setCardImage] = useState<string | null>(null);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+  const [imageError, setImageError] = useState(false);
 
   const allSubjects = useMemo(() =>
     selectedBoard === 'NCERT' ? NCERT_SUBJECTS : ICSE_SUBJECTS,
@@ -527,23 +528,43 @@ Mark importance as "critical" for must-know items, "important" for frequently te
                 if (isGeneratingImage) return;
                 setIsGeneratingImage(true);
                 setCardImage(null);
+                setImageError(false);
                 try {
                   const card = cards[currentIndex];
                   const subjectName = subjects.find(s => s.id === selectedSubject)?.name || '';
-                  const prompt = `Create a clean educational diagram for ${selectedBoard} Grade ${selectedGrade} ${subjectName}: ${card.title}. ${card.content.slice(0, 200)}. Make it a clear, labeled educational illustration with professional colors, suitable for quick revision. No text-heavy content.`;
+                  const imagePrompt = `Create a clean educational diagram for ${selectedBoard} Grade ${selectedGrade} ${subjectName}: ${card.title}. ${card.content.slice(0, 200)}. Make it a clear, labeled educational illustration with professional colors, suitable for quick revision. No text-heavy content.`;
                   const toolkitBase = process.env.EXPO_PUBLIC_TOOLKIT_URL || 'https://toolkit.rork.com';
-                  const response = await fetch(`${toolkitBase.replace(/\/$/, '')}/images/generate/`, {
+                  const imageUrl = `${toolkitBase.replace(/\/$/, '')}/images/generate/`;
+                  console.log('[QuickRevision] Generating image from:', imageUrl);
+                  const response = await fetch(imageUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ prompt, size: '1024x1024' }),
+                    body: JSON.stringify({ prompt: imagePrompt, size: '1024x1024' }),
                   });
-                  if (!response.ok) throw new Error('Failed');
-                  const data = await response.json();
-                  if (data?.image?.base64Data) {
-                    setCardImage(`data:${data.image.mimeType};base64,${data.image.base64Data}`);
+                  console.log('[QuickRevision] Response status:', response.status);
+                  if (!response.ok) {
+                    const errorText = await response.text().catch(() => 'Unknown error');
+                    console.error('[QuickRevision] Error response:', errorText);
+                    throw new Error(`Image generation failed: ${response.status} - ${errorText}`);
                   }
-                } catch {
-                  Alert.alert('Error', 'Failed to generate illustration.');
+                  const data = await response.json();
+                  console.log('[QuickRevision] Response keys:', data ? Object.keys(data) : 'null');
+                  console.log('[QuickRevision] Has base64Data:', !!data?.image?.base64Data, 'length:', data?.image?.base64Data?.length || 0);
+                  if (data?.image?.base64Data) {
+                    const mimeType = data.image.mimeType || 'image/png';
+                    const imageUri = `data:${mimeType};base64,${data.image.base64Data}`;
+                    console.log('[QuickRevision] Image URI length:', imageUri.length);
+                    setCardImage(imageUri);
+                  } else if (data?.image?.url) {
+                    console.log('[QuickRevision] Using image URL:', data.image.url);
+                    setCardImage(data.image.url);
+                  } else {
+                    console.error('[QuickRevision] No image data in response:', JSON.stringify(data).slice(0, 500));
+                    throw new Error('No image data returned');
+                  }
+                } catch (error: any) {
+                  console.error('[QuickRevision] Image generation error:', error?.message);
+                  Alert.alert('Error', 'Failed to generate illustration. Please try again.');
                 } finally {
                   setIsGeneratingImage(false);
                 }
@@ -562,7 +583,29 @@ Mark importance as "critical" for must-know items, "important" for frequently te
 
             {cardImage && (
               <View style={[styles.cardImageWrap, { backgroundColor: isDark ? '#0d1a2d' : '#ffffff' }]}>
-                <Image source={{ uri: cardImage }} style={styles.cardImage} resizeMode="contain" />
+                {!imageError ? (
+                  <Image
+                    source={{ uri: cardImage }}
+                    style={styles.cardImage}
+                    resizeMode="contain"
+                    onLoad={() => console.log('[QuickRevision] Image loaded successfully')}
+                    onError={(e) => {
+                      console.error('[QuickRevision] Image failed to load:', e.nativeEvent?.error);
+                      setImageError(true);
+                    }}
+                  />
+                ) : (
+                  <View style={[styles.cardImage, { justifyContent: 'center', alignItems: 'center', backgroundColor: isDark ? '#152a45' : '#f1f5f9' }]}>
+                    <ImageIcon size={24} color="#94a3b8" />
+                    <Text style={{ color: '#94a3b8', fontSize: 13, marginTop: 8 }}>Image failed to display</Text>
+                    <TouchableOpacity
+                      onPress={() => { setImageError(false); }}
+                      style={{ marginTop: 8, paddingHorizontal: 12, paddingVertical: 6, backgroundColor: 'rgba(249,115,22,0.1)', borderRadius: 8 }}
+                    >
+                      <Text style={{ color: '#f97316', fontSize: 12, fontWeight: '600' as const }}>Retry</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
               </View>
             )}
 
