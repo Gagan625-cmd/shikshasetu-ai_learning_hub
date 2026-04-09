@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { BookOpen, BrainCircuit, Settings, FileText, LogOut, Video, Upload, TrendingUp, Info, Link2, Mic, Moon, Sun, Mail, ChevronRight, Sparkles, GraduationCap } from 'lucide-react-native';
+import { BookOpen, BrainCircuit, Settings, FileText, LogOut, Video, Upload, TrendingUp, Info, Link2, Mic, Moon, Sun, Mail, ChevronRight, Sparkles, GraduationCap, PenTool, Zap, ScanLine, BookMarked, Crown } from 'lucide-react-native';
 import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Platform, Animated } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useApp } from '@/contexts/app-context';
@@ -59,7 +59,15 @@ const FeatureCard = memo(({ feature, onPress, isDark, index }: { feature: any; o
             <Icon size={26} color={feature.color} strokeWidth={2} />
           </LinearGradient>
           <View style={styles.featureCardMiddle}>
-            <Text style={[styles.featureTitle, { color: isDark ? feature.color : '#1a1a2e' }]}>{feature.title}</Text>
+            <View style={styles.featureTitleRow}>
+              <Text style={[styles.featureTitle, { color: isDark ? feature.color : '#1a1a2e' }]}>{feature.title}</Text>
+              {feature.premium && (
+                <View style={styles.premiumBadge}>
+                  <Crown size={9} color="#fbbf24" />
+                  <Text style={styles.premiumBadgeText}>PRO</Text>
+                </View>
+              )}
+            </View>
             <Text style={[styles.featureDescription, { color: isDark ? '#b0bec5' : '#64748b' }]}>{feature.description}</Text>
           </View>
           <View style={[styles.featureArrow, { backgroundColor: isDark ? feature.color + '30' : feature.color + '18' }]}>
@@ -119,6 +127,10 @@ export default function TeacherDashboard() {
     { id: 'performance', title: 'Performance', description: 'View teaching stats and analytics', icon: TrendingUp, color: '#ec4899', route: '/teacher/performance' },
     { id: 'about', title: 'About', description: 'Learn about ShikshaSetu', icon: Info, color: '#6366f1', route: '/teacher/about' },
     { id: 'useful-link', title: 'Useful Link', description: 'Teaching video resources', icon: Link2, color: '#14b8a6', route: '/teacher/useful-link' },
+    { id: 'handwritten-notes', title: 'Handwritten Notes', description: 'AI-generated colourful teaching notes', icon: PenTool, color: '#e11d48', route: '/teacher/handwritten-notes', premium: true },
+    { id: 'quick-revision', title: 'Quick Revision', description: 'Revision cards for classroom sessions', icon: Zap, color: '#f97316', route: '/teacher/quick-revision', premium: true },
+    { id: 'exam-scanner', title: 'AI Exam Scanner', description: 'Grade student papers with AI', icon: ScanLine, color: '#0ea5e9', route: '/teacher/exam-scanner', premium: true },
+    { id: 'comic-learn', title: 'Comic Learn', description: 'Teach chapters through fun comics', icon: BookMarked, color: '#a855f7', route: '/teacher/comic-learn', premium: true },
   ];
 
   return (
@@ -174,7 +186,7 @@ export default function TeacherDashboard() {
 
         <View style={styles.statsRow}>
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>9</Text>
+            <Text style={styles.statValue}>13</Text>
             <Text style={styles.statLabel}>Tools</Text>
           </View>
           <View style={styles.statDivider} />
@@ -500,6 +512,29 @@ const styles = StyleSheet.create({
   },
   featureCardMiddle: {
     flex: 1,
+  },
+  featureTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 1,
+  },
+  premiumBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: 'rgba(251, 191, 36, 0.15)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(251, 191, 36, 0.3)',
+  },
+  premiumBadgeText: {
+    fontSize: 8,
+    fontWeight: '800' as const,
+    color: '#f59e0b',
+    letterSpacing: 0.5,
   },
   featureAccent: {
     height: 3,

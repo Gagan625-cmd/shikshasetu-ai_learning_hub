@@ -1,0 +1,654 @@
+import { useState, useCallback, useMemo, useRef } from 'react';
+import { 
+  StyleSheet, 
+  Text, 
+  View, 
+  TouchableOpacity, 
+  ScrollView, 
+  Platform,
+  ActivityIndicator,
+  Animated
+} from 'react-native';
+import { Stack, useRouter } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ChevronDown, ChevronLeft, Sparkles, BookOpen, Zap, RefreshCw } from 'lucide-react-native';
+import { useMutation } from '@tanstack/react-query';
+import { robustGenerateText } from '@/lib/ai-generate';
+import { NCERT_SUBJECTS } from '@/constants/ncert-data';
+import { ICSE_SUBJECTS } from '@/constants/icse-data';
+import { useTheme } from '@/contexts/theme-context';
+import { useSubscription } from '@/contexts/subscription-context';
+import PremiumGate from '@/components/PremiumGate';
+
+interface ComicPanel {
+  id: number;
+  character: string;
+  characterEmoji: string;
+  dialogue: string;
+  action: string;
+  mood: 'happy' | 'excited' | 'thinking' | 'surprised' | 'teaching';
+  position: 'left' | 'right' | 'center';
+  keyPoint?: string;
+  funFact?: string;
+}
+
+const BOARDS = [
+  { id: 'ncert', name: 'NCERT' },
+  { id: 'icse', name: 'ICSE' },
+];
+
+const NCERT_GRADES = [6, 7, 8, 9, 10, 11, 12];
+const ICSE_GRADES = [9, 10];
+
+const CHARACTER_COLORS: Record<string, string> = {
+  'Professor Wisdom': '#f97316',
+  'Curious Cat': '#f59e0b',
+  'Brainy Bot': '#10b981',
+  'Wonder Kid': '#ec4899',
+  'Science Owl': '#8b5cf6',
+  'Math Monkey': '#3b82f6',
+  'History Hero': '#ef4444',
+  'default': '#64748b',
+};
+
+const MOOD_BACKGROUNDS: Record<string, string[]> = {
+  happy: ['#fef3c7', '#fde68a'],
+  excited: ['#fce7f3', '#fbcfe8'],
+  thinking: ['#e0e7ff', '#c7d2fe'],
+  surprised: ['#ccfbf1', '#99f6e4'],
+  teaching: ['#f0fdf4', '#dcfce7'],
+};
+
+export default function TeacherComicLearnScreen() {
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const { colors, isDark } = useTheme();
+  const { isPremium } = useSubscription();
+  const scrollRef = useRef<ScrollView>(null);
+  
+  const [selectedBoard, setSelectedBoard] = useState<string>('');
+  const [selectedGrade, setSelectedGrade] = useState<number | null>(null);
+  const [selectedSubject, setSelectedSubject] = useState<string>('');
+  const [selectedChapter, setSelectedChapter] = useState<string>('');
+  const [comicPanels, setComicPanels] = useState<ComicPanel[]>([]);
+  const [showBoardDropdown, setShowBoardDropdown] = useState(false);
+  const [showGradeDropdown, setShowGradeDropdown] = useState(false);
+  const [showSubjectDropdown, setShowSubjectDropdown] = useState(false);
+  const [showChapterDropdown, setShowChapterDropdown] = useState(false);
+
+  const bounceAnim = useRef(new Animated.Value(1)).current;
+
+  if (!isPremium) {
+    return (
+      <PremiumGate
+        title="Comic Learn"
+        description="Turn any chapter into a fun, engaging comic strip for your classroom. AI-generated comics that teach concepts through entertaining stories."
+        features={[
+          { text: 'AI-generated comic panels for any chapter' },
+          { text: 'Fun characters explain concepts with humor' },
+          { text: 'Key points & fun facts in each panel' },
+          { text: 'Quick recap summaries' },
+          { text: 'NCERT & ICSE chapters supported' },
+        ]}
+      />
+    );
+  }
+
+  const subjects = useMemo(() => {
+    if (!selectedBoard || !selectedGrade) return [];
+    const data = selectedBoard === 'ncert' ? NCERT_SUBJECTS : ICSE_SUBJECTS;
+    return data.filter(s => s.grade === selectedGrade);
+  }, [selectedBoard, selectedGrade]);
+
+  const chapters = useMemo(() => {
+    if (!selectedSubject) return [];
+    const data = selectedBoard === 'ncert' ? NCERT_SUBJECTS : ICSE_SUBJECTS;
+    const subject = data.find(s => s.id === selectedSubject);
+    return subject?.chapters || [];
+  }, [selectedBoard, selectedSubject]);
+
+  const selectedSubjectName = useMemo(() => {
+    const data = selectedBoard === 'ncert' ? NCERT_SUBJECTS : ICSE_SUBJECTS;
+    return data.find(s => s.id === selectedSubject)?.name || '';
+  }, [selectedBoard, selectedSubject]);
+
+  const selectedChapterTitle = useMemo(() => {
+    const chapter = chapters.find(c => c.id === selectedChapter);
+    return chapter?.title || '';
+  }, [chapters, selectedChapter]);
+
+  const grades = selectedBoard === 'ncert' ? NCERT_GRADES : ICSE_GRADES;
+
+  const generateComicMutation = useMutation({
+    mutationFn: async () => {
+      const chapter = chapters.find(c => c.id === selectedChapter);
+      if (!chapter) throw new Error('Chapter not found');
+
+      const prompt = `Create a DETAILED, FUN, and DEEPLY EDUCATIONAL comic-style explanation for TEACHERS to use in classroom for "${chapter.title}" (${selectedSubjectName}, Grade ${selectedGrade}).
+
+Generate EXACTLY 10 comic panels in JSON format. This should be a COMPLETE LESSON told as an entertaining comic story with real depth.
+
+Characters to use (pick 3-4 for a rich story):
+- Professor Wisdom (wise orange fox who explains concepts with analogies) 🦊
+- Curious Cat (asks exactly the questions students wonder about) 🐱
+- Brainy Bot (robot who loves facts, formulas, and real-world data) 🤖
+- Wonder Kid (enthusiastic student who connects concepts to daily life) 👧
+- Science Owl (loves experiments and "what if" scenarios) 🔬
+- Math Monkey (playful, solves puzzles step-by-step) 🐵
+- History Hero (brings historical context and stories) 🦸
+
+STORY STRUCTURE (follow this arc):
+- Panels 1-2: Hook & Introduction - Start with a funny real-world scenario that connects to the topic. Make students curious!
+- Panels 3-5: Core Concepts - Explain the main ideas using vivid analogies, step-by-step breakdowns, and funny situations. Each panel should teach ONE key concept clearly.
+- Panels 6-7: Deep Dive & Examples - Show worked examples, real-world applications, or experiments. Use specific numbers, formulas, or facts.
+- Panel 8: Common Mistakes - A character makes a hilarious mistake that students commonly make. Another character corrects them in a funny way.
+- Panel 9: Fun Fact & Connection - Share a mind-blowing fun fact or connect the topic to something unexpected in daily life.
+- Panel 10: Summary & Memory Trick - End with a catchy mnemonic, rhyme, or summary that helps students remember everything.
+
+Rules:
+1. Make it GENUINELY FUNNY with puns, jokes, wordplay, and silly situations
+2. Each panel MUST teach something specific - no filler panels
+3. Use simple language suitable for Grade ${selectedGrade} but don't dumb down the content
+4. Include vivid visual gags and actions in the "action" field
+5. Add a "keyPoint" field with the core takeaway of each panel (1 sentence)
+6. Add a "funFact" field for panels that have interesting trivia (optional, use for 3-4 panels)
+7. Use real examples, actual formulas, specific facts - not vague statements
+8. Characters should have distinct personalities that show in their dialogue
+9. Include at least 2 real-world analogies that make abstract concepts concrete
+10. End with something memorable that students will actually remember
+
+Return ONLY valid JSON array with this structure:
+[
+  {
+    "id": 1,
+    "character": "Character Name",
+    "characterEmoji": "emoji",
+    "dialogue": "Detailed, funny dialogue with thorough concept explanation (2-4 sentences)",
+    "action": "Vivid visual description of the comic scene",
+    "mood": "happy|excited|thinking|surprised|teaching",
+    "position": "left|right|center",
+    "keyPoint": "The one key takeaway from this panel",
+    "funFact": "Optional interesting trivia related to this panel"
+  }
+]
+
+Topic: ${chapter.title}
+Description: ${chapter.description}
+Subject: ${selectedSubjectName}
+Grade: ${selectedGrade}
+
+Make it the BEST comic lesson ever - teachers should be able to use this directly in class!`;
+
+      const response = await robustGenerateText({ messages: [{ role: 'user', content: prompt }] });
+      
+      const jsonMatch = response.match(/\[[\s\S]*\]/);
+      if (!jsonMatch) throw new Error('Failed to parse comic panels');
+      
+      const panels = JSON.parse(jsonMatch[0]) as ComicPanel[];
+      return panels;
+    },
+    onSuccess: (panels) => {
+      setComicPanels(panels);
+      Animated.sequence([
+        Animated.timing(bounceAnim, { toValue: 1.1, duration: 150, useNativeDriver: true }),
+        Animated.timing(bounceAnim, { toValue: 1, duration: 150, useNativeDriver: true }),
+      ]).start();
+      setTimeout(() => {
+        scrollRef.current?.scrollTo({ y: 400, animated: true });
+      }, 300);
+    },
+  });
+
+  const { mutate: generateComic, isPending, isError } = generateComicMutation;
+
+  const handleGenerateComic = useCallback(() => {
+    if (selectedChapter) {
+      generateComic();
+    }
+  }, [selectedChapter, generateComic]);
+
+  const handleBoardSelect = useCallback((boardId: string) => {
+    setSelectedBoard(boardId);
+    setSelectedGrade(null);
+    setSelectedSubject('');
+    setSelectedChapter('');
+    setComicPanels([]);
+    setShowBoardDropdown(false);
+  }, []);
+
+  const handleGradeSelect = useCallback((grade: number) => {
+    setSelectedGrade(grade);
+    setSelectedSubject('');
+    setSelectedChapter('');
+    setComicPanels([]);
+    setShowGradeDropdown(false);
+  }, []);
+
+  const handleSubjectSelect = useCallback((subjectId: string) => {
+    setSelectedSubject(subjectId);
+    setSelectedChapter('');
+    setComicPanels([]);
+    setShowSubjectDropdown(false);
+  }, []);
+
+  const handleChapterSelect = useCallback((chapterId: string) => {
+    setSelectedChapter(chapterId);
+    setComicPanels([]);
+    setShowChapterDropdown(false);
+  }, []);
+
+  const renderComicPanel = (panel: ComicPanel, index: number) => {
+    const characterColor = CHARACTER_COLORS[panel.character] || CHARACTER_COLORS.default;
+    const moodColors = MOOD_BACKGROUNDS[panel.mood] || MOOD_BACKGROUNDS.happy;
+    const isLeft = panel.position === 'left';
+    const isCenter = panel.position === 'center';
+
+    return (
+      <Animated.View 
+        key={panel.id} 
+        style={[styles.comicPanel, { transform: [{ scale: bounceAnim }] }]}
+      >
+        <LinearGradient
+          colors={moodColors as [string, string]}
+          style={styles.panelGradient}
+        >
+          <View style={styles.panelNumber}>
+            <Text style={styles.panelNumberText}>{index + 1}</Text>
+          </View>
+
+          <View style={[
+            styles.panelContent,
+            isCenter && styles.panelContentCenter,
+            !isCenter && (isLeft ? styles.panelContentLeft : styles.panelContentRight),
+          ]}>
+            <View style={[
+              styles.characterBubble,
+              { backgroundColor: characterColor },
+              isCenter && styles.characterBubbleCenter,
+            ]}>
+              <Text style={styles.characterEmoji}>{panel.characterEmoji}</Text>
+            </View>
+            
+            <View style={[styles.dialogueContainer, isCenter && styles.dialogueContainerCenter]}>
+              <View style={[
+                styles.speechBubble,
+                isLeft && styles.speechBubbleLeft,
+                !isLeft && !isCenter && styles.speechBubbleRight,
+              ]}>
+                <Text style={[styles.characterName, { color: isDark ? '#6366f1' : colors.accent }]}>{panel.character}</Text>
+                <Text style={[styles.dialogue, { color: '#1e293b' }]}>{panel.dialogue}</Text>
+              </View>
+              
+              <View style={[
+                styles.speechTail,
+                isCenter && styles.speechTailCenter,
+                isLeft && styles.speechTailLeft,
+                !isLeft && !isCenter && styles.speechTailRight,
+              ]} />
+            </View>
+          </View>
+
+          <View style={styles.actionContainer}>
+            <Text style={[styles.actionText, { color: isDark ? '#374151' : '#64748b' }]}>✨ {panel.action}</Text>
+          </View>
+
+          {panel.keyPoint ? (
+            <View style={styles.keyPointContainer}>
+              <Text style={styles.keyPointLabel}>💡 Key Point</Text>
+              <Text style={[styles.keyPointText, { color: '#1e293b' }]}>{panel.keyPoint}</Text>
+            </View>
+          ) : null}
+
+          {panel.funFact ? (
+            <View style={styles.funFactContainer}>
+              <Text style={styles.funFactLabel}>🤯 Fun Fact</Text>
+              <Text style={styles.funFactText}>{panel.funFact}</Text>
+            </View>
+          ) : null}
+        </LinearGradient>
+      </Animated.View>
+    );
+  };
+
+  return (
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <Stack.Screen 
+        options={{ 
+          title: 'Comic Learn',
+          headerShown: false,
+        }} 
+      />
+
+      <LinearGradient
+        colors={['#431407', '#7c2d12']}
+        style={[styles.headerGradient, { paddingTop: insets.top + 8 }]}
+      >
+        <View style={styles.headerRow}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+            <ChevronLeft size={22} color="#ffffff" />
+          </TouchableOpacity>
+          <View style={styles.headerContentArea}>
+            <View style={styles.headerIcon}>
+              <Text style={styles.headerEmoji}>📚</Text>
+              <Sparkles size={16} color="#fbbf24" style={styles.sparkle} />
+            </View>
+            <View>
+              <Text style={styles.headerTitle}>Comic Learning</Text>
+              <Text style={styles.headerSubtitle}>Teach chapters through fun comics!</Text>
+            </View>
+          </View>
+          <View style={{ width: 40 }} />
+        </View>
+      </LinearGradient>
+
+      <ScrollView 
+        ref={scrollRef}
+        style={styles.content}
+        contentContainerStyle={[styles.contentContainer, { paddingBottom: insets.bottom + 20 }]}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={[styles.selectionCard, { backgroundColor: colors.surface }]}>
+          <View style={styles.selectionHeader}>
+            <BookOpen size={20} color={colors.accent} />
+            <Text style={[styles.selectionTitle, { color: colors.text }]}>Select Chapter</Text>
+          </View>
+
+          <TouchableOpacity
+            style={[styles.dropdown, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder }]}
+            onPress={() => setShowBoardDropdown(!showBoardDropdown)}
+          >
+            <Text style={[styles.dropdownText, { color: colors.text }, !selectedBoard && { color: colors.textTertiary }]}>
+              {selectedBoard ? BOARDS.find(b => b.id === selectedBoard)?.name : 'Select Board'}
+            </Text>
+            <ChevronDown size={20} color={colors.textTertiary} />
+          </TouchableOpacity>
+          {showBoardDropdown && (
+            <View style={[styles.dropdownMenu, { backgroundColor: colors.surfaceElevated, borderColor: colors.border }]}>
+              {BOARDS.map(board => (
+                <TouchableOpacity key={board.id} style={[styles.dropdownItem, { borderBottomColor: colors.border }]} onPress={() => handleBoardSelect(board.id)}>
+                  <Text style={[styles.dropdownItemText, { color: colors.text }]}>{board.name}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+
+          {selectedBoard ? (
+            <>
+              <TouchableOpacity
+                style={[styles.dropdown, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder }]}
+                onPress={() => setShowGradeDropdown(!showGradeDropdown)}
+              >
+                <Text style={[styles.dropdownText, { color: colors.text }, !selectedGrade && { color: colors.textTertiary }]}>
+                  {selectedGrade ? `Grade ${selectedGrade}` : 'Select Grade'}
+                </Text>
+                <ChevronDown size={20} color={colors.textTertiary} />
+              </TouchableOpacity>
+              {showGradeDropdown && (
+                <View style={[styles.dropdownMenu, { backgroundColor: colors.surfaceElevated, borderColor: colors.border }]}>
+                  {grades.map(grade => (
+                    <TouchableOpacity key={grade} style={[styles.dropdownItem, { borderBottomColor: colors.border }]} onPress={() => handleGradeSelect(grade)}>
+                      <Text style={[styles.dropdownItemText, { color: colors.text }]}>Grade {grade}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+            </>
+          ) : null}
+
+          {selectedGrade ? (
+            <>
+              <TouchableOpacity
+                style={[styles.dropdown, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder }]}
+                onPress={() => setShowSubjectDropdown(!showSubjectDropdown)}
+              >
+                <Text style={[styles.dropdownText, { color: colors.text }, !selectedSubject && { color: colors.textTertiary }]}>
+                  {selectedSubjectName || 'Select Subject'}
+                </Text>
+                <ChevronDown size={20} color={colors.textTertiary} />
+              </TouchableOpacity>
+              {showSubjectDropdown && (
+                <View style={[styles.dropdownMenu, { backgroundColor: colors.surfaceElevated, borderColor: colors.border }]}>
+                  {subjects.map(subject => (
+                    <TouchableOpacity key={subject.id} style={[styles.dropdownItem, { borderBottomColor: colors.border }]} onPress={() => handleSubjectSelect(subject.id)}>
+                      <Text style={[styles.dropdownItemText, { color: colors.text }]}>{subject.name}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+            </>
+          ) : null}
+
+          {selectedSubject ? (
+            <>
+              <TouchableOpacity
+                style={[styles.dropdown, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder }]}
+                onPress={() => setShowChapterDropdown(!showChapterDropdown)}
+              >
+                <Text style={[styles.dropdownText, { color: colors.text }, !selectedChapter && { color: colors.textTertiary }]} numberOfLines={1}>
+                  {selectedChapterTitle || 'Select Chapter'}
+                </Text>
+                <ChevronDown size={20} color={colors.textTertiary} />
+              </TouchableOpacity>
+              {showChapterDropdown && (
+                <ScrollView style={[styles.dropdownMenuScroll, { backgroundColor: colors.surfaceElevated, borderColor: colors.border }]} nestedScrollEnabled>
+                  {chapters.map(chapter => (
+                    <TouchableOpacity key={chapter.id} style={[styles.dropdownItem, { borderBottomColor: colors.border }]} onPress={() => handleChapterSelect(chapter.id)}>
+                      <Text style={[styles.dropdownItemText, { color: colors.text }]}>{chapter.number}. {chapter.title}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              )}
+            </>
+          ) : null}
+
+          {selectedChapter ? (
+            <TouchableOpacity
+              style={[styles.generateButton, isPending && styles.generateButtonDisabled]}
+              onPress={handleGenerateComic}
+              disabled={isPending}
+              activeOpacity={0.8}
+            >
+              <LinearGradient colors={['#ea580c', '#c2410c']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.generateButtonGradient}>
+                {isPending ? (
+                  <><ActivityIndicator size="small" color="#ffffff" /><Text style={styles.generateButtonText}>Creating Magic...</Text></>
+                ) : (
+                  <><Zap size={20} color="#ffffff" /><Text style={styles.generateButtonText}>Generate Comic!</Text></>
+                )}
+              </LinearGradient>
+            </TouchableOpacity>
+          ) : null}
+        </View>
+
+        {isError && (
+          <View style={styles.errorCard}>
+            <Text style={styles.errorText}>Oops! Something went wrong. Please try again.</Text>
+            <TouchableOpacity style={styles.retryButton} onPress={handleGenerateComic}>
+              <RefreshCw size={16} color="#ef4444" />
+              <Text style={styles.retryText}>Retry</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {comicPanels.length > 0 && (
+          <View style={styles.comicContainer}>
+            <View style={styles.comicHeader}>
+              <Text style={styles.comicTitle}>📖 {selectedChapterTitle}</Text>
+              <Text style={styles.comicSubtitle}>A Comic Teaching Adventure!</Text>
+            </View>
+            
+            <View style={styles.comicStrip}>
+              {comicPanels.map((panel, index) => renderComicPanel(panel, index))}
+            </View>
+
+            <View style={[styles.summaryCard, { backgroundColor: isDark ? '#0a1a30' : '#fff7ed', borderColor: isDark ? '#1a3050' : '#fed7aa' }]}>
+              <Text style={[styles.summaryTitle, { color: isDark ? '#fb923c' : '#9a3412' }]}>📝 Quick Recap</Text>
+              {comicPanels.filter(p => p.keyPoint).map((panel, idx) => (
+                <View key={`recap-${idx}`} style={styles.summaryItem}>
+                  <Text style={[styles.summaryBullet, { color: isDark ? '#fb923c' : '#ea580c' }]}>•</Text>
+                  <Text style={[styles.summaryText, { color: colors.text }]}>{panel.keyPoint}</Text>
+                </View>
+              ))}
+            </View>
+
+            <View style={styles.endCard}>
+              <Text style={styles.endEmoji}>🎉</Text>
+              <Text style={styles.endTitle}>The End!</Text>
+              <Text style={styles.endSubtitle}>Use this comic to teach {selectedChapterTitle}!</Text>
+              <Text style={styles.endPanelCount}>📖 {comicPanels.length} panels of fun learning</Text>
+              <TouchableOpacity style={styles.regenerateButton} onPress={handleGenerateComic}>
+                <RefreshCw size={16} color="#ea580c" />
+                <Text style={styles.regenerateText}>Generate New Comic</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
+        {!comicPanels.length && !isPending && (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyEmoji}>🎨</Text>
+            <Text style={[styles.emptyTitle, { color: colors.text }]}>Ready for Comic Teaching?</Text>
+            <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
+              Select a chapter above and create an engaging comic strip for your classroom!
+            </Text>
+            <View style={styles.characterPreview}>
+              <View style={[styles.previewCharacter, { backgroundColor: '#f97316' }]}>
+                <Text style={styles.previewEmoji}>🦊</Text>
+              </View>
+              <View style={[styles.previewCharacter, { backgroundColor: '#f59e0b' }]}>
+                <Text style={styles.previewEmoji}>🐱</Text>
+              </View>
+              <View style={[styles.previewCharacter, { backgroundColor: '#10b981' }]}>
+                <Text style={styles.previewEmoji}>🤖</Text>
+              </View>
+              <View style={[styles.previewCharacter, { backgroundColor: '#ec4899' }]}>
+                <Text style={styles.previewEmoji}>👧</Text>
+              </View>
+            </View>
+            <Text style={[styles.previewText, { color: colors.textTertiary }]}>Meet your comic teachers!</Text>
+          </View>
+        )}
+      </ScrollView>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1 },
+  headerGradient: { paddingHorizontal: 20, paddingBottom: 18 },
+  headerRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  backBtn: { width: 40, height: 40, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center' },
+  headerContentArea: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  headerIcon: { position: 'relative' as const },
+  headerEmoji: { fontSize: 36 },
+  sparkle: { position: 'absolute' as const, top: -5, right: -10 },
+  headerTitle: { fontSize: 22, fontWeight: '800' as const, color: '#ffffff' },
+  headerSubtitle: { fontSize: 13, color: '#fdba74', fontWeight: '500' as const, marginTop: 2 },
+  content: { flex: 1 },
+  contentContainer: { padding: 16 },
+  selectionCard: {
+    backgroundColor: '#ffffff', borderRadius: 20, padding: 20,
+    ...Platform.select({
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 12 },
+      android: { elevation: 6 },
+      web: { boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)' },
+    }),
+  },
+  selectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16 },
+  selectionTitle: { fontSize: 18, fontWeight: '700' as const },
+  dropdown: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderRadius: 12, padding: 14, marginBottom: 12, borderWidth: 1 },
+  dropdownText: { fontSize: 15, fontWeight: '500' as const, flex: 1 },
+  dropdownMenu: { borderRadius: 12, marginBottom: 12, borderWidth: 1, overflow: 'hidden' },
+  dropdownMenuScroll: { maxHeight: 200, borderRadius: 12, marginBottom: 12, borderWidth: 1 },
+  dropdownItem: { padding: 14, borderBottomWidth: 1 },
+  dropdownItemText: { fontSize: 14 },
+  generateButton: { borderRadius: 16, overflow: 'hidden', marginTop: 8 },
+  generateButtonDisabled: { opacity: 0.7 },
+  generateButtonGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 16 },
+  generateButtonText: { fontSize: 17, fontWeight: '700' as const, color: '#ffffff' },
+  errorCard: { backgroundColor: '#fef2f2', borderRadius: 16, padding: 16, marginTop: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderColor: '#fecaca' },
+  errorText: { fontSize: 14, color: '#dc2626', flex: 1 },
+  retryButton: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: '#ffffff', borderRadius: 8 },
+  retryText: { fontSize: 14, color: '#ef4444', fontWeight: '600' as const },
+  comicContainer: { marginTop: 24 },
+  comicHeader: { alignItems: 'center', marginBottom: 20, backgroundColor: '#431407', borderRadius: 16, padding: 20 },
+  comicTitle: { fontSize: 20, fontWeight: '800' as const, color: '#ffffff', textAlign: 'center', marginBottom: 4 },
+  comicSubtitle: { fontSize: 14, color: '#fdba74' },
+  comicStrip: { gap: 16 },
+  comicPanel: {
+    borderRadius: 20, overflow: 'hidden', borderWidth: 3, borderColor: '#431407',
+    ...Platform.select({
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 12 },
+      android: { elevation: 8 },
+      web: { boxShadow: '0 4px 16px rgba(0, 0, 0, 0.15)' },
+    }),
+  },
+  panelGradient: { padding: 20, minHeight: 200 },
+  panelNumber: { position: 'absolute' as const, top: 12, left: 12, width: 32, height: 32, borderRadius: 16, backgroundColor: '#431407', justifyContent: 'center', alignItems: 'center' },
+  panelNumberText: { fontSize: 14, fontWeight: '800' as const, color: '#ffffff' },
+  panelContent: { flexDirection: 'row', alignItems: 'flex-start', marginTop: 20 },
+  panelContentLeft: { flexDirection: 'row' },
+  panelContentRight: { flexDirection: 'row-reverse' },
+  panelContentCenter: { flexDirection: 'column', alignItems: 'center' },
+  characterBubble: {
+    width: 64, height: 64, borderRadius: 32, justifyContent: 'center', alignItems: 'center', borderWidth: 3, borderColor: '#ffffff',
+    ...Platform.select({
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4 },
+      android: { elevation: 4 },
+      web: { boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)' },
+    }),
+  },
+  characterBubbleCenter: { marginBottom: 12 },
+  characterEmoji: { fontSize: 32 },
+  dialogueContainer: { flex: 1, marginHorizontal: 12 },
+  dialogueContainerCenter: { marginHorizontal: 0, width: '100%' },
+  speechBubble: { backgroundColor: '#ffffff', borderRadius: 20, padding: 16, borderWidth: 2, borderColor: '#431407' },
+  speechBubbleLeft: { borderBottomLeftRadius: 4 },
+  speechBubbleRight: { borderBottomRightRadius: 4 },
+  speechTail: {
+    width: 0, height: 0, backgroundColor: 'transparent', borderStyle: 'solid',
+    borderLeftWidth: 10, borderRightWidth: 10, borderTopWidth: 15,
+    borderLeftColor: 'transparent', borderRightColor: 'transparent', borderTopColor: '#431407',
+    position: 'absolute' as const, bottom: -15,
+  },
+  speechTailLeft: { left: 20 },
+  speechTailRight: { right: 20 },
+  speechTailCenter: { alignSelf: 'center' },
+  characterName: { fontSize: 12, fontWeight: '800' as const, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 },
+  dialogue: { fontSize: 15, lineHeight: 22, fontWeight: '500' as const },
+  actionContainer: { marginTop: 16, paddingTop: 12, borderTopWidth: 2, borderTopColor: 'rgba(0,0,0,0.1)', borderStyle: 'dashed' as const },
+  actionText: { fontSize: 13, fontStyle: 'italic' as const, textAlign: 'center' as const },
+  keyPointContainer: { marginTop: 12, backgroundColor: 'rgba(234,88,12,0.1)', borderRadius: 12, padding: 12, borderLeftWidth: 3, borderLeftColor: '#ea580c' },
+  keyPointLabel: { fontSize: 11, fontWeight: '800' as const, color: '#ea580c', textTransform: 'uppercase' as const, letterSpacing: 1, marginBottom: 4 },
+  keyPointText: { fontSize: 13, fontWeight: '600' as const, lineHeight: 18 },
+  funFactContainer: { marginTop: 8, backgroundColor: 'rgba(245, 158, 11, 0.1)', borderRadius: 12, padding: 12, borderLeftWidth: 3, borderLeftColor: '#f59e0b' },
+  funFactLabel: { fontSize: 11, fontWeight: '800' as const, color: '#d97706', textTransform: 'uppercase' as const, letterSpacing: 1, marginBottom: 4 },
+  funFactText: { fontSize: 12, color: '#78350f', fontStyle: 'italic' as const, lineHeight: 17 },
+  endCard: { backgroundColor: '#431407', borderRadius: 20, padding: 32, alignItems: 'center', marginTop: 24 },
+  endEmoji: { fontSize: 56, marginBottom: 12 },
+  endTitle: { fontSize: 28, fontWeight: '800' as const, color: '#ffffff', marginBottom: 8 },
+  endSubtitle: { fontSize: 15, color: '#fdba74', textAlign: 'center' as const, marginBottom: 8 },
+  endPanelCount: { fontSize: 13, color: '#fb923c', marginBottom: 20 },
+  summaryCard: { borderRadius: 20, padding: 20, marginTop: 24, borderWidth: 2 },
+  summaryTitle: { fontSize: 18, fontWeight: '800' as const, marginBottom: 12 },
+  summaryItem: { flexDirection: 'row' as const, alignItems: 'flex-start' as const, marginBottom: 8, gap: 8 },
+  summaryBullet: { fontSize: 16, fontWeight: '700' as const, lineHeight: 20 },
+  summaryText: { fontSize: 14, flex: 1, lineHeight: 20, fontWeight: '500' as const },
+  regenerateButton: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#ffffff', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 12 },
+  regenerateText: { fontSize: 14, fontWeight: '600' as const, color: '#ea580c' },
+  emptyState: { alignItems: 'center', paddingVertical: 48, paddingHorizontal: 32 },
+  emptyEmoji: { fontSize: 64, marginBottom: 16 },
+  emptyTitle: { fontSize: 22, fontWeight: '700' as const, marginBottom: 8, textAlign: 'center' },
+  emptySubtitle: { fontSize: 15, textAlign: 'center', lineHeight: 22, marginBottom: 24 },
+  characterPreview: { flexDirection: 'row', gap: 12, marginBottom: 12 },
+  previewCharacter: {
+    width: 56, height: 56, borderRadius: 28, justifyContent: 'center', alignItems: 'center', borderWidth: 3, borderColor: '#ffffff',
+    ...Platform.select({
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 6 },
+      android: { elevation: 4 },
+      web: { boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)' },
+    }),
+  },
+  previewEmoji: { fontSize: 28 },
+  previewText: { fontSize: 14, fontWeight: '500' as const },
+});
