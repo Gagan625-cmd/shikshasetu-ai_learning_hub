@@ -112,45 +112,6 @@ export default function AboutPage() {
             </LinearGradient>
           </View>
 
-          {[{ name: 'Kushal', initials: 'K' }, { name: 'Siddharth', initials: 'S' }, { name: 'Prajwal J Athreyas', initials: 'PA' }].map((cofounder, idx) => (
-            <View key={idx} style={styles.cofounderCard}>
-              <LinearGradient
-                colors={isDark ? ['#1a1a2e', '#16213e', '#0f3460'] : ['#1e293b', '#334155', '#475569']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.cofounderGradient}
-              >
-                <View style={styles.founderTopRow}>
-                  <LinearGradient
-                    colors={['#6366f1', '#8b5cf6', '#a78bfa']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={styles.cofounderAvatarGradient}
-                  >
-                    <Text style={styles.cofounderAvatarText}>{cofounder.initials}</Text>
-                  </LinearGradient>
-                  <View style={styles.founderDetails}>
-                    <View style={styles.founderNameRow}>
-                      <Text style={styles.founderNamePremium}>{cofounder.name}</Text>
-                      <Verified size={14} color="#a78bfa" />
-                    </View>
-                    <View style={styles.founderBadgeRow}>
-                      <LinearGradient
-                        colors={['#6366f1', '#8b5cf6']}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 0 }}
-                        style={styles.founderBadge}
-                      >
-                        <Star size={10} color="#fff" />
-                        <Text style={styles.founderBadgeText}>CO-FOUNDER</Text>
-                      </LinearGradient>
-                    </View>
-                  </View>
-                </View>
-              </LinearGradient>
-            </View>
-          ))}
-
           <Text style={[styles.sectionTitle, { color: colors.text }]}>Mentor</Text>
           <View style={styles.mentorCardPremium}>
             <LinearGradient
@@ -385,38 +346,6 @@ const styles = StyleSheet.create({
     width: 1,
     height: 14,
     backgroundColor: 'rgba(255,255,255,0.12)',
-  },
-  cofounderCard: {
-    borderRadius: 16,
-    overflow: 'hidden',
-    marginBottom: 12,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#6366f1',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
-        shadowRadius: 10,
-      },
-      android: { elevation: 6 },
-      web: { boxShadow: '0 4px 16px rgba(99, 102, 241, 0.18)' },
-    }),
-  },
-  cofounderGradient: {
-    padding: 16,
-  },
-  cofounderAvatarGradient: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.15)',
-  },
-  cofounderAvatarText: {
-    fontSize: 18,
-    fontWeight: '900' as const,
-    color: '#ffffff',
   },
   mentorCardPremium: {
     borderRadius: 20,
