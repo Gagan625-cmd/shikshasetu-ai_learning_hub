@@ -1632,6 +1632,34 @@ function ClassroomRunnerGame({ onFinish, onRevive }: { onFinish: (coins: number)
           </View>
         )}
       </View>
+
+      {started && !gameOver && (
+        <View style={runnerStyles.controlsRow}>
+          <TouchableOpacity
+            style={runnerStyles.controlBtn}
+            onPress={() => moveTo(playerLaneRef.current - 1)}
+            activeOpacity={0.6}
+            testID="runner-move-left"
+          >
+            <LinearGradient colors={['#0f3460', '#1a4d8e']} style={runnerStyles.controlBtnGradient}>
+              <Text style={runnerStyles.controlBtnArrow}>◀</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+          <View style={runnerStyles.controlCenter}>
+            <Text style={runnerStyles.controlLaneText}>Lane {playerLane + 1}</Text>
+          </View>
+          <TouchableOpacity
+            style={runnerStyles.controlBtn}
+            onPress={() => moveTo(playerLaneRef.current + 1)}
+            activeOpacity={0.6}
+            testID="runner-move-right"
+          >
+            <LinearGradient colors={['#0f3460', '#1a4d8e']} style={runnerStyles.controlBtnGradient}>
+              <Text style={runnerStyles.controlBtnArrow}>▶</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 }
@@ -4044,5 +4072,53 @@ const runnerStyles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600' as const,
     color: '#94a3b8',
+  },
+  controlsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: RUNNER_WIDTH,
+    marginTop: 14,
+    gap: 16,
+  },
+  controlBtn: {
+    width: 72,
+    height: 56,
+    borderRadius: 18,
+    overflow: 'hidden',
+    borderWidth: 1.5,
+    borderColor: 'rgba(26, 77, 142, 0.6)',
+    ...Platform.select({
+      ios: { shadowColor: '#0f3460', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.3, shadowRadius: 8 },
+      android: { elevation: 5 },
+      web: { boxShadow: '0 3px 12px rgba(15, 52, 96, 0.3)' },
+    }),
+  },
+  controlBtnGradient: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 16,
+  },
+  controlBtnArrow: {
+    fontSize: 26,
+    color: '#ffffff',
+    fontWeight: '700' as const,
+  },
+  controlCenter: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(15, 52, 96, 0.1)',
+    borderRadius: 14,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(15, 52, 96, 0.15)',
+  },
+  controlLaneText: {
+    fontSize: 12,
+    fontWeight: '700' as const,
+    color: '#64748b',
+    letterSpacing: 0.5,
   },
 });

@@ -1291,6 +1291,10 @@ export default function StudentDashboard() {
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const headerSlide = useRef(new Animated.Value(-20)).current;
   const headerFade = useRef(new Animated.Value(0)).current;
+  const xpOrb1 = useRef(new Animated.Value(0)).current;
+  const xpOrb2 = useRef(new Animated.Value(0)).current;
+  const xpOrb3 = useRef(new Animated.Value(0)).current;
+  const xpShimmer = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     const loadOnboarding = async () => {
@@ -1318,7 +1322,28 @@ export default function StudentDashboard() {
       Animated.timing(headerFade, { toValue: 1, duration: 600, useNativeDriver: true }),
       Animated.spring(headerSlide, { toValue: 0, friction: 8, useNativeDriver: true }),
     ]).start();
-  }, [headerFade, headerSlide]);
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(xpOrb1, { toValue: 1, duration: 4000, useNativeDriver: true }),
+        Animated.timing(xpOrb1, { toValue: 0, duration: 4000, useNativeDriver: true }),
+      ])
+    ).start();
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(xpOrb2, { toValue: 1, duration: 5000, useNativeDriver: true }),
+        Animated.timing(xpOrb2, { toValue: 0, duration: 5000, useNativeDriver: true }),
+      ])
+    ).start();
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(xpOrb3, { toValue: 1, duration: 3500, useNativeDriver: true }),
+        Animated.timing(xpOrb3, { toValue: 0, duration: 3500, useNativeDriver: true }),
+      ])
+    ).start();
+    Animated.loop(
+      Animated.timing(xpShimmer, { toValue: 1, duration: 3000, useNativeDriver: true })
+    ).start();
+  }, [headerFade, headerSlide, xpOrb1, xpOrb2, xpOrb3, xpShimmer]);
 
   const levelInfo = useMemo(() => getLevel(userProgress.totalXP), [userProgress.totalXP]);
   const levelProgress = useMemo(() => {
@@ -1326,6 +1351,15 @@ export default function StudentDashboard() {
     if (range === 0) return 1;
     return (userProgress.totalXP - levelInfo.currentLevelXP) / range;
   }, [userProgress.totalXP, levelInfo]);
+
+  const xpOrb1Translate = xpOrb1.interpolate({ inputRange: [0, 1], outputRange: [0, 30] });
+  const xpOrb1Opacity = xpOrb1.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.15, 0.35, 0.15] });
+  const xpOrb2Translate = xpOrb2.interpolate({ inputRange: [0, 1], outputRange: [0, -25] });
+  const xpOrb2Opacity = xpOrb2.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.1, 0.3, 0.1] });
+  const xpOrb3Translate = xpOrb3.interpolate({ inputRange: [0, 1], outputRange: [0, 20] });
+  const xpOrb3Opacity = xpOrb3.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.12, 0.28, 0.12] });
+  const shimmerTranslate = xpShimmer.interpolate({ inputRange: [0, 1], outputRange: [-200, 200] });
+  const shimmerOpacity = xpShimmer.interpolate({ inputRange: [0, 0.1, 0.5, 0.9, 1], outputRange: [0, 0.5, 0.15, 0.5, 0] });
 
   useEffect(() => {
     Animated.timing(progressAnim, {
@@ -1483,7 +1517,19 @@ export default function StudentDashboard() {
           </View>
         </Animated.View>
 
-        <View style={styles.xpBar}>
+        <View style={styles.xpBarOuter}>
+          <LinearGradient
+            colors={['rgba(255,159,28,0.08)', 'rgba(255,107,53,0.12)', 'rgba(139,92,246,0.08)']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.xpBarGradient}
+          />
+          <Animated.View style={[styles.xpOrb1, { transform: [{ translateX: xpOrb1Translate }], opacity: xpOrb1Opacity }]} />
+          <Animated.View style={[styles.xpOrb2, { transform: [{ translateX: xpOrb2Translate }], opacity: xpOrb2Opacity }]} />
+          <Animated.View style={[styles.xpOrb3, { transform: [{ translateY: xpOrb3Translate }], opacity: xpOrb3Opacity }]} />
+          <View style={styles.xpBarNoise} />
+          <Animated.View style={[styles.xpShimmer, { transform: [{ translateX: shimmerTranslate }], opacity: shimmerOpacity }]} />
+          <View style={styles.xpBarInner}>
           <View style={styles.levelRow}>
             <Animated.View style={[styles.levelIconOuter, { transform: [{ scale: pulseAnim }] }]}>
               <ChessPieceIcon level={levelInfo.level} color={levelInfo.color} />
@@ -1527,6 +1573,7 @@ export default function StudentDashboard() {
                 {userProgress.totalXP >= 10000 ? 'Free Premium!' : `${Math.max(10000 - userProgress.totalXP, 0)} to Premium`}
               </Text>
             </View>
+          </View>
           </View>
         </View>
 
@@ -1888,13 +1935,77 @@ const styles = StyleSheet.create({
     color: '#7dd3fc',
     fontWeight: '500' as const,
   },
-  xpBar: {
+  xpBarOuter: {
     marginTop: 18,
+    borderRadius: 20,
+    overflow: 'hidden',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    ...Platform.select({
+      ios: { shadowColor: '#ff9f1c', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 16 },
+      android: { elevation: 6 },
+      web: { boxShadow: '0 4px 20px rgba(255, 159, 28, 0.2)' },
+    }),
+  },
+  xpBarGradient: {
+    position: 'absolute' as const,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  xpOrb1: {
+    position: 'absolute' as const,
+    top: -20,
+    right: -10,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#ff9f1c',
+  },
+  xpOrb2: {
+    position: 'absolute' as const,
+    bottom: -15,
+    left: -5,
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: '#8b5cf6',
+  },
+  xpOrb3: {
+    position: 'absolute' as const,
+    top: 20,
+    left: '40%',
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#06b6d4',
+  },
+  xpBarNoise: {
+    position: 'absolute' as const,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+  },
+  xpShimmer: {
+    position: 'absolute' as const,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: 120,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+  },
+  xpBarInner: {
+    padding: 16,
+    position: 'relative' as const,
+    zIndex: 1,
+  },
+  xpBar: {
     backgroundColor: 'rgba(255, 255, 255, 0.06)',
     borderRadius: 18,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
   },
   levelRow: {
     flexDirection: 'row',
