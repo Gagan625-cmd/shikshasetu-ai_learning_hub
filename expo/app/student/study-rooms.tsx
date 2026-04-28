@@ -12,7 +12,7 @@ import { robustGenerateObject } from '@/lib/ai-generate';
 import { z } from 'zod';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { supabase } from '@/utils/supabase';
 
 interface StudyRoom {
   id: string;
@@ -199,26 +199,151 @@ export default function StudyRooms() {
   const currentUserId = user?.email || 'guest';
   const currentUserName = user?.name || 'Student';
 
+  const fetchRooms = useCallback(async () => {
+    const { data: roomsData, error: roomsErr } = await supabase
+      .from('study_rooms')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (roomsErr) { console.log('fetchRooms error:', roomsErr.message); return; }
+    if (!roomsData) return;
+
+    const ids = roomsData.map(r => r.id);
+    if (ids.length === 0) { setRooms([]); return; }
+
+    const [membersRes, messagesRes, challengesRes, notesRes] = await Promise.all([
+      supabase.from('study_room_members').select('*').in('room_id', ids),
+      supabase.from('study_room_messages').select('*').in('room_id', ids).order('created_at', { ascending: true }),
+      supabase.from('study_room_challenges').select('*').in('room_id', ids).order('created_at', { ascending: true }),
+      supabase.from('study_room_notes').select('*').in('room_id', ids).order('shared_at', { ascending: true }),
+    ]);
+
+    const membersByRoom = new Map<string, RoomMember[]>();
+    (membersRes.data || []).forEach((m: any) => {
+      const list = membersByRoom.get(m.room_id) || [];
+      list.push({
+        id: m.user_id,
+        name: m.name,
+        email: m.email,
+        xp: m.xp,
+        streak: m.streak,
+        joinedAt: m.joined_at,
+        isOnline: m.is_online,
+        lastActive: m.last_active,
+      });
+      membersByRoom.set(m.room_id, list);
+    });
+
+    const messagesByRoom = new Map<string, RoomMessage[]>();
+    (messagesRes.data || []).forEach((m: any) => {
+      const list = messagesByRoom.get(m.room_id) || [];
+      list.push({
+        id: m.id,
+        senderId: m.sender_id,
+        senderName: m.sender_name,
+        content: m.content,
+        type: m.type,
+        timestamp: m.created_at,
+      });
+      messagesByRoom.set(m.room_id, list);
+    });
+
+    const challengesByRoom = new Map<string, QuizChallenge[]>();
+    (challengesRes.data || []).forEach((c: any) => {
+      const list = challengesByRoom.get(c.room_id) || [];
+      list.push({
+        id: c.id,
+        question: c.question,
+        options: c.options,
+        correctAnswer: c.correct_answer,
+        createdBy: c.created_by,
+        createdByName: c.created_by_name,
+        answers: c.answers || {},
+        createdAt: c.created_at,
+      });
+      challengesByRoom.set(c.room_id, list);
+    });
+
+    const notesByRoom = new Map<string, SharedNote[]>();
+    (notesRes.data || []).forEach((n: any) => {
+      const list = notesByRoom.get(n.room_id) || [];
+      list.push({
+        id: n.id,
+        title: n.title,
+        content: n.content,
+        sharedBy: n.shared_by,
+        sharedByName: n.shared_by_name,
+        sharedAt: n.shared_at,
+      });
+      notesByRoom.set(n.room_id, list);
+    });
+
+    const assembled: StudyRoom[] = roomsData.map((r: any) => ({
+      id: r.id,
+      name: r.name,
+      subject: r.subject,
+      createdBy: r.created_by,
+      createdByName: r.created_by_name,
+      isPrivate: r.is_private,
+      code: r.code,
+      members: membersByRoom.get(r.id) || [],
+      messages: messagesByRoom.get(r.id) || [],
+      quizChallenges: challengesByRoom.get(r.id) || [],
+      sharedNotes: notesByRoom.get(r.id) || [],
+      createdAt: r.created_at,
+    }));
+
+    setRooms(assembled);
+    setActiveRoom(prev => prev ? (assembled.find(r => r.id === prev.id) || null) : null);
+  }, []);
+
   useEffect(() => {
-    AsyncStorage.getItem('studyRooms').then(data => {
-      if (data) {
-        try { setRooms(JSON.parse(data)); } catch (e) { console.log('Error parsing rooms:', e); }
-      }
-    }).catch(e => console.log('Error loading rooms:', e));
-  }, []);
+    void fetchRooms();
+    const id = setInterval(() => { void fetchRooms(); }, 4000);
+    return () => clearInterval(id);
+  }, [fetchRooms]);
 
-  const saveRooms = useCallback(async (updatedRooms: StudyRoom[]) => {
-    setRooms(updatedRooms);
-    try { await AsyncStorage.setItem('studyRooms', JSON.stringify(updatedRooms)); } catch (e) { console.log('Error saving rooms:', e); }
-  }, []);
-
-  const handleCreateRoom = useCallback(() => {
+  const handleCreateRoom = useCallback(async () => {
     if (!roomName.trim()) { Alert.alert('Error', 'Please enter a room name.'); return; }
     if (!roomSubject.trim()) { Alert.alert('Error', 'Please enter a subject.'); return; }
 
     const code = generateRoomCode();
+    const roomId = Date.now().toString();
+    const nowIso = new Date().toISOString();
+
+    const { error: roomErr } = await supabase.from('study_rooms').insert({
+      id: roomId,
+      name: roomName.trim(),
+      subject: roomSubject.trim(),
+      created_by: currentUserId,
+      created_by_name: currentUserName,
+      is_private: isPrivate,
+      code,
+    });
+    if (roomErr) { Alert.alert('Error', 'Failed to create room: ' + roomErr.message); return; }
+
+    const { error: memberErr } = await supabase.from('study_room_members').insert({
+      room_id: roomId,
+      user_id: currentUserId,
+      name: currentUserName,
+      email: currentUserId,
+      xp: userProgress.totalXP,
+      streak: userProgress.currentStreak,
+      is_online: true,
+    });
+    if (memberErr) console.log('member insert error:', memberErr.message);
+
+    const sysMsgId = (Date.now() + 1).toString();
+    await supabase.from('study_room_messages').insert({
+      id: sysMsgId,
+      room_id: roomId,
+      sender_id: 'system',
+      sender_name: 'System',
+      content: `${currentUserName} created the room. Share code ${code} with friends to join!`,
+      type: 'system',
+    });
+
     const newRoom: StudyRoom = {
-      id: Date.now().toString(),
+      id: roomId,
       name: roomName.trim(),
       subject: roomSubject.trim(),
       createdBy: currentUserId,
@@ -231,98 +356,119 @@ export default function StudyRooms() {
         email: currentUserId,
         xp: userProgress.totalXP,
         streak: userProgress.currentStreak,
-        joinedAt: new Date().toISOString(),
+        joinedAt: nowIso,
         isOnline: true,
-        lastActive: new Date().toISOString(),
+        lastActive: nowIso,
       }],
       messages: [{
-        id: Date.now().toString(),
+        id: sysMsgId,
         senderId: 'system',
         senderName: 'System',
         content: `${currentUserName} created the room. Share code ${code} with friends to join!`,
         type: 'system',
-        timestamp: new Date().toISOString(),
+        timestamp: nowIso,
       }],
       quizChallenges: [],
       sharedNotes: [],
-      createdAt: new Date().toISOString(),
+      createdAt: nowIso,
     };
 
-    const updated = [...rooms, newRoom];
-    void saveRooms(updated);
+    setRooms(prev => [...prev, newRoom]);
     setActiveRoom(newRoom);
     setShowCreateModal(false);
     setRoomName('');
     setRoomSubject('');
     setIsPrivate(false);
     addXP(5, 'Created a study room');
+    void fetchRooms();
     if (Platform.OS !== 'web') void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-  }, [roomName, roomSubject, isPrivate, currentUserId, currentUserName, userProgress, rooms, saveRooms, addXP]);
+  }, [roomName, roomSubject, isPrivate, currentUserId, currentUserName, userProgress, addXP, fetchRooms]);
 
-  const handleJoinRoom = useCallback(() => {
+  const handleJoinRoom = useCallback(async () => {
     const code = joinCode.trim().toUpperCase();
     if (code.length !== 6) { Alert.alert('Error', 'Please enter a valid 6-character room code.'); return; }
 
-    const room = rooms.find(r => r.code === code);
-    if (!room) { Alert.alert('Not Found', 'No room found with this code. Please check and try again.'); return; }
+    const { data: roomRow, error: lookupErr } = await supabase
+      .from('study_rooms')
+      .select('*')
+      .eq('code', code)
+      .maybeSingle();
+    if (lookupErr) { Alert.alert('Error', lookupErr.message); return; }
+    if (!roomRow) { Alert.alert('Not Found', 'No room found with this code. Please check and try again.'); return; }
 
-    if (room.members.some(m => m.id === currentUserId)) {
-      setActiveRoom(room);
-      setShowJoinModal(false);
-      setJoinCode('');
-      return;
-    }
+    const roomId = roomRow.id;
 
-    const updatedRoom = {
-      ...room,
-      members: [...room.members, {
-        id: currentUserId,
+    const { data: existingMember } = await supabase
+      .from('study_room_members')
+      .select('user_id')
+      .eq('room_id', roomId)
+      .eq('user_id', currentUserId)
+      .maybeSingle();
+
+    if (!existingMember) {
+      const { error: memErr } = await supabase.from('study_room_members').insert({
+        room_id: roomId,
+        user_id: currentUserId,
         name: currentUserName,
         email: currentUserId,
         xp: userProgress.totalXP,
         streak: userProgress.currentStreak,
-        joinedAt: new Date().toISOString(),
-        isOnline: true,
-        lastActive: new Date().toISOString(),
-      }],
-      messages: [...room.messages, {
-        id: Date.now().toString(),
-        senderId: 'system',
-        senderName: 'System',
-        content: `${currentUserName} joined the room!`,
-        type: 'system' as const,
-        timestamp: new Date().toISOString(),
-      }],
-    };
+        is_online: true,
+      });
+      if (memErr) { Alert.alert('Error', memErr.message); return; }
 
-    const updated = rooms.map(r => r.id === room.id ? updatedRoom : r);
-    void saveRooms(updated);
-    setActiveRoom(updatedRoom);
+      await supabase.from('study_room_messages').insert({
+        id: Date.now().toString(),
+        room_id: roomId,
+        sender_id: 'system',
+        sender_name: 'System',
+        content: `${currentUserName} joined the room!`,
+        type: 'system',
+      });
+      addXP(3, 'Joined a study room');
+    }
+
     setShowJoinModal(false);
     setJoinCode('');
-    addXP(3, 'Joined a study room');
+    await fetchRooms();
+    setRooms(prev => {
+      const found = prev.find(r => r.id === roomId);
+      if (found) setActiveRoom(found);
+      return prev;
+    });
     if (Platform.OS !== 'web') void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-  }, [joinCode, rooms, currentUserId, currentUserName, userProgress, saveRooms, addXP]);
+  }, [joinCode, currentUserId, currentUserName, userProgress, addXP, fetchRooms]);
 
-  const handleSendMessage = useCallback(() => {
+  const handleSendMessage = useCallback(async () => {
     if (!messageInput.trim() || !activeRoom) return;
 
+    const msgId = Date.now().toString() + Math.random().toString(36).slice(2, 6);
+    const content = messageInput.trim();
     const msg: RoomMessage = {
-      id: Date.now().toString(),
+      id: msgId,
       senderId: currentUserId,
       senderName: currentUserName,
-      content: messageInput.trim(),
+      content,
       type: 'text',
       timestamp: new Date().toISOString(),
     };
 
     const updatedRoom = { ...activeRoom, messages: [...activeRoom.messages, msg] };
     setActiveRoom(updatedRoom);
-    const updated = rooms.map(r => r.id === activeRoom.id ? updatedRoom : r);
-    void saveRooms(updated);
+    setRooms(prev => prev.map(r => r.id === activeRoom.id ? updatedRoom : r));
     setMessageInput('');
     setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
-  }, [messageInput, activeRoom, currentUserId, currentUserName, rooms, saveRooms]);
+
+    const { error } = await supabase.from('study_room_messages').insert({
+      id: msgId,
+      room_id: activeRoom.id,
+      sender_id: currentUserId,
+      sender_name: currentUserName,
+      content,
+      type: 'text',
+    });
+    if (error) console.log('handleSendMessage error:', error.message);
+  }, [messageInput, activeRoom, currentUserId, currentUserName]);
 
   const generateChallengeMutation = useMutation({
     mutationFn: async () => {
@@ -337,10 +483,11 @@ Provide 4 options. correctAnswer is the 0-based index of the correct option.`;
       });
       return result;
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       if (!activeRoom) return;
+      const challengeId = Date.now().toString();
       const challenge: QuizChallenge = {
-        id: Date.now().toString(),
+        id: challengeId,
         question: data.question,
         options: data.options,
         correctAnswer: data.correctAnswer,
@@ -350,8 +497,9 @@ Provide 4 options. correctAnswer is the 0-based index of the correct option.`;
         createdAt: new Date().toISOString(),
       };
 
+      const sysMsgId = (Date.now() + 1).toString();
       const systemMsg: RoomMessage = {
-        id: (Date.now() + 1).toString(),
+        id: sysMsgId,
         senderId: 'system',
         senderName: 'System',
         content: `${currentUserName} sent a Quiz Challenge! Answer it above.`,
@@ -365,32 +513,54 @@ Provide 4 options. correctAnswer is the 0-based index of the correct option.`;
         messages: [...activeRoom.messages, systemMsg],
       };
       setActiveRoom(updatedRoom);
-      const updated = rooms.map(r => r.id === activeRoom.id ? updatedRoom : r);
-      void saveRooms(updated);
+      setRooms(prev => prev.map(r => r.id === activeRoom.id ? updatedRoom : r));
       addXP(3, 'Created a quiz challenge');
+
+      await supabase.from('study_room_challenges').insert({
+        id: challengeId,
+        room_id: activeRoom.id,
+        question: data.question,
+        options: data.options,
+        correct_answer: data.correctAnswer,
+        created_by: currentUserId,
+        created_by_name: currentUserName,
+        answers: {},
+      });
+      await supabase.from('study_room_messages').insert({
+        id: sysMsgId,
+        room_id: activeRoom.id,
+        sender_id: 'system',
+        sender_name: 'System',
+        content: systemMsg.content,
+        type: 'quiz-challenge',
+      });
     },
     onError: () => Alert.alert('Error', 'Failed to generate quiz challenge.'),
   });
 
-  const handleAnswerChallenge = useCallback((challengeId: string, answer: number) => {
+  const handleAnswerChallenge = useCallback(async (challengeId: string, answer: number) => {
     if (!activeRoom) return;
-    const updatedChallenges = activeRoom.quizChallenges.map(c => {
-      if (c.id === challengeId) {
-        const newAnswers = { ...c.answers, [currentUserId]: answer };
-        if (answer === c.correctAnswer) addXP(2, 'Correct quiz challenge answer');
-        return { ...c, answers: newAnswers };
-      }
-      return c;
-    });
+    const challenge = activeRoom.quizChallenges.find(c => c.id === challengeId);
+    if (!challenge) return;
+    const newAnswers = { ...challenge.answers, [currentUserId]: answer };
+    if (answer === challenge.correctAnswer) addXP(2, 'Correct quiz challenge answer');
 
+    const updatedChallenges = activeRoom.quizChallenges.map(c =>
+      c.id === challengeId ? { ...c, answers: newAnswers } : c
+    );
     const updatedRoom = { ...activeRoom, quizChallenges: updatedChallenges };
     setActiveRoom(updatedRoom);
-    const updated = rooms.map(r => r.id === activeRoom.id ? updatedRoom : r);
-    void saveRooms(updated);
+    setRooms(prev => prev.map(r => r.id === activeRoom.id ? updatedRoom : r));
     if (Platform.OS !== 'web') void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-  }, [activeRoom, currentUserId, rooms, saveRooms, addXP]);
 
-  const handleShareNote = useCallback(() => {
+    const { error } = await supabase
+      .from('study_room_challenges')
+      .update({ answers: newAnswers })
+      .eq('id', challengeId);
+    if (error) console.log('handleAnswerChallenge error:', error.message);
+  }, [activeRoom, currentUserId, addXP]);
+
+  const handleShareNote = useCallback(async () => {
     if (!activeRoom) return;
     const noteTitle = 'Quick Note';
     const noteContent = messageInput.trim() || 'Shared study note';
@@ -398,8 +568,10 @@ Provide 4 options. correctAnswer is the 0-based index of the correct option.`;
       Alert.alert('Share Note', 'Type your note content in the message field first, then tap Share Note.');
       return;
     }
+    const noteId = Date.now().toString();
+    const msgId = (Date.now() + 1).toString();
     const note: SharedNote = {
-      id: Date.now().toString(),
+      id: noteId,
       title: noteTitle,
       content: noteContent,
       sharedBy: currentUserId,
@@ -407,7 +579,7 @@ Provide 4 options. correctAnswer is the 0-based index of the correct option.`;
       sharedAt: new Date().toISOString(),
     };
     const msg: RoomMessage = {
-      id: (Date.now() + 1).toString(),
+      id: msgId,
       senderId: 'system',
       senderName: 'System',
       content: `${currentUserName} shared a note: "${noteTitle}"`,
@@ -420,42 +592,60 @@ Provide 4 options. correctAnswer is the 0-based index of the correct option.`;
       messages: [...activeRoom.messages, msg],
     };
     setActiveRoom(updatedRoom);
-    const updated = rooms.map(r => r.id === activeRoom.id ? updatedRoom : r);
-    void saveRooms(updated);
+    setRooms(prev => prev.map(r => r.id === activeRoom.id ? updatedRoom : r));
     setMessageInput('');
     addXP(2, 'Shared a note');
-  }, [activeRoom, currentUserId, currentUserName, rooms, saveRooms, addXP, messageInput]);
+
+    await supabase.from('study_room_notes').insert({
+      id: noteId,
+      room_id: activeRoom.id,
+      title: noteTitle,
+      content: noteContent,
+      shared_by: currentUserId,
+      shared_by_name: currentUserName,
+    });
+    await supabase.from('study_room_messages').insert({
+      id: msgId,
+      room_id: activeRoom.id,
+      sender_id: 'system',
+      sender_name: 'System',
+      content: msg.content,
+      type: 'note',
+    });
+  }, [activeRoom, currentUserId, currentUserName, addXP, messageInput]);
 
   const handleLeaveRoom = useCallback(() => {
     if (!activeRoom) return;
     Alert.alert('Leave Room', 'Are you sure you want to leave this room?', [
       { text: 'Cancel', style: 'cancel' },
       {
-        text: 'Leave', style: 'destructive', onPress: () => {
-          const updatedRoom = {
-            ...activeRoom,
-            members: activeRoom.members.filter(m => m.id !== currentUserId),
-            messages: [...activeRoom.messages, {
-              id: Date.now().toString(),
-              senderId: 'system',
-              senderName: 'System',
-              content: `${currentUserName} left the room.`,
-              type: 'system' as const,
-              timestamp: new Date().toISOString(),
-            }],
-          };
-          if (updatedRoom.members.length === 0) {
-            const updated = rooms.filter(r => r.id !== activeRoom.id);
-            void saveRooms(updated);
-          } else {
-            const updated = rooms.map(r => r.id === activeRoom.id ? updatedRoom : r);
-            void saveRooms(updated);
+        text: 'Leave', style: 'destructive', onPress: async () => {
+          const roomId = activeRoom.id;
+          const remaining = activeRoom.members.filter(m => m.id !== currentUserId);
+
+          await supabase.from('study_room_members').delete()
+            .eq('room_id', roomId)
+            .eq('user_id', currentUserId);
+
+          await supabase.from('study_room_messages').insert({
+            id: Date.now().toString(),
+            room_id: roomId,
+            sender_id: 'system',
+            sender_name: 'System',
+            content: `${currentUserName} left the room.`,
+            type: 'system',
+          });
+
+          if (remaining.length === 0) {
+            await supabase.from('study_rooms').delete().eq('id', roomId);
           }
+
           setActiveRoom(null);
+          void fetchRooms();
         },
       },
     ]);
-  }, [activeRoom, currentUserId, currentUserName, rooms, saveRooms]);
+  }, [activeRoom, currentUserId, currentUserName, fetchRooms]);
 
   if (activeRoom) {
     return (
