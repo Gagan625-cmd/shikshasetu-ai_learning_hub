@@ -1,5 +1,6 @@
 import { generateText, generateObject } from '@rork-ai/toolkit-sdk';
 import { z } from 'zod';
+import { enforceAIQuota } from './ai-usage';
 
 const MAX_RETRIES = 3;
 const BASE_DELAY = 2000;
@@ -77,6 +78,7 @@ type AssistantMessage = { role: 'assistant'; content: string | Array<{ type: 'te
 type Message = UserMessage | AssistantMessage;
 
 export async function robustGenerateText(params: { messages: Message[] }): Promise<string> {
+  enforceAIQuota();
   await waitForSlot();
   let lastError: Error | null = null;
 
@@ -116,6 +118,7 @@ export async function robustGenerateObject<T extends z.ZodType>(params: {
   messages: Message[];
   schema: T;
 }): Promise<z.infer<T>> {
+  enforceAIQuota();
   await waitForSlot();
   let lastError: Error | null = null;
 

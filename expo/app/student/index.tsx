@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState, useCallback, useMemo, memo, useEffect, useRef } from 'react';
 import { LANGUAGES } from '@/constants/ncert-data';
 import { useMutation } from '@tanstack/react-query';
-import { generateText } from '@rork-ai/toolkit-sdk';
+import { robustGenerateText as generateText } from '@/lib/ai-generate';
 import { useTheme } from '@/contexts/theme-context';
 import { useMessaging } from '@/contexts/messaging-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';

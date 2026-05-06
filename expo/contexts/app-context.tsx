@@ -5,6 +5,8 @@ import { Platform } from 'react-native';
 import * as StoreReview from 'expo-store-review';
 import { UserRole, Language, UserProgress, QuizResult, ContentActivity, TeacherActivity, ExamActivity, TeacherUpload, XPEntry, GamePlayRecord, GKQuizRecord, FunLearningState } from '@/types';
 import { useAuth } from '@/contexts/auth-context';
+import { useSubscription } from '@/contexts/subscription-context';
+import { setAIUsageContext, todayString, getDailyLimit, type AIUsageState } from '@/lib/ai-usage';
 
 const XP_REWARD_THRESHOLD = 10000;
 const XP_REWARD_DURATION_DAYS = 30;
@@ -43,6 +45,7 @@ function getUserStorageKey(userEmail: string | undefined, key: string): string {
 
 export const [AppProvider, useApp] = createContextHook(() => {
   const { user } = useAuth();
+  const { isPremium } = useSubscription();
   const currentUserEmail = user?.email;
   const emailRef = useRef<string | undefined>(currentUserEmail);
   const prevUserRef = useRef<string | undefined>(undefined);
@@ -426,6 +429,56 @@ export const [AppProvider, useApp] = createContextHook(() => {
     return userProgress.xpReward.active && new Date(userProgress.xpReward.expiresAt) > new Date();
   }, [userProgress.xpReward]);
 
+  const [aiUsage, setAIUsage] = useState<AIUsageState>({ date: todayString(), count: 0 });
+  const aiUsageRef = useRef<AIUsageState>(aiUsage);
+
+  useEffect(() => {
+    aiUsageRef.current = aiUsage;
+  }, [aiUsage]);
+
+  useEffect(() => {
+    const key = getUserStorageKey(currentUserEmail, 'aiUsage');
+    AsyncStorage.getItem(key).then((raw) => {
+      if (!raw) {
+        setAIUsage({ date: todayString(), count: 0 });
+        return;
+      }
+      try {
+        const parsed = JSON.parse(raw) as AIUsageState;
+        if (parsed.date === todayString()) {
+          setAIUsage(parsed);
+        } else {
+          setAIUsage({ date: todayString(), count: 0 });
+        }
+      } catch {
+        setAIUsage({ date: todayString(), count: 0 });
+      }
+    }).catch(() => {});
+  }, [currentUserEmail]);
+
+  useEffect(() => {
+    setAIUsageContext({
+      isPremium,
+      getUsage: () => aiUsageRef.current,
+      incrementUsage: () => {
+        const today = todayString();
+        const prev = aiUsageRef.current;
+        const next: AIUsageState = prev.date === today
+          ? { date: today, count: prev.count + 1 }
+          : { date: today, count: 1 };
+        aiUsageRef.current = next;
+        setAIUsage(next);
+        const key = getUserStorageKey(emailRef.current, 'aiUsage');
+        AsyncStorage.setItem(key, JSON.stringify(next)).catch(() => {});
+      },
+    });
+    return () => setAIUsageContext(null);
+  }, [isPremium]);
+
+  const aiLimit = getDailyLimit(isPremium);
+  const aiUsedToday = aiUsage.date === todayString() ? aiUsage.count : 0;
+  const aiRemaining = Math.max(0, aiLimit - aiUsedToday);
+
   return useMemo(() => ({
     userRole,
     selectedLanguage,
@@ -446,5 +499,8 @@ export const [AppProvider, useApp] = createContextHook(() => {
     recordGamePlay,
     recordGKQuiz,
     canPlayGame,
-  }), [userRole, selectedLanguage, isLoading, userProgress, selectRole, changeLanguage, resetApp, addQuizResult, addContentActivity, addStudyTime, addTeacherActivity, addExamActivity, addTeacherUpload, maybeRequestReview, addXP, hasXPReward, recordGamePlay, recordGKQuiz, canPlayGame]);
+    aiLimit,
+    aiUsedToday,
+    aiRemaining,
+  }), [userRole, selectedLanguage, isLoading, userProgress, selectRole, changeLanguage, resetApp, addQuizResult, addContentActivity, addStudyTime, addTeacherActivity, addExamActivity, addTeacherUpload, maybeRequestReview, addXP, hasXPReward, recordGamePlay, recordGKQuiz, canPlayGame, aiLimit, aiUsedToday, aiRemaining]);
 });

@@ -8,7 +8,7 @@ import { useApp } from '@/contexts/app-context';
 import { useAuth } from '@/contexts/auth-context';
 import { useTheme } from '@/contexts/theme-context';
 import { useMutation } from '@tanstack/react-query';
-import { generateObject } from '@rork-ai/toolkit-sdk';
+import { robustGenerateObject as generateObject } from '@/lib/ai-generate';
 import { z } from 'zod';
 import { NCERT_SUBJECTS } from '@/constants/ncert-data';
 import { ICSE_SUBJECTS } from '@/constants/icse-data';

@@ -5,6 +5,7 @@ import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState } from 'react';
 import { useApp } from '@/contexts/app-context';
+import { useSubscription } from '@/contexts/subscription-context';
 import { useTheme } from '@/contexts/theme-context';
 import { useMutation } from '@tanstack/react-query';
 import { robustGenerateText } from '@/lib/ai-generate';
@@ -1340,7 +1341,8 @@ export default function ContentGenerator() {
   useStudyTimeTracker('Generate');
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { selectedLanguage, addContentActivity } = useApp();
+  const { selectedLanguage, addContentActivity, aiRemaining, aiLimit } = useApp();
+  const { isPremium } = useSubscription();
   const { colors, isDark } = useTheme();
   const [selectedBoard, setSelectedBoard] = useState<'NCERT' | 'ICSE'>('NCERT');
   const [selectedGrade, setSelectedGrade] = useState<number>(6);
@@ -2515,7 +2517,23 @@ IMPORTANT REQUIREMENTS:
 
         <TouchableOpacity
           style={[styles.generateButton, !canGenerate && styles.generateButtonDisabled]}
-          onPress={() => { setGeneratedImage(null); setDiagramImages([]); generateMutation.mutate(); }}
+          onPress={() => {
+            if ((contentType === 'questionpaper' || contentType === 'mindmap') && !isPremium) {
+              router.push('/paywall' as any);
+              return;
+            }
+            if (aiRemaining <= 0) {
+              Alert.alert(
+                'Daily AI limit reached',
+                `You've used all ${aiLimit} AI generations today.${isPremium ? ' Try again tomorrow.' : ' Upgrade to Premium for 10/day.'}`,
+                isPremium
+                  ? [{ text: 'OK' }]
+                  : [{ text: 'Cancel', style: 'cancel' }, { text: 'Upgrade', onPress: () => router.push('/paywall' as any) }]
+              );
+              return;
+            }
+            setGeneratedImage(null); setDiagramImages([]); generateMutation.mutate();
+          }}
           disabled={!canGenerate || generateMutation.isPending}
         >
           {generateMutation.isPending ? (
