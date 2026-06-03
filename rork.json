@@ -10,6 +10,11 @@
       "name": "Backend",
       "path": "backend",
       "framework": "supabase"
+    },
+    {
+      "name": "ShikshaSetu",
+      "path": "android-shikshasetu",
+      "framework": "kotlin"
     }
   ]
 }
