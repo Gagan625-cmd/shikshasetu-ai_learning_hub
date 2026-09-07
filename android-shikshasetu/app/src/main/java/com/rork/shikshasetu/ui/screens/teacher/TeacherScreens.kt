@@ -24,6 +24,8 @@ import androidx.compose.ui.unit.sp
 import com.rork.shikshasetu.models.*
 import com.rork.shikshasetu.services.AppService
 import com.rork.shikshasetu.services.AuthService
+import com.rork.shikshasetu.ui.components.GradientBackground
+import com.rork.shikshasetu.ui.components.pressableScale
 import org.koin.compose.koinInject
 
 // ===================== TEACHER DASHBOARD =====================
@@ -41,11 +43,12 @@ fun TeacherDashboardScreen(
     val aiLimit = appService.aiDailyLimit
     val isPremium = appService.isPremium
 
+    GradientBackground {
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Row(verticalAlignment = Alignment.CenterVertically) { Text("Hi, $displayName", fontWeight = FontWeight.Bold); Text(" \uD83D\uDC4B", fontSize = 20.sp) } },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color(0xFF0a1628), titleContentColor = Color.White),
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent, titleContentColor = Color.White),
                 actions = {
                     Surface(shape = RoundedCornerShape(10.dp), color = Color(0xFF0ea5e9).copy(alpha = 0.15f)) {
                         Row(Modifier.padding(horizontal = 10.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -64,7 +67,7 @@ fun TeacherDashboardScreen(
                 }
             )
         },
-        containerColor = Color(0xFF0a1628)
+        containerColor = Color.Transparent
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(16.dp)) {
             // Quick Tools Grid
@@ -149,20 +152,21 @@ fun TeacherDashboardScreen(
             // Quick links
             Spacer(Modifier.height(20.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                SmallDashBtn("Quick\nRevision", Icons.Filled.Bolt, Color(0xFFf59e0b)) { onNavigate("teacher/quick-revision") }
-                SmallDashBtn("Exam\nScanner", Icons.Filled.DocumentScanner, Color(0xFF10b981)) { onNavigate("teacher/exam-scanner") }
-                SmallDashBtn("Messages", Icons.Filled.Message, Color(0xFF0ea5e9)) { onNavigate("teacher/messages") }
-                SmallDashBtn("About", Icons.Filled.Info, Color(0xFF8b5cf6)) { onNavigate("teacher/about") }
+                SmallDashBtn("Quick\nRevision", Icons.Filled.Bolt, Color(0xFFf59e0b), Modifier.weight(1f)) { onNavigate("teacher/quick-revision") }
+                SmallDashBtn("Exam\nScanner", Icons.Filled.DocumentScanner, Color(0xFF10b981), Modifier.weight(1f)) { onNavigate("teacher/exam-scanner") }
+                SmallDashBtn("Messages", Icons.Filled.Message, Color(0xFF0ea5e9), Modifier.weight(1f)) { onNavigate("teacher/messages") }
+                SmallDashBtn("About", Icons.Filled.Info, Color(0xFF8b5cf6), Modifier.weight(1f)) { onNavigate("teacher/about") }
             }
 
             Spacer(Modifier.height(24.dp))
         }
     }
+    }
 }
 
 @Composable
 private fun DashButton(emoji: String, label: String, color: Color, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    Card(modifier = modifier, shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.08f)), onClick = onClick) {
+    Card(modifier = modifier.pressableScale(), shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.08f)), onClick = onClick) {
         Column(Modifier.padding(14.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Text(emoji, fontSize = 28.sp)
             Spacer(Modifier.height(6.dp))
@@ -172,8 +176,8 @@ private fun DashButton(emoji: String, label: String, color: Color, modifier: Mod
 }
 
 @Composable
-private fun SmallDashBtn(label: String, icon: androidx.compose.ui.graphics.vector.ImageVector, color: Color, onClick: () -> Unit) {
-    Card(onClick = onClick, modifier = Modifier, shape = RoundedCornerShape(14.dp), colors = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.08f))) {
+private fun SmallDashBtn(label: String, icon: androidx.compose.ui.graphics.vector.ImageVector, color: Color, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    Card(onClick = onClick, modifier = modifier.pressableScale(), shape = RoundedCornerShape(14.dp), colors = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.08f))) {
         Column(Modifier.padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Icon(icon, null, tint = color, modifier = Modifier.size(24.dp))
             Spacer(Modifier.height(4.dp))

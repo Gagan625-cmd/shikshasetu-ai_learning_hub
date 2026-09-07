@@ -25,6 +25,12 @@ import com.rork.shikshasetu.models.OnboardingData
 import com.rork.shikshasetu.models.StudyPlan
 import com.rork.shikshasetu.services.AppService
 import com.rork.shikshasetu.services.AuthService
+import com.rork.shikshasetu.ui.components.GradientBackground
+import com.rork.shikshasetu.ui.components.GradientBorderCard
+import com.rork.shikshasetu.ui.components.GradientStatCard
+import com.rork.shikshasetu.ui.components.Gradients
+import com.rork.shikshasetu.ui.components.entrance
+import com.rork.shikshasetu.ui.components.pressableScale
 import com.rork.shikshasetu.ui.theme.AppColors
 import org.koin.compose.koinInject
 
@@ -50,6 +56,7 @@ fun StudentDashboardScreen(
     val aiRemaining = appService.aiRemaining
     val aiLimit = appService.aiDailyLimit
 
+    GradientBackground {
     Scaffold(
         topBar = {
             TopAppBar(
@@ -60,7 +67,7 @@ fun StudentDashboardScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color(0xFF0a1628),
+                    containerColor = Color.Transparent,
                     titleContentColor = Color.White
                 ),
                 actions = {
@@ -106,7 +113,7 @@ fun StudentDashboardScreen(
                 }
             )
         },
-        containerColor = Color(0xFF0a1628)
+        containerColor = Color.Transparent
     ) { padding ->
         Column(
             modifier = Modifier
@@ -127,21 +134,24 @@ fun StudentDashboardScreen(
                     icon = Icons.Filled.Star,
                     label = "XP",
                     value = "${progress.totalXP}",
-                    color = Color(0xFFf59e0b)
+                    color = Color(0xFFf59e0b),
+                    index = 0
                 )
                 StatCard(
                     modifier = Modifier.weight(1f),
                     icon = Icons.Filled.LocalFireDepartment,
                     label = "Streak",
                     value = "${progress.currentStreak}d",
-                    color = Color(0xFFff6b35)
+                    color = Color(0xFFff6b35),
+                    index = 1
                 )
                 StatCard(
                     modifier = Modifier.weight(1f),
                     icon = Icons.Filled.Timer,
                     label = "Study Time",
                     value = "${progress.totalStudyTime}m",
-                    color = Color(0xFF0ea5e9)
+                    color = Color(0xFF0ea5e9),
+                    index = 2
                 )
             }
 
@@ -272,6 +282,7 @@ fun StudentDashboardScreen(
             Spacer(modifier = Modifier.height(24.dp))
         }
     }
+    }
 }
 
 @Composable
@@ -280,33 +291,27 @@ private fun StatCard(
     icon: ImageVector,
     label: String,
     value: String,
-    color: Color
+    color: Color,
+    index: Int = 0
 ) {
-    Surface(
-        modifier = modifier,
-        shape = RoundedCornerShape(16.dp),
-        color = Color(0xFF0c1f35)
-    ) {
-        Column(
-            modifier = Modifier.padding(12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Icon(icon, null, tint = color, modifier = Modifier.size(20.dp))
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(value, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
-            Text(label, fontSize = 11.sp, color = Color(0xFF94a3b8))
-        }
+    Box(modifier.entrance(index)) {
+        GradientStatCard(
+            icon = { Icon(icon, null, tint = color, modifier = Modifier.size(20.dp)) },
+            value = value,
+            label = label,
+            tint = color
+        )
     }
 }
 
 @Composable
 private fun QuoteCard(text: String, author: String) {
-    Surface(
+    GradientBorderCard(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(bottom = 20.dp),
-        shape = RoundedCornerShape(22.dp),
-        color = Color(0xFF0a1e35)
+            .padding(bottom = 20.dp)
+            .entrance(3),
+        borderBrush = Gradients.of(Color(0xFFff6b35).copy(alpha = 0.6f), Color(0xFF0ea5e9).copy(alpha = 0.6f))
     ) {
         Column(modifier = Modifier.padding(22.dp)) {
             Text(
@@ -346,7 +351,7 @@ private fun QuickActionButton(
     onClick: () -> Unit
 ) {
     Surface(
-        modifier = modifier,
+        modifier = modifier.pressableScale(),
         shape = RoundedCornerShape(18.dp),
         color = Color(0xFF0c1f35),
         onClick = onClick
@@ -355,14 +360,14 @@ private fun QuickActionButton(
             modifier = Modifier.padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Surface(
-                modifier = Modifier.size(48.dp),
-                shape = RoundedCornerShape(14.dp),
-                color = color.copy(alpha = 0.15f)
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(Gradients.of(color.copy(alpha = 0.28f), color.copy(alpha = 0.08f))),
+                contentAlignment = Alignment.Center
             ) {
-                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                    Icon(icon, null, tint = color, modifier = Modifier.size(24.dp))
-                }
+                Icon(icon, null, tint = color, modifier = Modifier.size(24.dp))
             }
             Spacer(modifier = Modifier.height(8.dp))
             Text(label, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFFe2e8f0))
@@ -640,7 +645,7 @@ private fun StudyTipsSection(tips: List<StudyData.StudyTip>) {
 @Composable
 private fun SmallActionChip(icon: ImageVector, label: String, onClick: () -> Unit) {
     Surface(
-        modifier = Modifier.height(36.dp),
+        modifier = Modifier.height(36.dp).pressableScale(),
         shape = RoundedCornerShape(10.dp),
         color = Color(0xFF0c1f35),
         onClick = onClick

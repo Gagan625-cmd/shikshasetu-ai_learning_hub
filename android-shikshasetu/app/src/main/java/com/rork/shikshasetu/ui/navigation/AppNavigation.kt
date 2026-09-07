@@ -1,5 +1,10 @@
 package com.rork.shikshasetu.ui.navigation
 
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.runtime.*
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -52,7 +57,22 @@ fun AppNavigation(
         else -> Screen.TeacherDashboard.route
     }
 
-    NavHost(navController = navController, startDestination = startDestination) {
+    NavHost(
+        navController = navController,
+        startDestination = startDestination,
+        enterTransition = {
+            slideInHorizontally(tween(320)) { it / 3 } + fadeIn(tween(320))
+        },
+        exitTransition = {
+            slideOutHorizontally(tween(320)) { -it / 4 } + fadeOut(tween(220))
+        },
+        popEnterTransition = {
+            slideInHorizontally(tween(320)) { -it / 4 } + fadeIn(tween(320))
+        },
+        popExitTransition = {
+            slideOutHorizontally(tween(320)) { it / 3 } + fadeOut(tween(220))
+        }
+    ) {
         // Auth
         composable(Screen.Auth.route) {
             AuthScreen(
