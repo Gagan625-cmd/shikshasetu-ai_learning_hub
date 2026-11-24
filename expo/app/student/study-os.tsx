@@ -372,7 +372,7 @@ Respond with encouraging, motivational, and practical advice in 2-3 sentences. B
               <Text style={[styles.coachRole, { color: isDark ? '#a78bfa' : '#8b5cf6' }]}>Motivational Coach</Text>
             </View>
 
-            {coachMessage && (
+            {!!coachMessage && (
               <View style={[styles.coachMessageCard, { backgroundColor: isDark ? 'rgba(139,92,246,0.1)' : '#f3e8ff', borderLeftColor: '#8b5cf6' }]}>
                 <Text style={[styles.coachMessageText, { color: isDark ? '#c4b5fd' : '#6b21a8' }]}>{coachMessage}</Text>
               </View>

@@ -2555,7 +2555,7 @@ IMPORTANT REQUIREMENTS:
           </View>
         )}
 
-        {generatedContent && (
+        {!!generatedContent && (
           <>
             <View style={styles.actionButtons}>
               <TouchableOpacity style={styles.actionButton} onPress={handleTextToSpeech}>

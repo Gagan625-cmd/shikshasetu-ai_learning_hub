@@ -877,7 +877,7 @@ Provide complete detailed solutions here.`;
           </View>
         )}
 
-        {generatedContent && (
+        {!!generatedContent && (
           <View style={[styles.resultCard, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
             <View style={styles.resultHeader}>
               <Text style={[styles.resultTitle, { color: colors.text }]}>Generated Content</Text>

@@ -510,7 +510,7 @@ Make it thorough, well-formatted, teaching-oriented, and aligned with ICSE sylla
               </View>
             )}
 
-            {generatedContent && (
+            {!!generatedContent && (
               <View style={[styles.contentCard, { backgroundColor: colors.cardBg }]}>
                 <View style={[styles.contentHeader, { borderBottomColor: colors.border }]}>
                   <Text style={[styles.contentHeaderTitle, { color: colors.text }]}>

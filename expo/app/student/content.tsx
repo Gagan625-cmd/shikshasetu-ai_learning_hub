@@ -427,7 +427,7 @@ Make it comprehensive, well-formatted, and easy to understand for students.`;
               </View>
             )}
 
-            {generatedContent && (
+            {!!generatedContent && (
               <View style={[styles.contentCard, { backgroundColor: colors.cardBg }]}>
                 <View style={[styles.contentHeader, { borderBottomColor: colors.border }]}>
                   <Text style={[styles.contentHeaderTitle, { color: colors.text }]}>Generated Content</Text>
