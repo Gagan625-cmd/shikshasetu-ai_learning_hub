@@ -1,28 +1,98 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, type ReactNode } from 'react';
 import {
   StyleSheet,
   Text,
   View,
   TouchableOpacity,
+  Pressable,
   ScrollView,
   Animated,
   Dimensions,
-  Alert,
+  Modal,
   Platform,
   Easing,
   PanResponder,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, Brain, Lock, Trophy, Zap, ChevronRight, Star, X, Check, Grid3x3, GraduationCap, PersonStanding } from 'lucide-react-native';
+import { ArrowLeft, Brain, Lock, Trophy, Zap, ChevronRight, Star, X, Check } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useApp } from '@/contexts/app-context';
 import { useTheme } from '@/contexts/theme-context';
 import { getRandomGKQuestions, getRandomToughGKQuestions, GKQuestion } from '@/constants/gk-questions';
+import Game3D, { type Game3DVariant } from '@/components/game3d/Game3D';
+import * as Haptics from 'expo-haptics';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
+// ---------- Motion helpers ----------
+
+/** Springy fade+slide entrance, staggered by `delay`. */
+function StaggerIn({ children, delay = 0, style }: { children: ReactNode; delay?: number; style?: object }) {
+  const anim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.spring(anim, {
+      toValue: 1,
+      delay,
+      friction: 7,
+      tension: 45,
+      useNativeDriver: true,
+    }).start();
+  }, [anim, delay]);
+  return (
+    <Animated.View
+      style={[
+        style,
+        {
+          opacity: anim,
+          transform: [
+            { translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [26, 0] }) },
+            { scale: anim.interpolate({ inputRange: [0, 1], outputRange: [0.94, 1] }) },
+          ],
+        },
+      ]}
+    >
+      {children}
+    </Animated.View>
+  );
+}
+
+/** Press feedback: spring scale down + light haptic, springs back on release. */
+function PressScale({ onPress, style, children }: { onPress: () => void; style?: object; children: ReactNode }) {
+  const scale = useRef(new Animated.Value(1)).current;
+  const handlePressIn = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    Animated.spring(scale, { toValue: 0.955, speed: 50, bounciness: 5, useNativeDriver: true }).start();
+  };
+  const handlePressOut = () => {
+    Animated.spring(scale, { toValue: 1, speed: 35, bounciness: 8, useNativeDriver: true }).start();
+  };
+  return (
+    <Pressable onPressIn={handlePressIn} onPressOut={handlePressOut} onPress={onPress}>
+      <Animated.View style={[style, { transform: [{ scale }] }]}>{children}</Animated.View>
+    </Pressable>
+  );
+}
+
 type GameScreen = 'home' | 'pacman' | 'flappy' | 'tictactoe' | 'gk-quiz' | 'runner';
+
+type ResultTone = 'win' | 'lose' | 'coins' | 'info';
+type ResultAction = { label: string; onPress: () => void; primary?: boolean };
+
+const RESULT_GRADIENTS: Record<ResultTone, [string, string, string]> = {
+  win: ['#059669', '#10b981', '#34d399'],
+  lose: ['#be123c', '#e11d48', '#f43f5e'],
+  coins: ['#b45309', '#f59e0b', '#fbbf24'],
+  info: ['#4338ca', '#6366f1', '#818cf8'],
+};
+
+const GAME_BG: Record<Exclude<GameScreen, 'home'>, [string, string, string]> = {
+  pacman: ['#022c22', '#064e3b', '#065f46'],
+  flappy: ['#431407', '#9a3412', '#c2410c'],
+  tictactoe: ['#1e1b4b', '#312e81', '#4c1d95'],
+  'gk-quiz': ['#2e1065', '#5b21b6', '#7c3aed'],
+  runner: ['#020617', '#0f172a', '#1e3a8a'],
+};
 
 const GRID_SIZE = 15;
 const CELL_SIZE = Math.floor((SCREEN_WIDTH - 48) / GRID_SIZE);
@@ -1787,93 +1857,123 @@ export default function FunLearning() {
   const tictactoePlayed = !canPlayGame('tictactoe');
   const runnerPlayed = !canPlayGame('runner');
 
-  const switchScreen = useCallback((to: GameScreen) => {
-    Animated.timing(fadeAnim, { toValue: 0, duration: 150, useNativeDriver: true }).start(() => {
-      setScreen(to);
-      Animated.timing(fadeAnim, { toValue: 1, duration: 200, useNativeDriver: true }).start();
-    });
-  }, [fadeAnim]);
+  // ---- Animated result overlay (replaces Alert.alert) ----
+  const [result, setResult] = useState<{
+    tone: ResultTone;
+    title: string;
+    message: string;
+    actions: ResultAction[];
+  } | null>(null);
+  const resultAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  const showResult = useCallback(
+    (tone: ResultTone, title: string, message: string, actions: ResultAction[]) => {
+      Haptics.notificationAsync(
+        tone === 'lose' ? Haptics.NotificationFeedbackType.Error : Haptics.NotificationFeedbackType.Success
+      ).catch(() => {});
+      setResult({ tone, title, message, actions });
+      resultAnim.setValue(0);
+      Animated.spring(resultAnim, { toValue: 1, friction: 6, tension: 90, useNativeDriver: true }).start();
+    },
+    [resultAnim]
+  );
+
+  const hideResult = useCallback(
+    (then?: () => void) => {
+      Animated.timing(resultAnim, { toValue: 0, duration: 180, useNativeDriver: true }).start(() => {
+        setResult(null);
+        then?.();
+      });
+    },
+    [resultAnim]
+  );
+
+  const switchScreen = useCallback(
+    (to: GameScreen) => {
+      Animated.timing(fadeAnim, { toValue: 0, duration: 160, useNativeDriver: true }).start(() => {
+        setScreen(to);
+        scaleAnim.setValue(0.97);
+        Animated.parallel([
+          Animated.timing(fadeAnim, { toValue: 1, duration: 260, useNativeDriver: true }),
+          Animated.spring(scaleAnim, { toValue: 1, friction: 8, tension: 110, useNativeDriver: true }),
+        ]).start();
+      });
+    },
+    [fadeAnim, scaleAnim]
+  );
 
   const handlePacmanFinish = useCallback((won: boolean) => {
     recordGamePlay('pacman', won);
     if (!won) {
       setTimeout(() => {
-        Alert.alert(
-          'Game Over!',
-          'You lost 1 XP. Take the GK Quiz (score 3+) to earn it back!',
-          [
-            { text: 'Take Quiz', onPress: () => switchScreen('gk-quiz') },
-            { text: 'Later', style: 'cancel', onPress: () => switchScreen('home') },
-          ]
-        );
+        showResult('lose', 'Game Over!', 'You lost 1 XP. Take the GK Quiz (score 3+) to earn it back!', [
+          { label: 'Take Quiz', primary: true, onPress: () => hideResult(() => switchScreen('gk-quiz')) },
+          { label: 'Later', onPress: () => hideResult(() => switchScreen('home')) },
+        ]);
       }, 500);
     } else {
       setTimeout(() => {
-        Alert.alert('Congratulations!', 'You collected all the berries! No XP lost.', [
-          { text: 'OK', onPress: () => switchScreen('home') },
+        showResult('win', 'Congratulations!', 'You collected all the berries! No XP lost.', [
+          { label: 'Back to Games', primary: true, onPress: () => hideResult(() => switchScreen('home')) },
         ]);
       }, 500);
     }
-  }, [recordGamePlay, switchScreen]);
+  }, [recordGamePlay, showResult, hideResult, switchScreen]);
 
   const handleTicTacToeFinish = useCallback((won: boolean) => {
     recordGamePlay('tictactoe', won);
     if (!won) {
       setTimeout(() => {
-        Alert.alert(
-          'The Professor Wins!',
-          'You lost 1 XP. Take the GK Quiz (score 3+) to earn it back!',
-          [
-            { text: 'Take Quiz', onPress: () => switchScreen('gk-quiz') },
-            { text: 'Later', style: 'cancel', onPress: () => switchScreen('home') },
-          ]
-        );
+        showResult('lose', 'The Professor Wins!', 'You lost 1 XP. Take the GK Quiz (score 3+) to earn it back!', [
+          { label: 'Take Quiz', primary: true, onPress: () => hideResult(() => switchScreen('gk-quiz')) },
+          { label: 'Later', onPress: () => hideResult(() => switchScreen('home')) },
+        ]);
       }, 500);
     } else {
       setTimeout(() => {
-        Alert.alert('Brilliant!', 'You defeated the Wisdom Professor! No XP lost.', [
-          { text: 'OK', onPress: () => switchScreen('home') },
+        showResult('win', 'Brilliant!', 'You defeated the Wisdom Professor! No XP lost.', [
+          { label: 'Back to Games', primary: true, onPress: () => hideResult(() => switchScreen('home')) },
         ]);
       }, 500);
     }
-  }, [recordGamePlay, switchScreen]);
+  }, [recordGamePlay, showResult, hideResult, switchScreen]);
 
   const handleFlappyFinish = useCallback((won: boolean) => {
     recordGamePlay('flappy', won);
     if (!won) {
       setTimeout(() => {
-        Alert.alert(
-          'Game Over!',
-          'You lost 1 XP. Take the GK Quiz (score 3+) to earn it back!',
-          [
-            { text: 'Take Quiz', onPress: () => switchScreen('gk-quiz') },
-            { text: 'Later', style: 'cancel', onPress: () => switchScreen('home') },
-          ]
-        );
+        showResult('lose', 'Game Over!', 'You lost 1 XP. Take the GK Quiz (score 3+) to earn it back!', [
+          { label: 'Take Quiz', primary: true, onPress: () => hideResult(() => switchScreen('gk-quiz')) },
+          { label: 'Later', onPress: () => hideResult(() => switchScreen('home')) },
+        ]);
       }, 500);
     } else {
       setTimeout(() => {
-        Alert.alert('Awesome!', 'You cleared all the boulders! No XP lost.', [
-          { text: 'OK', onPress: () => switchScreen('home') },
+        showResult('win', 'Awesome!', 'You cleared all the boulders! No XP lost.', [
+          { label: 'Back to Games', primary: true, onPress: () => hideResult(() => switchScreen('home')) },
         ]);
       }, 500);
     }
-  }, [recordGamePlay, switchScreen]);
+  }, [recordGamePlay, showResult, hideResult, switchScreen]);
 
-  const handleGKFinish = useCallback((score: number, total: number) => {
-    recordGKQuiz(score, total);
-    setTimeout(() => {
-      if (score >= 3) {
-        Alert.alert('Well Done!', `You scored ${score}/${total}. Your XP has been reimbursed! (+1 XP)`, [
-          { text: 'OK', onPress: () => switchScreen('home') },
-        ]);
-      } else {
-        Alert.alert('Not Enough', `You scored ${score}/${total}. You need 3+ correct answers to reimburse XP.`, [
-          { text: 'OK', onPress: () => switchScreen('home') },
-        ]);
-      }
-    }, 800);
-  }, [recordGKQuiz, switchScreen]);
+  const handleGKFinish = useCallback(
+    (score: number, total: number) => {
+      recordGKQuiz(score, total);
+      setTimeout(() => {
+        if (score >= 3) {
+          showResult('win', 'Well Done!', `You scored ${score}/${total}. Your XP has been reimbursed! (+1 XP)`, [
+            { label: 'Back to Games', primary: true, onPress: () => hideResult(() => switchScreen('home')) },
+          ]);
+        } else {
+          showResult('lose', 'Not Enough', `You scored ${score}/${total}. You need 3+ correct answers to reimburse XP.`, [
+            { label: 'Back to Games', primary: true, onPress: () => hideResult(() => switchScreen('home')) },
+          ]);
+        }
+      }, 800);
+    },
+    [recordGKQuiz, showResult, hideResult, switchScreen]
+  );
 
   const handleRunnerFinish = useCallback((earnedCoins: number) => {
     setRunnerCoins(earnedCoins);
@@ -1884,17 +1984,17 @@ export default function FunLearning() {
     setShowReviveQuiz(false);
     setTimeout(() => {
       if (earnedCoins > 0) {
-        Alert.alert('Run Complete!', `You earned ${earnedCoins} XP from coins!`, [
-          { text: 'OK', onPress: () => switchScreen('home') },
+        showResult('coins', 'Run Complete!', `You earned ${earnedCoins} XP from coins!`, [
+          { label: 'Back to Games', primary: true, onPress: () => hideResult(() => switchScreen('home')) },
         ]);
       } else {
-        Alert.alert('Game Over!', 'You lost 1 XP. Take the GK Quiz (score 3+) to earn it back!', [
-          { text: 'Take Quiz', onPress: () => switchScreen('gk-quiz') },
-          { text: 'Later', style: 'cancel', onPress: () => switchScreen('home') },
+        showResult('lose', 'Game Over!', 'You lost 1 XP. Take the GK Quiz (score 3+) to earn it back!', [
+          { label: 'Take Quiz', primary: true, onPress: () => hideResult(() => switchScreen('gk-quiz')) },
+          { label: 'Later', onPress: () => hideResult(() => switchScreen('home')) },
         ]);
       }
     }, 500);
-  }, [recordGamePlay, addXP, switchScreen]);
+  }, [recordGamePlay, addXP, showResult, hideResult, switchScreen]);
 
   const handleRunnerRevive = useCallback(() => {
     setShowReviveQuiz(true);
@@ -1904,18 +2004,102 @@ export default function FunLearning() {
     setShowReviveQuiz(false);
     if (passed) {
       setTimeout(() => {
-        Alert.alert('Revived!', 'You passed the quiz! But the game session is over. Your coins are saved!', [
-          { text: 'OK', onPress: () => handleRunnerFinish(runnerCoins) },
+        showResult('win', 'Revived!', 'You passed the quiz! But the game session is over. Your coins are saved!', [
+          { label: 'Collect Coins', primary: true, onPress: () => hideResult(() => handleRunnerFinish(runnerCoins)) },
         ]);
       }, 1200);
     } else {
       setTimeout(() => {
-        Alert.alert('Failed to Revive', 'You did not pass. Game over!', [
-          { text: 'OK', onPress: () => handleRunnerFinish(0) },
+        showResult('lose', 'Failed to Revive', 'You did not pass. Game over!', [
+          { label: 'OK', primary: true, onPress: () => hideResult(() => handleRunnerFinish(0)) },
         ]);
       }, 1200);
     }
-  }, [handleRunnerFinish, runnerCoins]);
+  }, [handleRunnerFinish, runnerCoins, showResult, hideResult]);
+
+  const gameDefs: {
+    key: GameScreen;
+    title: string;
+    desc: string;
+    gradient: [string, string, string];
+    emblem: Game3DVariant;
+    played: boolean;
+    badge?: { label: string; color: string };
+    onPress: () => void;
+  }[] = [
+    {
+      key: 'pacman',
+      title: 'Fox in Forest',
+      desc: 'Collect berries, avoid predators!',
+      gradient: ['#065f46', '#10b981', '#059669'],
+      emblem: 'coin',
+      played: pacmanPlayed,
+      onPress: () => {
+        if (pacmanPlayed) {
+          showResult('info', 'Already Played', 'You already played Fox in Forest today. Come back tomorrow!', [
+            { label: 'Got it', primary: true, onPress: () => hideResult() },
+          ]);
+          return;
+        }
+        switchScreen('pacman');
+      },
+    },
+    {
+      key: 'flappy',
+      title: 'Jumping Fox',
+      desc: 'Tap to jump over 5 boulders!',
+      gradient: ['#c2410c', '#f97316', '#ea580c'],
+      emblem: 'gem',
+      played: flappyPlayed,
+      onPress: () => {
+        if (flappyPlayed) {
+          showResult('info', 'Already Played', 'You already played Jumping Fox today. Come back tomorrow!', [
+            { label: 'Got it', primary: true, onPress: () => hideResult() },
+          ]);
+          return;
+        }
+        switchScreen('flappy');
+      },
+    },
+    {
+      key: 'tictactoe',
+      title: 'Tic-Tac-Toe',
+      desc: 'Challenge the Wisdom Professor!',
+      gradient: ['#312e81', '#4f46e5', '#6366f1'],
+      emblem: 'dice',
+      played: tictactoePlayed,
+      badge: { label: 'NEW', color: '#f59e0b' },
+      onPress: () => {
+        if (tictactoePlayed) {
+          showResult('info', 'Already Played', 'You already played Tic-Tac-Toe today. Come back tomorrow!', [
+            { label: 'Got it', primary: true, onPress: () => hideResult() },
+          ]);
+          return;
+        }
+        switchScreen('tictactoe');
+      },
+    },
+    {
+      key: 'runner',
+      title: 'Classroom Runner',
+      desc: 'Dodge obstacles! Coins = XP!',
+      gradient: ['#0f172a', '#1e40af', '#3b82f6'],
+      emblem: 'star',
+      played: runnerPlayed,
+      badge: { label: 'HOT', color: '#ef4444' },
+      onPress: () => {
+        if (runnerPlayed) {
+          showResult('info', 'Already Played', 'You already played Classroom Runner today. Come back tomorrow!', [
+            { label: 'Got it', primary: true, onPress: () => hideResult() },
+          ]);
+          return;
+        }
+        setShowReviveQuiz(false);
+        setRunnerCoins(0);
+        switchScreen('runner');
+      },
+    },
+  ];
 
   const renderHome = () => (
     <ScrollView
@@ -1923,232 +2107,122 @@ export default function FunLearning() {
       contentContainerStyle={[homeStyles.scrollContent, { paddingBottom: insets.bottom + 20 }]}
       showsVerticalScrollIndicator={false}
     >
-      <View style={homeStyles.heroSection}>
+      <StaggerIn delay={0}>
         <LinearGradient
-          colors={['#f59e0b', '#f97316', '#ef4444']}
+          colors={['#312e81', '#7c3aed', '#0ea5e9']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={homeStyles.heroBanner}
         >
-          <View style={homeStyles.heroIconWrap}>
-            <Text style={homeStyles.heroEmoji}>🎮</Text>
-          </View>
-          <Text style={homeStyles.heroTitle}>Fun with Learning</Text>
-          <Text style={homeStyles.heroSubtitle}>Play games, stay sharp, earn XP!</Text>
-          <View style={homeStyles.heroRuleRow}>
-            <View style={homeStyles.heroRulePill}>
-              <Text style={homeStyles.heroRuleText}>1 game/day each</Text>
+          <View style={homeStyles.heroRow}>
+            <View style={homeStyles.heroTextCol}>
+              <Text style={homeStyles.heroTitle}>Fun with Learning</Text>
+              <Text style={homeStyles.heroSubtitle}>Play games, stay sharp, earn XP!</Text>
+              <View style={homeStyles.heroRuleRow}>
+                <View style={homeStyles.heroRulePill}>
+                  <Text style={homeStyles.heroRuleText}>1 game/day each</Text>
+                </View>
+                <View style={homeStyles.heroRulePill}>
+                  <Text style={homeStyles.heroRuleText}>Lose = -1 XP</Text>
+                </View>
+                <View style={homeStyles.heroRulePill}>
+                  <Text style={homeStyles.heroRuleText}>Quiz = +1 XP</Text>
+                </View>
+              </View>
             </View>
-            <View style={homeStyles.heroRulePill}>
-              <Text style={homeStyles.heroRuleText}>Lose = -1 XP</Text>
-            </View>
-            <View style={homeStyles.heroRulePill}>
-              <Text style={homeStyles.heroRuleText}>Quiz = +1 XP</Text>
+            <View style={homeStyles.heroEmblem}>
+              <Game3D variant="star" size={104} speed={0.7} />
             </View>
           </View>
         </LinearGradient>
-      </View>
+      </StaggerIn>
 
       <Text style={[homeStyles.sectionLabel, { color: colors.text }]}>Choose a Game</Text>
 
-      <TouchableOpacity
-        style={[homeStyles.gameCard, { backgroundColor: colors.cardBg, borderColor: colors.border }]}
-        onPress={() => {
-          if (pacmanPlayed) {
-            Alert.alert('Already Played', 'You already played Fox in Forest today. Come back tomorrow!');
-            return;
-          }
-          switchScreen('pacman');
-        }}
-        activeOpacity={0.8}
-      >
-        <LinearGradient
-          colors={['#2d5a27', '#3d8b37']}
-          style={homeStyles.gameIconBg}
-        >
-          <Text style={{ fontSize: 24 }}>🦊</Text>
-        </LinearGradient>
-        <View style={homeStyles.gameCardContent}>
-          <Text style={[homeStyles.gameCardTitle, { color: colors.text }]}>Fox in Forest</Text>
-          <Text style={[homeStyles.gameCardDesc, { color: colors.textSecondary }]}>
-            Collect berries, avoid predators!
-          </Text>
-        </View>
-        {pacmanPlayed ? (
-          <View style={homeStyles.playedBadge}>
-            <Lock size={14} color="#94a3b8" />
-            <Text style={homeStyles.playedText}>Played</Text>
-          </View>
-        ) : (
-          <ChevronRight size={24} color={colors.textTertiary} />
-        )}
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={[homeStyles.gameCard, { backgroundColor: colors.cardBg, borderColor: colors.border }]}
-        onPress={() => {
-          if (flappyPlayed) {
-            Alert.alert('Already Played', 'You already played Jumping Fox today. Come back tomorrow!');
-            return;
-          }
-          switchScreen('flappy');
-        }}
-        activeOpacity={0.8}
-      >
-        <LinearGradient
-          colors={['#F97316', '#EA580C']}
-          style={homeStyles.gameIconBg}
-        >
-          <Text style={{ fontSize: 24 }}>🦊</Text>
-        </LinearGradient>
-        <View style={homeStyles.gameCardContent}>
-          <Text style={[homeStyles.gameCardTitle, { color: colors.text }]}>Jumping Fox</Text>
-          <Text style={[homeStyles.gameCardDesc, { color: colors.textSecondary }]}>
-            Tap to jump over 5 boulders!
-          </Text>
-        </View>
-        {flappyPlayed ? (
-          <View style={homeStyles.playedBadge}>
-            <Lock size={14} color="#94a3b8" />
-            <Text style={homeStyles.playedText}>Played</Text>
-          </View>
-        ) : (
-          <ChevronRight size={24} color={colors.textTertiary} />
-        )}
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={[homeStyles.gameCard, { backgroundColor: colors.cardBg, borderColor: colors.border, borderWidth: 2, borderLeftWidth: 4, borderLeftColor: '#1e3a5f' }]}
-        onPress={() => {
-          if (tictactoePlayed) {
-            Alert.alert('Already Played', 'You already played Tic-Tac-Toe today. Come back tomorrow!');
-            return;
-          }
-          switchScreen('tictactoe');
-        }}
-        activeOpacity={0.8}
-      >
-        <LinearGradient
-          colors={['#1e3a5f', '#0f2744']}
-          style={homeStyles.gameIconBg}
-        >
-          <Grid3x3 size={28} color="#fff" strokeWidth={2.5} />
-        </LinearGradient>
-        <View style={homeStyles.gameCardContent}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <Text style={[homeStyles.gameCardTitle, { color: colors.text }]}>Tic-Tac-Toe</Text>
-            <View style={{ backgroundColor: '#f59e0b', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
-              <Text style={{ fontSize: 9, fontWeight: '800' as const, color: '#fff' }}>NEW</Text>
-            </View>
-          </View>
-          <Text style={[homeStyles.gameCardDesc, { color: colors.textSecondary }]}>
-            Challenge the Wisdom Professor!
-          </Text>
-        </View>
-        {tictactoePlayed ? (
-          <View style={homeStyles.playedBadge}>
-            <Lock size={14} color="#94a3b8" />
-            <Text style={homeStyles.playedText}>Played</Text>
-          </View>
-        ) : (
-          <GraduationCap size={24} color="#1e3a5f" />
-        )}
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={[homeStyles.gameCard, { backgroundColor: colors.cardBg, borderColor: colors.border, borderWidth: 2, borderLeftWidth: 4, borderLeftColor: '#0f3460' }]}
-        onPress={() => {
-          if (runnerPlayed) {
-            Alert.alert('Already Played', 'You already played Classroom Runner today. Come back tomorrow!');
-            return;
-          }
-          setShowReviveQuiz(false);
-          setRunnerCoins(0);
-          switchScreen('runner');
-        }}
-        activeOpacity={0.8}
-      >
-        <LinearGradient
-          colors={['#0f3460', '#16213e']}
-          style={homeStyles.gameIconBg}
-        >
-          <Text style={{ fontSize: 24 }}>{"\u{1F3C3}"}</Text>
-        </LinearGradient>
-        <View style={homeStyles.gameCardContent}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <Text style={[homeStyles.gameCardTitle, { color: colors.text }]}>Classroom Runner</Text>
-            <View style={{ backgroundColor: '#ef4444', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
-              <Text style={{ fontSize: 9, fontWeight: '800' as const, color: '#fff' }}>HOT</Text>
-            </View>
-          </View>
-          <Text style={[homeStyles.gameCardDesc, { color: colors.textSecondary }]}>
-            Dodge obstacles! Coins = XP!
-          </Text>
-        </View>
-        {runnerPlayed ? (
-          <View style={homeStyles.playedBadge}>
-            <Lock size={14} color="#94a3b8" />
-            <Text style={homeStyles.playedText}>Played</Text>
-          </View>
-        ) : (
-          <PersonStanding size={24} color="#0f3460" />
-        )}
-      </TouchableOpacity>
+      {gameDefs.map((g, i) => (
+        <StaggerIn key={g.key} delay={70 + i * 70}>
+          <PressScale onPress={g.onPress} style={homeStyles.cardShadow}>
+            <LinearGradient
+              colors={g.gradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={homeStyles.gameCard}
+            >
+              <View style={g.played ? homeStyles.playedDim : undefined}>
+                <Game3D variant={g.emblem} size={58} speed={0.85} />
+              </View>
+              <View style={homeStyles.gameCardContent}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Text style={homeStyles.gameCardTitle}>{g.title}</Text>
+                  {g.badge && !g.played && (
+                    <View style={[homeStyles.gameBadge, { backgroundColor: g.badge.color }]}>
+                      <Text style={homeStyles.gameBadgeText}>{g.badge.label}</Text>
+                    </View>
+                  )}
+                </View>
+                <Text style={homeStyles.gameCardDesc}>{g.desc}</Text>
+              </View>
+              {g.played ? (
+                <View style={homeStyles.playedBadge}>
+                  <Lock size={13} color="rgba(255,255,255,0.85)" />
+                  <Text style={homeStyles.playedText}>Played</Text>
+                </View>
+              ) : (
+                <View style={homeStyles.playChip}>
+                  <ChevronRight size={18} color="#fff" strokeWidth={3} />
+                </View>
+              )}
+            </LinearGradient>
+          </PressScale>
+        </StaggerIn>
+      ))}
 
       {hasPendingLoss && (
         <>
           <Text style={[homeStyles.sectionLabel, { color: colors.text, marginTop: 24 }]}>Reimburse XP</Text>
-          <TouchableOpacity
-            style={[homeStyles.quizCard, { borderColor: '#8b5cf6' }]}
-            onPress={() => switchScreen('gk-quiz')}
-            activeOpacity={0.8}
-          >
-            <LinearGradient
-              colors={['#8b5cf6', '#7c3aed']}
-              style={homeStyles.quizCardGradient}
-            >
-              <View style={homeStyles.quizCardInner}>
-                <Brain size={32} color="#fff" />
-                <View style={{ flex: 1 }}>
-                  <Text style={homeStyles.quizCardTitle}>GK Quiz Challenge</Text>
-                  <Text style={homeStyles.quizCardDesc}>
-                    Answer 5 questions. Score 3+ to get your XP back!
-                  </Text>
+          <StaggerIn delay={360}>
+            <PressScale onPress={() => switchScreen('gk-quiz')} style={homeStyles.cardShadow}>
+              <LinearGradient
+                colors={['#6d28d9', '#8b5cf6', '#a855f7']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={homeStyles.gameCard}
+              >
+                <Game3D variant="orb" size={58} speed={1} />
+                <View style={homeStyles.gameCardContent}>
+                  <Text style={homeStyles.gameCardTitle}>GK Quiz Challenge</Text>
+                  <Text style={homeStyles.gameCardDesc}>Answer 5 questions. Score 3+ to get your XP back!</Text>
                 </View>
-                <Zap size={24} color="#fbbf24" />
-              </View>
-            </LinearGradient>
-          </TouchableOpacity>
+                <Zap size={24} color="#fbbf24" fill="#fbbf24" />
+              </LinearGradient>
+            </PressScale>
+          </StaggerIn>
         </>
       )}
 
-      <View style={[homeStyles.rulesCard, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
-        <Text style={[homeStyles.rulesTitle, { color: colors.text }]}>How it works</Text>
-        <View style={homeStyles.ruleItem}>
-          <Star size={16} color="#f59e0b" />
-          <Text style={[homeStyles.ruleText, { color: colors.textSecondary }]}>
-            Play each game once per day
-          </Text>
+      <StaggerIn delay={hasPendingLoss ? 430 : 360}>
+        <View style={[homeStyles.rulesCard, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
+          <Text style={[homeStyles.rulesTitle, { color: colors.text }]}>How it works</Text>
+          <View style={homeStyles.ruleItem}>
+            <Star size={16} color="#f59e0b" />
+            <Text style={[homeStyles.ruleText, { color: colors.textSecondary }]}>Play each game once per day</Text>
+          </View>
+          <View style={homeStyles.ruleItem}>
+            <Zap size={16} color="#ef4444" />
+            <Text style={[homeStyles.ruleText, { color: colors.textSecondary }]}>Losing a game costs 1 XP</Text>
+          </View>
+          <View style={homeStyles.ruleItem}>
+            <Brain size={16} color="#8b5cf6" />
+            <Text style={[homeStyles.ruleText, { color: colors.textSecondary }]}>
+              Take a GK Quiz (3+ correct) to reimburse 1 XP
+            </Text>
+          </View>
+          <View style={homeStyles.ruleItem}>
+            <Trophy size={16} color="#10b981" />
+            <Text style={[homeStyles.ruleText, { color: colors.textSecondary }]}>Win the game to keep your XP safe!</Text>
+          </View>
         </View>
-        <View style={homeStyles.ruleItem}>
-          <Zap size={16} color="#ef4444" />
-          <Text style={[homeStyles.ruleText, { color: colors.textSecondary }]}>
-            Losing a game costs 1 XP
-          </Text>
-        </View>
-        <View style={homeStyles.ruleItem}>
-          <Brain size={16} color="#8b5cf6" />
-          <Text style={[homeStyles.ruleText, { color: colors.textSecondary }]}>
-            Take a GK Quiz (3+ correct) to reimburse 1 XP
-          </Text>
-        </View>
-        <View style={homeStyles.ruleItem}>
-          <Trophy size={16} color="#10b981" />
-          <Text style={[homeStyles.ruleText, { color: colors.textSecondary }]}>
-            Win the game to keep your XP safe!
-          </Text>
-        </View>
-      </View>
+      </StaggerIn>
     </ScrollView>
   );
 
@@ -2173,42 +2247,128 @@ export default function FunLearning() {
         <View style={{ width: 40 }} />
       </View>
 
-      <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
+      <Animated.View
+        style={{
+          flex: 1,
+          opacity: fadeAnim,
+          transform: [{ scale: scaleAnim }],
+        }}
+      >
         {screen === 'home' && renderHome()}
         {screen === 'pacman' && (
-          <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 20 }}>
-            <PacmanGame onFinish={handlePacmanFinish} colors={colors} />
-          </ScrollView>
+          <LinearGradient colors={GAME_BG.pacman} style={{ flex: 1 }}>
+            <ScrollView
+              style={{ flex: 1 }}
+              contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 20 }}
+            >
+              <PacmanGame onFinish={handlePacmanFinish} colors={colors} />
+            </ScrollView>
+          </LinearGradient>
         )}
         {screen === 'flappy' && (
-          <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 20 }}>
-            <JumpingFoxGame onFinish={handleFlappyFinish} colors={colors} />
-          </ScrollView>
+          <LinearGradient colors={GAME_BG.flappy} style={{ flex: 1 }}>
+            <ScrollView
+              style={{ flex: 1 }}
+              contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 20 }}
+            >
+              <JumpingFoxGame onFinish={handleFlappyFinish} colors={colors} />
+            </ScrollView>
+          </LinearGradient>
         )}
         {screen === 'tictactoe' && (
-          <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 20 }}>
-            <TicTacToeGame onFinish={handleTicTacToeFinish} colors={colors} />
-          </ScrollView>
+          <LinearGradient colors={GAME_BG.tictactoe} style={{ flex: 1 }}>
+            <ScrollView
+              style={{ flex: 1 }}
+              contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 20 }}
+            >
+              <TicTacToeGame onFinish={handleTicTacToeFinish} colors={colors} />
+            </ScrollView>
+          </LinearGradient>
         )}
         {screen === 'gk-quiz' && (
-          <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 20 }}>
-            <GKQuiz onFinish={handleGKFinish} colors={colors} />
-          </ScrollView>
+          <LinearGradient colors={GAME_BG['gk-quiz']} style={{ flex: 1 }}>
+            <ScrollView
+              style={{ flex: 1 }}
+              contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 20 }}
+            >
+              <GKQuiz onFinish={handleGKFinish} colors={colors} />
+            </ScrollView>
+          </LinearGradient>
         )}
         {screen === 'runner' && !showReviveQuiz && (
-          <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 20 }}>
-            <ClassroomRunnerGame
-              onFinish={handleRunnerFinish}
-              onRevive={handleRunnerRevive}
-            />
-          </ScrollView>
+          <LinearGradient colors={GAME_BG.runner} style={{ flex: 1 }}>
+            <ScrollView
+              style={{ flex: 1 }}
+              contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 20 }}
+            >
+              <ClassroomRunnerGame onFinish={handleRunnerFinish} onRevive={handleRunnerRevive} />
+            </ScrollView>
+          </LinearGradient>
         )}
         {screen === 'runner' && showReviveQuiz && (
-          <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 20 }}>
-            <RunnerReviveQuiz onResult={handleReviveResult} />
-          </ScrollView>
+          <LinearGradient colors={GAME_BG.runner} style={{ flex: 1 }}>
+            <ScrollView
+              style={{ flex: 1 }}
+              contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 20 }}
+            >
+              <RunnerReviveQuiz onResult={handleReviveResult} />
+            </ScrollView>
+          </LinearGradient>
         )}
       </Animated.View>
+
+      {result && (
+        <Modal transparent visible animationType="none" onRequestClose={() => hideResult()}>
+          <View style={resultStyles.backdrop}>
+            <Animated.View
+              style={[
+                resultStyles.cardWrap,
+                {
+                  opacity: resultAnim,
+                  transform: [
+                    {
+                      scale: resultAnim.interpolate({ inputRange: [0, 1], outputRange: [0.8, 1] }),
+                    },
+                    {
+                      translateY: resultAnim.interpolate({ inputRange: [0, 1], outputRange: [44, 0] }),
+                    },
+                  ],
+                },
+              ]}
+            >
+              <LinearGradient
+                colors={RESULT_GRADIENTS[result.tone]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={resultStyles.card}
+              >
+                <View style={resultStyles.badge}>
+                  {result.tone === 'win' && <Trophy size={34} color="#fff" />}
+                  {result.tone === 'lose' && <X size={34} color="#fff" strokeWidth={3} />}
+                  {result.tone === 'coins' && <Zap size={34} color="#fff" fill="#fff" />}
+                  {result.tone === 'info' && <Brain size={34} color="#fff" />}
+                </View>
+                <Text style={resultStyles.title}>{result.title}</Text>
+                <Text style={resultStyles.message}>{result.message}</Text>
+                <View style={resultStyles.actions}>
+                  {result.actions.map((a, i) => (
+                    <TouchableOpacity
+                      key={i}
+                      style={[resultStyles.actionBtn, a.primary && resultStyles.actionBtnPrimary]}
+                      onPress={a.onPress}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={[resultStyles.actionText, a.primary && resultStyles.actionTextPrimary]}>
+                        {a.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </LinearGradient>
+            </Animated.View>
+          </View>
+        </Modal>
+      )}
     </View>
   );
 }
@@ -2243,25 +2403,34 @@ const homeStyles = StyleSheet.create({
   scrollContent: {
     padding: 16,
   },
-  heroSection: {
-    marginBottom: 24,
-  },
   heroBanner: {
-    borderRadius: 20,
-    padding: 24,
+    borderRadius: 24,
+    padding: 22,
+    marginBottom: 24,
+    overflow: 'hidden',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#7c3aed',
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.4,
+        shadowRadius: 20,
+      },
+      android: { elevation: 10 },
+    }),
+  },
+  heroRow: {
+    flexDirection: 'row',
     alignItems: 'center',
   },
-  heroIconWrap: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+  heroTextCol: {
+    flex: 1,
+    paddingRight: 6,
+  },
+  heroEmblem: {
+    width: 104,
+    height: 104,
+    alignItems: 'center',
     justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  heroEmoji: {
-    fontSize: 32,
   },
   heroTitle: {
     fontSize: 24,
@@ -2271,17 +2440,18 @@ const homeStyles = StyleSheet.create({
   },
   heroSubtitle: {
     fontSize: 15,
-    color: 'rgba(255,255,255,0.85)',
+    color: 'rgba(255,255,255,0.88)',
     marginBottom: 16,
   },
   heroRuleRow: {
     flexDirection: 'row',
     gap: 8,
     flexWrap: 'wrap',
-    justifyContent: 'center',
   },
   heroRulePill: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    borderColor: 'rgba(255,255,255,0.28)',
+    borderWidth: 1,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 12,
@@ -2294,78 +2464,82 @@ const homeStyles = StyleSheet.create({
   sectionLabel: {
     fontSize: 18,
     fontWeight: '700' as const,
-    marginBottom: 12,
+    marginBottom: 14,
+  },
+  cardShadow: {
+    borderRadius: 22,
+    marginBottom: 14,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#0f172a',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.3,
+        shadowRadius: 16,
+      },
+      android: { elevation: 8 },
+    }),
   },
   gameCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-    marginBottom: 12,
+    padding: 18,
+    borderRadius: 22,
     gap: 14,
-  },
-  gameIconBg: {
-    width: 52,
-    height: 52,
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   gameCardContent: {
     flex: 1,
   },
   gameCardTitle: {
-    fontSize: 16,
-    fontWeight: '700' as const,
+    fontSize: 17,
+    fontWeight: '800' as const,
+    color: '#fff',
     marginBottom: 4,
+  },
+  gameBadge: {
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  gameBadgeText: {
+    fontSize: 9,
+    fontWeight: '800' as const,
+    color: '#fff',
+    letterSpacing: 0.5,
   },
   gameCardDesc: {
     fontSize: 13,
+    color: 'rgba(255,255,255,0.82)',
+  },
+  playChip: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.22)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  playedDim: {
+    opacity: 0.55,
   },
   playedBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#f1f5f9',
+    backgroundColor: 'rgba(255,255,255,0.18)',
     paddingHorizontal: 10,
     paddingVertical: 6,
-    borderRadius: 8,
+    borderRadius: 10,
   },
   playedText: {
     fontSize: 12,
     fontWeight: '600' as const,
-    color: '#94a3b8',
-  },
-  quizCard: {
-    borderRadius: 16,
-    borderWidth: 2,
-    overflow: 'hidden',
-    marginBottom: 24,
-  },
-  quizCardGradient: {
-    padding: 20,
-  },
-  quizCardInner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-  },
-  quizCardTitle: {
-    fontSize: 17,
-    fontWeight: '700' as const,
-    color: '#fff',
-    marginBottom: 4,
-  },
-  quizCardDesc: {
-    fontSize: 13,
     color: 'rgba(255,255,255,0.85)',
   },
   rulesCard: {
     borderRadius: 16,
     borderWidth: 1,
     padding: 20,
-    marginTop: 16,
+    marginTop: 10,
     gap: 12,
   },
   rulesTitle: {
@@ -2381,6 +2555,78 @@ const homeStyles = StyleSheet.create({
   ruleText: {
     fontSize: 14,
     flex: 1,
+  },
+});
+
+const resultStyles = StyleSheet.create({
+  backdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(2, 6, 23, 0.72)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 32,
+  },
+  cardWrap: {
+    width: '100%',
+    maxWidth: 360,
+  },
+  card: {
+    borderRadius: 28,
+    padding: 28,
+    alignItems: 'center',
+    overflow: 'hidden',
+  },
+  badge: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderColor: 'rgba(255,255,255,0.35)',
+    borderWidth: 1.5,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: '800' as const,
+    color: '#fff',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  message: {
+    fontSize: 15,
+    color: 'rgba(255,255,255,0.9)',
+    textAlign: 'center',
+    lineHeight: 21,
+    marginBottom: 24,
+  },
+  actions: {
+    flexDirection: 'row',
+    gap: 12,
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+  },
+  actionBtn: {
+    paddingHorizontal: 22,
+    paddingVertical: 12,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    borderColor: 'rgba(255,255,255,0.3)',
+    borderWidth: 1,
+    minWidth: 110,
+    alignItems: 'center',
+  },
+  actionBtnPrimary: {
+    backgroundColor: '#fff',
+  },
+  actionText: {
+    fontSize: 15,
+    fontWeight: '700' as const,
+    color: '#fff',
+  },
+  actionTextPrimary: {
+    color: '#0f172a',
   },
 });
 
