@@ -20,7 +20,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useApp } from '@/contexts/app-context';
 import { useTheme } from '@/contexts/theme-context';
 import { getRandomGKQuestions, getRandomToughGKQuestions, GKQuestion } from '@/constants/gk-questions';
-import Game3D, { type Game3DVariant } from '@/components/game3d/Game3D';
+import Game3D, { type Game3DVariant, type Game3DHandle } from '@/components/game3d/Game3D';
 import * as Haptics from 'expo-haptics';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -58,10 +58,21 @@ function StaggerIn({ children, delay = 0, style }: { children: ReactNode; delay?
 }
 
 /** Press feedback: spring scale down + light haptic, springs back on release. */
-function PressScale({ onPress, style, children }: { onPress: () => void; style?: object; children: ReactNode }) {
+function PressScale({
+  onPress,
+  onPressIn,
+  style,
+  children,
+}: {
+  onPress: () => void;
+  onPressIn?: () => void;
+  style?: object;
+  children: ReactNode;
+}) {
   const scale = useRef(new Animated.Value(1)).current;
   const handlePressIn = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    onPressIn?.();
     Animated.spring(scale, { toValue: 0.955, speed: 50, bounciness: 5, useNativeDriver: true }).start();
   };
   const handlePressOut = () => {
@@ -1850,6 +1861,10 @@ export default function FunLearning() {
   const [runnerCoins, setRunnerCoins] = useState(0);
   const runnerGameRef = useRef<{ restart: () => void } | null>(null);
   const [showReviveQuiz, setShowReviveQuiz] = useState(false);
+  const emblemRefs = useRef<Record<string, Game3DHandle | null>>({});
+  const fireEmblem = useCallback((key: string) => {
+    emblemRefs.current[key]?.burst();
+  }, []);
 
   const hasPendingLoss = userProgress.funLearning.pendingXPLoss;
   const pacmanPlayed = !canPlayGame('pacman');
@@ -2131,7 +2146,7 @@ export default function FunLearning() {
               </View>
             </View>
             <View style={homeStyles.heroEmblem}>
-              <Game3D variant="star" size={104} speed={0.7} />
+              <Game3D interactive variant="star" size={104} speed={0.7} />
             </View>
           </View>
         </LinearGradient>
@@ -2141,7 +2156,7 @@ export default function FunLearning() {
 
       {gameDefs.map((g, i) => (
         <StaggerIn key={g.key} delay={70 + i * 70}>
-          <PressScale onPress={g.onPress} style={homeStyles.cardShadow}>
+          <PressScale onPress={g.onPress} onPressIn={() => fireEmblem(g.key)} style={homeStyles.cardShadow}>
             <LinearGradient
               colors={g.gradient}
               start={{ x: 0, y: 0 }}
@@ -2149,7 +2164,14 @@ export default function FunLearning() {
               style={homeStyles.gameCard}
             >
               <View style={g.played ? homeStyles.playedDim : undefined}>
-                <Game3D variant={g.emblem} size={58} speed={0.85} />
+                <Game3D
+                  ref={(el) => {
+                    emblemRefs.current[g.key] = el;
+                  }}
+                  variant={g.emblem}
+                  size={58}
+                  speed={0.85}
+                />
               </View>
               <View style={homeStyles.gameCardContent}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -2181,14 +2203,25 @@ export default function FunLearning() {
         <>
           <Text style={[homeStyles.sectionLabel, { color: colors.text, marginTop: 24 }]}>Reimburse XP</Text>
           <StaggerIn delay={360}>
-            <PressScale onPress={() => switchScreen('gk-quiz')} style={homeStyles.cardShadow}>
+            <PressScale
+              onPress={() => switchScreen('gk-quiz')}
+              onPressIn={() => fireEmblem('gk')}
+              style={homeStyles.cardShadow}
+            >
               <LinearGradient
                 colors={['#6d28d9', '#8b5cf6', '#a855f7']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={homeStyles.gameCard}
               >
-                <Game3D variant="orb" size={58} speed={1} />
+                <Game3D
+                  ref={(el) => {
+                    emblemRefs.current['gk'] = el;
+                  }}
+                  variant="orb"
+                  size={58}
+                  speed={1}
+                />
                 <View style={homeStyles.gameCardContent}>
                   <Text style={homeStyles.gameCardTitle}>GK Quiz Challenge</Text>
                   <Text style={homeStyles.gameCardDesc}>Answer 5 questions. Score 3+ to get your XP back!</Text>

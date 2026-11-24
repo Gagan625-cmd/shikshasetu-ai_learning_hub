@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useRef } from 'react';
-import { StyleSheet, View, Platform } from 'react-native';
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef } from 'react';
+import { Animated, Pressable, StyleSheet, Platform } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { GLView } from 'expo-gl';
 import { Renderer } from 'expo-three';
 import * as THREE from 'three';
@@ -120,24 +121,37 @@ function buildScene(variant: Game3DVariant, accent: number): { scene: THREE.Scen
   return { scene, mesh: group };
 }
 
+export type Game3DHandle = { burst: () => void };
+
 /**
  * Real 3D game emblem rendered with three.js in expo-gl.
- * Spins gently on its own — no interaction needed.
+ * Spins gently on its own. Call `burst()` (via ref) or tap it directly
+ * (`interactive`) for a spin boost + squash-and-bounce.
  */
-export default function Game3D({
-  variant,
-  size = 64,
-  speed = 1,
-  style,
-}: {
+const Game3D = forwardRef<Game3DHandle, {
   variant: Game3DVariant;
   size?: number;
   speed?: number;
+  interactive?: boolean;
   style?: object;
-}) {
+}>(function Game3D({ variant, size = 64, speed = 1, interactive = false, style }, ref) {
   const accent = ACCENTS[variant];
   const paused = useRef(false);
   const cleanupRef = useRef<(() => void) | null>(null);
+  // Mutable physics state shared between React and the GL render loop.
+  const sim = useRef({ angle: 0, boost: 0, y: 0, vy: 0 }).current;
+  const squash = useRef(new Animated.Value(1)).current;
+
+  const burst = useCallback(() => {
+    sim.boost = 7;
+    sim.vy = 2.4;
+    Animated.sequence([
+      Animated.timing(squash, { toValue: 0.8, duration: 90, useNativeDriver: true }),
+      Animated.spring(squash, { toValue: 1, friction: 3.5, tension: 170, useNativeDriver: true }),
+    ]).start();
+  }, [sim, squash]);
+
+  useImperativeHandle(ref, () => ({ burst }), [burst]);
 
   const onContextCreate = useMemo(() => {
     return async (gl: any) => {
@@ -149,13 +163,27 @@ export default function Game3D({
       camera.position.z = 3.1;
 
       let raf = 0;
-      const start = Date.now();
+      let last = Date.now();
       const loop = () => {
         if (paused.current) return;
-        const t = (Date.now() - start) / 1000;
-        sceneModule.mesh.rotation.y = t * 0.9 * speed;
-        sceneModule.mesh.rotation.x = Math.sin(t * 0.7 * speed) * 0.22;
-        sceneModule.mesh.position.y = Math.sin(t * 1.3 * speed) * 0.08;
+        const now = Date.now();
+        const dt = Math.min((now - last) / 1000, 0.05);
+        last = now;
+
+        // Idle spin, plus a decaying spin burst from taps.
+        sim.boost = Math.max(0, sim.boost - dt * 5.5);
+        sim.angle += (0.9 * speed + sim.boost) * dt;
+        // Gravity bounce back to rest after a tap.
+        sim.vy -= 11 * dt;
+        sim.y += sim.vy * dt;
+        if (sim.y < 0) {
+          sim.y = 0;
+          sim.vy = 0;
+        }
+
+        sceneModule.mesh.rotation.y = sim.angle;
+        sceneModule.mesh.rotation.x = Math.sin(sim.angle * 0.75) * 0.22;
+        sceneModule.mesh.position.y = Math.sin((now / 1000) * 1.3 * speed) * 0.08 + sim.y;
         renderer.render(sceneModule.scene, camera);
         gl.endFrameEXP();
         raf = requestAnimationFrame(loop);
@@ -183,16 +211,39 @@ export default function Game3D({
     };
   }, []);
 
-  return (
-    <View style={[styles.wrap, { width: size, height: size }, style]}>
+  const glView = (
+    <Animated.View
+      style={[
+        styles.wrap,
+        { width: size, height: size },
+        style,
+        { transform: [{ scale: squash }] },
+      ]}
+    >
       <GLView
         style={StyleSheet.absoluteFill}
         onContextCreate={onContextCreate}
         msaaSamples={Platform.OS === 'web' ? 0 : 4}
       />
-    </View>
+    </Animated.View>
   );
-}
+
+  if (!interactive) return glView;
+
+  return (
+    <Pressable
+      onPressIn={() => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+        burst();
+      }}
+      hitSlop={12}
+    >
+      {glView}
+    </Pressable>
+  );
+});
+
+export default Game3D;
 
 const styles = StyleSheet.create({
   wrap: {
