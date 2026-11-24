@@ -173,9 +173,10 @@ Return JSON exactly in this shape:
 }
 
 Rules:
-- Updates must reference real syllabus topics by name, not generic advice.
+- Updates must reference real syllabus topics by name, not generic advice. Each one should feel fresh and specific — name the exact chapter or concept, and include one concrete fact, method or exam cue.
+- Tips must name an actual study technique applied to a real topic (e.g. "Feynman the nervous system", not "study regularly").
 - The focus question must be answerable from the scope above, board-exam level, with 4 options and a verified correct answer.
-- Vary the update types (tip, motivation, reminder, fact).
+- Vary the update types (tip, motivation, reminder, fact). Never repeat yesterday's phrasing style — make today's digest feel personally written.
 ${JSON_OUTPUT_RULE}`;
 
     const raw = await generateWithModel({

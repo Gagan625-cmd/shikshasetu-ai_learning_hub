@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import { BookOpen, BrainCircuit, MessageSquare, Settings, FileText, LogOut, TrendingUp, MessageCircle, Info, ScanText, Target, Video, Bell, Link2, Palette, Zap, Star, Crown, Shield, Award, Trophy, Gamepad2, Moon, Sun, ChevronRight, Quote, Mail, Sparkles, Key, Layers, CalendarClock, Calculator, PenTool, Users, AlertTriangle, Lightbulb, TrendingDown, Brain, Clock, BookMarked, Flame, GraduationCap, BookCheck, Coffee } from 'lucide-react-native';
-import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Platform, Modal, TextInput, Alert, Animated } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Platform, Modal, TextInput, Alert, Animated, Easing } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useApp } from '@/contexts/app-context';
 import { useAuth } from '@/contexts/auth-context';
@@ -1273,6 +1273,30 @@ const FeatureCard = memo(({ feature, onPress, isDark, index, isPremiumFeature }:
 
 FeatureCard.displayName = 'FeatureCard';
 
+/** Staggered entrance wrapper: fades and slides content up once on mount. */
+function FadeSlideIn({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
+  const anim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(anim, {
+      toValue: 1,
+      duration: 550,
+      delay,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [anim, delay]);
+  return (
+    <Animated.View
+      style={{
+        opacity: anim,
+        transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [26, 0] }) }],
+      }}
+    >
+      {children}
+    </Animated.View>
+  );
+}
+
 const UploadCard = memo(({ upload, onPress, isDark }: { upload: any; onPress: () => void; isDark: boolean }) => (
   <TouchableOpacity
     style={[styles.uploadCard, { backgroundColor: isDark ? 'rgba(59,130,246,0.12)' : '#ffffff', borderColor: isDark ? 'rgba(59,130,246,0.25)' : 'rgba(0,0,0,0.04)' }]}
@@ -1485,6 +1509,53 @@ export default function StudentDashboard() {
     ).start();
   }, [pulseAnim]);
 
+  // Animated XP counter: rolls from the previous total to the new one.
+  const xpCountAnim = useRef(new Animated.Value(userProgress.totalXP)).current;
+  const [xpDisplay, setXpDisplay] = useState(userProgress.totalXP);
+  const [xpGain, setXpGain] = useState<number | null>(null);
+  const xpGainAnim = useRef(new Animated.Value(0)).current;
+  const prevXPRef = useRef(userProgress.totalXP);
+  const prevLevelRef = useRef(levelInfo.level);
+  const levelBurstAnim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    const listener = xpCountAnim.addListener(({ value }) => setXpDisplay(Math.round(value)));
+    return () => xpCountAnim.removeListener(listener);
+  }, [xpCountAnim]);
+
+  useEffect(() => {
+    const from = prevXPRef.current;
+    const to = userProgress.totalXP;
+    prevXPRef.current = to;
+    if (to === from) return;
+    xpCountAnim.setValue(from);
+    Animated.timing(xpCountAnim, { toValue: to, duration: 900, useNativeDriver: false }).start();
+    if (to > from) {
+      setXpGain(to - from);
+      xpGainAnim.setValue(0);
+      Animated.sequence([
+        Animated.timing(xpGainAnim, { toValue: 1, duration: 350, useNativeDriver: true }),
+        Animated.timing(xpGainAnim, { toValue: 0, duration: 1500, useNativeDriver: true }),
+      ]).start(({ finished }) => {
+        if (finished) setXpGain(null);
+      });
+    }
+  }, [userProgress.totalXP, xpCountAnim, xpGainAnim]);
+
+  // Level-up celebration: a strong spring burst on the level badge.
+  useEffect(() => {
+    if (levelInfo.level > prevLevelRef.current) {
+      levelBurstAnim.setValue(1);
+      Animated.sequence([
+        Animated.spring(levelBurstAnim, { toValue: 1.45, friction: 4, tension: 120, useNativeDriver: true }),
+        Animated.spring(levelBurstAnim, { toValue: 1, friction: 5, useNativeDriver: true }),
+      ]).start();
+    }
+    prevLevelRef.current = levelInfo.level;
+  }, [levelInfo.level, levelBurstAnim]);
+
+  const levelPulse = Animated.multiply(pulseAnim, levelBurstAnim);
+
   const handleLogout = useCallback(async () => {
     await signOut();
     await resetApp();
@@ -1494,7 +1565,7 @@ export default function StudentDashboard() {
   const chatMutation = useMutation({
     mutationFn: async (userMessage: string) => {
       const chatHistory = messages.map(m => `${m.role}: ${m.content}`).join('\n');
-      const systemPrompt = `You are ShikshaBuddy, an AI educational assistant for students. Help with doubts, questions, and learning. Be encouraging and educational.`;
+      const systemPrompt = `You are ShikshaBuddy, a warm, encouraging CBSE/ICSE tutor inside the ShikshaSetu app. Answer study doubts step by step in simple language with short paragraphs and concrete NCERT-aligned examples. Include a memory trick or mnemonic when useful, point out common exam mistakes, and end with one quick follow-up question or a small practice task. Stay within the student's board syllabus scope; if a question is outside it, say so briefly and answer at the right level anyway. Never invent marks weightings, dates or topics you are unsure of. Keep replies under 180 words unless the student asks for a full explanation.`;
       const response = await generateText({ 
         messages: [
           { role: 'user', content: `${systemPrompt}\n\n${chatHistory ? 'Previous conversation:\n' + chatHistory + '\n\n' : ''}Student question: ${userMessage}` }
@@ -1638,7 +1709,7 @@ export default function StudentDashboard() {
           <Animated.View style={[styles.xpShimmer, { transform: [{ translateX: shimmerTranslate }], opacity: shimmerOpacity }]} />
           <View style={styles.xpBarInner}>
           <View style={styles.levelRow}>
-            <Animated.View style={[styles.levelIconOuter, { transform: [{ scale: pulseAnim }] }]}>
+            <Animated.View style={[styles.levelIconOuter, { transform: [{ scale: levelPulse }] }]}>
               <ChessPieceIcon level={levelInfo.level} color={levelInfo.color} />
             </Animated.View>
             <View style={styles.levelTextCol}>
@@ -1653,8 +1724,35 @@ export default function StudentDashboard() {
                     <Text style={styles.xpRewardText}>Premium</Text>
                   </LinearGradient>
                 )}
+                {xpGain !== null && (
+                  <Animated.View
+                    style={[
+                      styles.xpGainChip,
+                      {
+                        opacity: xpGainAnim,
+                        transform: [
+                          {
+                            translateY: xpGainAnim.interpolate({
+                              inputRange: [0, 1],
+                              outputRange: [8, -6],
+                            }),
+                          },
+                          {
+                            scale: xpGainAnim.interpolate({
+                              inputRange: [0, 0.4, 1],
+                              outputRange: [0.7, 1.1, 0.95],
+                            }),
+                          },
+                        ],
+                      },
+                    ]}
+                    pointerEvents="none"
+                  >
+                    <Text style={styles.xpGainText}>+{xpGain} XP</Text>
+                  </Animated.View>
+                )}
               </View>
-              <Text style={styles.xpValue}>{userProgress.totalXP.toLocaleString()} XP</Text>
+              <Text style={styles.xpValue}>{xpDisplay.toLocaleString()} XP</Text>
             </View>
             <View style={styles.streakMini}>
               <AnimatedFire />
@@ -1761,10 +1859,15 @@ export default function StudentDashboard() {
           )}
         </View>
 
-        <DailyQuoteCard isDark={isDark} />
+        <FadeSlideIn delay={60}>
+          <DailyQuoteCard isDark={isDark} />
+        </FadeSlideIn>
 
-        <WhatToStudySection isDark={isDark} onboardingData={onboardingData} />
+        <FadeSlideIn delay={140}>
+          <WhatToStudySection isDark={isDark} onboardingData={onboardingData} />
+        </FadeSlideIn>
 
+        <FadeSlideIn delay={220}>
         <View style={styles.quickStatsRow}>
           <View style={[styles.quickStatCard, { backgroundColor: isDark ? 'rgba(59,130,246,0.12)' : '#eff6ff', borderColor: isDark ? 'rgba(59,130,246,0.2)' : '#dbeafe' }]}>
             <View style={[styles.quickStatIcon, { backgroundColor: '#3b82f620' }]}>
@@ -1788,10 +1891,15 @@ export default function StudentDashboard() {
             <Text style={[styles.quickStatLabel, { color: isDark ? '#64748b' : '#6b7280' }]}>Study</Text>
           </View>
         </View>
+        </FadeSlideIn>
 
-        <DailyUpdatesSection isDark={isDark} onboardingData={onboardingData} selectedLanguage={selectedLanguage} />
+        <FadeSlideIn delay={300}>
+          <DailyUpdatesSection isDark={isDark} onboardingData={onboardingData} selectedLanguage={selectedLanguage} />
+        </FadeSlideIn>
 
-        <DailyTipsSection isDark={isDark} onboardingData={onboardingData} selectedLanguage={selectedLanguage} />
+        <FadeSlideIn delay={380}>
+          <DailyTipsSection isDark={isDark} onboardingData={onboardingData} selectedLanguage={selectedLanguage} />
+        </FadeSlideIn>
 
         {userProgress.teacherUploads.length > 0 && (
           <View style={styles.uploadsSection}>
@@ -1816,6 +1924,7 @@ export default function StudentDashboard() {
           </View>
         )}
 
+        <FadeSlideIn delay={460}>
         <View style={styles.sectionTitleRow}>
           <Sparkles size={20} color={isDark ? '#38bdf8' : '#0077b6'} />
           <Text style={[styles.sectionTitle, { color: colors.text }]}>Features</Text>
@@ -1829,6 +1938,7 @@ export default function StudentDashboard() {
             )
           ))}
         </View>
+        </FadeSlideIn>
 
         <View style={[styles.infoCard, { backgroundColor: isDark ? 'rgba(99,102,241,0.12)' : '#eef4ff', borderLeftColor: isDark ? '#818cf8' : '#6366f1' }]}>
           <View style={styles.infoCardHeader}>
@@ -2163,6 +2273,25 @@ const styles = StyleSheet.create({
     fontWeight: '600' as const,
     color: '#7dd3fc',
     marginTop: 3,
+  },
+  xpGainChip: {
+    position: 'absolute',
+    right: 0,
+    top: -14,
+    backgroundColor: '#22c55e',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+    shadowColor: '#22c55e',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.5,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  xpGainText: {
+    fontSize: 10,
+    fontWeight: '800' as const,
+    color: '#ffffff',
   },
   xpRewardBadge: {
     flexDirection: 'row',

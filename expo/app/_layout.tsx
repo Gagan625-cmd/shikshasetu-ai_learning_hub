@@ -10,6 +10,7 @@ import { ThemeProvider } from "@/contexts/theme-context";
 import { MessagingProvider } from "@/contexts/messaging-context";
 import { trpc, trpcClient } from "@/lib/trpc";
 import BreakReminder from "@/components/BreakReminder";
+import AnimatedSplash from "@/components/AnimatedSplash";
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 void SplashScreen.preventAutoHideAsync();
@@ -40,6 +41,18 @@ function RootLayoutNav() {
   );
 }
 
+function RootLayoutInner() {
+  const [showSplash, setShowSplash] = React.useState(true);
+
+  return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <RootLayoutNav />
+      <BreakReminder />
+      {showSplash && <AnimatedSplash onDone={() => setShowSplash(false)} />}
+    </GestureHandlerRootView>
+  );
+}
+
 export default function RootLayout() {
   useEffect(() => {
     void SplashScreen.hideAsync();
@@ -54,10 +67,7 @@ export default function RootLayout() {
               <ThemeProvider>
                 <MessagingProvider>
                   <XPRewardBridge>
-                    <GestureHandlerRootView style={{ flex: 1 }}>
-                      <RootLayoutNav />
-                      <BreakReminder />
-                    </GestureHandlerRootView>
+                    <RootLayoutInner />
                   </XPRewardBridge>
                 </MessagingProvider>
               </ThemeProvider>

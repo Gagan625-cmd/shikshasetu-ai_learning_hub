@@ -29,6 +29,7 @@ export default function AuthScreen() {
   const formSlide = useRef(new Animated.Value(60)).current;
   const buttonScale = useRef(new Animated.Value(1)).current;
   const shimmerAnim = useRef(new Animated.Value(0)).current;
+  const orbAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.stagger(150, [
@@ -43,7 +44,11 @@ export default function AuthScreen() {
     Animated.loop(
       Animated.timing(shimmerAnim, { toValue: 1, duration: 3000, useNativeDriver: false })
     ).start();
-  }, [fadeAnim, slideAnim, logoScale, formSlide, shimmerAnim]);
+
+    Animated.loop(
+      Animated.timing(orbAnim, { toValue: 1, duration: 9000, useNativeDriver: true })
+    ).start();
+  }, [fadeAnim, slideAnim, logoScale, formSlide, shimmerAnim, orbAnim]);
 
   const animatePress = useCallback(() => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -123,19 +128,24 @@ export default function AuthScreen() {
     outputRange: ['rgba(255,255,255,0.03)', 'rgba(255,255,255,0.08)', 'rgba(255,255,255,0.03)'],
   });
 
+  const orb1Drift = orbAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, -22, 0] });
+  const orb2Drift = orbAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, 18, 0] });
+  const orb2DriftX = orbAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, -14, 0] });
+  const orb3Drift = orbAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, 20, 0] });
+
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <LinearGradient
-        colors={['#0f172a', '#1e3a5f', '#0c4a6e', '#155e75']}
-        locations={[0, 0.35, 0.7, 1]}
+        colors={['#1e1b4b', '#1d4ed8', '#0ea5e9', '#7c3aed']}
+        locations={[0, 0.38, 0.72, 1]}
         style={StyleSheet.absoluteFillObject}
       />
 
       <Animated.View style={[styles.shimmerOverlay, { backgroundColor: shimmerColor }]} />
 
-      <View style={styles.decorCircle1} />
-      <View style={styles.decorCircle2} />
-      <View style={styles.decorCircle3} />
+      <Animated.View style={[styles.decorCircle1, { transform: [{ translateY: orb1Drift }] }]} />
+      <Animated.View style={[styles.decorCircle2, { transform: [{ translateY: orb2Drift }, { translateX: orb2DriftX }] }]} />
+      <Animated.View style={[styles.decorCircle3, { transform: [{ translateX: orb3Drift }] }]} />
 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
