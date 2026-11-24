@@ -1,6 +1,8 @@
-import { generateText, generateObject } from '@rork-ai/toolkit-sdk';
+import { generateText as legacyGenerateText, generateObject as legacyGenerateObject } from '@rork-ai/toolkit-sdk';
 import { z } from 'zod';
 import { enforceAIQuota } from './ai-usage';
+import { generateWithModel, extractJson, ChatMessage } from './ai-model';
+import { EDUCATION_SYSTEM_PROMPT, JSON_OUTPUT_RULE } from './prompts';
 
 const MAX_RETRIES = 3;
 const BASE_DELAY = 2000;
@@ -93,7 +95,7 @@ export async function robustGenerateText(params: { messages: Message[] }): Promi
 
         console.log(`[AI] generateText attempt ${attempt + 1}/${MAX_RETRIES}`);
         const result = await withTimeout(
-          generateText({ messages: params.messages }),
+          generateWithModel({ system: EDUCATION_SYSTEM_PROMPT, messages: params.messages as ChatMessage[] }),
           REQUEST_TIMEOUT
         );
         console.log(`[AI] generateText succeeded on attempt ${attempt + 1}`);
@@ -107,11 +109,13 @@ export async function robustGenerateText(params: { messages: Message[] }): Promi
         }
       }
     }
+
+    // Last resort: the legacy toolkit endpoint so the feature still works offline of the gateway.
+    console.warn('[AI] Falling back to legacy toolkit generateText');
+    return await legacyGenerateText({ messages: params.messages });
   } finally {
     releaseSlot();
   }
-
-  throw lastError ?? new Error('AI generation failed after multiple attempts. Please try again.');
 }
 
 export async function robustGenerateObject<T extends z.ZodType>(params: {
@@ -121,6 +125,13 @@ export async function robustGenerateObject<T extends z.ZodType>(params: {
   enforceAIQuota();
   await waitForSlot();
   let lastError: Error | null = null;
+
+  const schemaHint = JSON_OUTPUT_RULE;
+  const messagesWithJson: ChatMessage[] = [
+    ...(params.messages as ChatMessage[]).map((m, i) =>
+      i === params.messages.length - 1 ? { ...m, content: `${m.content}\n\n${schemaHint}` } : m
+    ),
+  ];
 
   try {
     for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
@@ -132,12 +143,13 @@ export async function robustGenerateObject<T extends z.ZodType>(params: {
         }
 
         console.log(`[AI] generateObject attempt ${attempt + 1}/${MAX_RETRIES}`);
-        const result = await withTimeout(
-          generateObject({ messages: params.messages, schema: params.schema }),
+        const raw = await withTimeout(
+          generateWithModel({ system: EDUCATION_SYSTEM_PROMPT, messages: messagesWithJson, temperature: 0.6 }),
           REQUEST_TIMEOUT
         );
+        const parsed = params.schema.parse(extractJson(raw));
         console.log(`[AI] generateObject succeeded on attempt ${attempt + 1}`);
-        return result;
+        return parsed;
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error));
         console.warn(`[AI] generateObject attempt ${attempt + 1} failed:`, lastError.message);
@@ -147,9 +159,11 @@ export async function robustGenerateObject<T extends z.ZodType>(params: {
         }
       }
     }
+
+    // Last resort: the legacy toolkit object endpoint.
+    console.warn('[AI] Falling back to legacy toolkit generateObject');
+    return await legacyGenerateObject({ messages: params.messages, schema: params.schema });
   } finally {
     releaseSlot();
   }
-
-  throw lastError ?? new Error('AI generation failed after multiple attempts. Please try again.');
 }

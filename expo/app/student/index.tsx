@@ -12,6 +12,7 @@ import { robustGenerateText as generateText } from '@/lib/ai-generate';
 import { useTheme } from '@/contexts/theme-context';
 import { useMessaging } from '@/contexts/messaging-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { buildSyllabusPlan, localDayIndex, getOrGenerateDailyDigest, DailyDigest } from '@/lib/daily-content';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -70,18 +71,29 @@ const DAILY_STUDY_TIPS = [
 ];
 
 function getDailyQuote() {
-  const now = new Date();
-  const dayIndex = Math.floor(now.getTime() / (1000 * 60 * 60 * 24)) % DAILY_QUOTES.length;
-  return DAILY_QUOTES[dayIndex];
+  const dayIndex = localDayIndex();
+  return DAILY_QUOTES[dayIndex % DAILY_QUOTES.length];
 }
 
 function getDailyTips() {
-  const now = new Date();
-  const dayIndex = Math.floor(now.getTime() / (1000 * 60 * 60 * 24));
+  const dayIndex = localDayIndex();
   const tip1 = DAILY_STUDY_TIPS[dayIndex % DAILY_STUDY_TIPS.length];
   const tip2 = DAILY_STUDY_TIPS[(dayIndex + 7) % DAILY_STUDY_TIPS.length];
   const tip3 = DAILY_STUDY_TIPS[(dayIndex + 3) % DAILY_STUDY_TIPS.length];
   return [tip1, tip2, tip3];
+}
+
+/** Re-renders content when the local date changes (app left open across midnight). */
+function useToday(): string {
+  const [today, setToday] = useState(() => new Date().toDateString());
+  useEffect(() => {
+    const id = setInterval(() => {
+      const now = new Date().toDateString();
+      setToday((prev) => (prev === now ? prev : now));
+    }, 30000);
+    return () => clearInterval(id);
+  }, []);
+  return today;
 }
 
 const AnimatedFire = memo(() => {
@@ -230,7 +242,8 @@ const fireStyles = StyleSheet.create({
 });
 
 const DailyQuoteCard = memo(({ isDark }: { isDark: boolean }) => {
-  const quote = useMemo(() => getDailyQuote(), []);
+  const today = useToday();
+  const quote = useMemo(() => getDailyQuote(), [today]);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
   const shimmerAnim = useRef(new Animated.Value(0)).current;
@@ -500,8 +513,13 @@ const DAILY_UPDATES: Array<{ title: string; message: string; type: 'tip' | 'moti
 ];
 
 function getDailyStudyPlan(board?: string, classId?: string): StudyPlan[] {
-  const now = new Date();
-  const dayIndex = Math.floor(now.getTime() / (1000 * 60 * 60 * 24));
+  // 1) Primary: rotate through the student's REAL board+class syllabus chapters,
+  //    so the revision plan walks the curriculum and changes every single day.
+  const syllabusPlan = buildSyllabusPlan(board, classId);
+  if (syllabusPlan.length > 0) return syllabusPlan as StudyPlan[];
+
+  // 2) Fallback: curated plan pools, still rotating daily.
+  const dayIndex = localDayIndex();
 
   let planPool = DEFAULT_STUDY_PLANS;
   if (board && classId) {
@@ -523,18 +541,37 @@ function getDailyStudyPlan(board?: string, classId?: string): StudyPlan[] {
 
   const plans: StudyPlan[] = [];
   for (let i = 0; i < 3; i++) {
-    plans.push(planPool[(dayIndex + i * 4) % planPool.length]);
+    plans.push(planPool[(dayIndex * 3 + i) % planPool.length]);
   }
   return plans;
 }
 
-function getDailyUpdates() {
-  const now = new Date();
-  const dayIndex = Math.floor(now.getTime() / (1000 * 60 * 60 * 24));
-  return [
-    DAILY_UPDATES[dayIndex % DAILY_UPDATES.length],
-    DAILY_UPDATES[(dayIndex + 5) % DAILY_UPDATES.length],
-  ];
+function getDailyUpdates(plans?: Array<{ subject: string; topic: string; duration: string }>) {
+  const dayIndex = localDayIndex();
+  const updates: Array<{ title: string; message: string; type: 'tip' | 'motivation' | 'reminder' | 'fact'; color: string }> = [];
+
+  // Tie the first updates to TODAY'S revision plan so they follow the syllabus rotation.
+  if (plans && plans.length > 0) {
+    const focus = plans[0];
+    updates.push({
+      title: 'Revision Focus Today',
+      message: `${focus.subject}: ${focus.topic.replace(/Ch \d+: /, 'Chapter ')} — ${focus.duration} of focused work. Follow today's plan, one chapter at a time.`,
+      type: 'tip',
+      color: '#0ea5e9',
+    });
+    if (plans[1]) {
+      updates.push({
+        title: 'Next Up Today',
+        message: `${plans[1].subject}: ${plans[1].topic.replace(/Ch \d+: /, 'Chapter ')} — queue this after a short break.`,
+        type: 'reminder',
+        color: '#10b981',
+      });
+    }
+  }
+
+  updates.push(DAILY_UPDATES[dayIndex % DAILY_UPDATES.length]);
+  updates.push(DAILY_UPDATES[(dayIndex + 5) % DAILY_UPDATES.length]);
+  return updates.slice(0, 3);
 }
 
 function getExamCountdown(examDate: string): string | null {
@@ -729,8 +766,37 @@ const studyPlanStyles = StyleSheet.create({
   },
 });
 
-const DailyUpdatesSection = memo(({ isDark }: { isDark: boolean }) => {
-  const updates = useMemo(() => getDailyUpdates(), []);
+const DailyUpdatesSection = memo(({ isDark, onboardingData, selectedLanguage }: { isDark: boolean; onboardingData: OnboardingData | null; selectedLanguage: string }) => {
+  const today = useToday();
+  const [digest, setDigest] = useState<DailyDigest | null>(null);
+  const plans = useMemo(
+    () => getDailyStudyPlan(onboardingData?.board, onboardingData?.class),
+    [onboardingData?.board, onboardingData?.class, today]
+  );
+
+  // AI daily digest — generated once per day for this board+class, cached.
+  useEffect(() => {
+    let active = true;
+    getOrGenerateDailyDigest(onboardingData?.board, onboardingData?.class, selectedLanguage)
+      .then((d) => {
+        if (active) setDigest(d);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [onboardingData?.board, onboardingData?.class, selectedLanguage, today]);
+
+  const updates = useMemo(() => {
+    const base = getDailyUpdates(plans);
+    if (digest && digest.updates.length >= 2) {
+      const palette: Record<string, string> = { tip: '#0ea5e9', motivation: '#f59e0b', reminder: '#10b981', fact: '#8b5cf6' };
+      return digest.updates.map((u) => ({ ...u, color: palette[u.type] ?? '#0ea5e9' }));
+    }
+    return base;
+  }, [digest, plans, today]);
+
+  const focusQuestion = digest?.focusQuestion && digest.focusQuestion.question ? digest.focusQuestion : null;
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(20)).current;
 
@@ -783,6 +849,25 @@ const DailyUpdatesSection = memo(({ isDark }: { isDark: boolean }) => {
           </View>
         );
       })}
+      {focusQuestion && (
+        <View
+          style={[
+            updateStyles.updateCard,
+            {
+              backgroundColor: isDark ? '#0ea5e914' : '#0ea5e90A',
+              borderColor: isDark ? '#0ea5e940' : '#0ea5e930',
+            },
+          ]}
+        >
+          <View style={updateStyles.updateIconWrap}>
+            <Text style={{ fontSize: 18 }}>{'🎯'}</Text>
+          </View>
+          <View style={updateStyles.updateTextCol}>
+            <Text style={[updateStyles.updateTitle, { color: isDark ? '#e2e8f0' : '#1e293b' }]}>Daily Challenge</Text>
+            <Text style={[updateStyles.updateMsg, { color: isDark ? '#94a3b8' : '#64748b' }]}>{focusQuestion.question}</Text>
+          </View>
+        </View>
+      )}
     </Animated.View>
   );
 });
@@ -867,8 +952,30 @@ const updateStyles = StyleSheet.create({
   },
 });
 
-const DailyTipsSection = memo(({ isDark }: { isDark: boolean }) => {
-  const tips = useMemo(() => getDailyTips(), []);
+const DailyTipsSection = memo(({ isDark, onboardingData, selectedLanguage }: { isDark: boolean; onboardingData: OnboardingData | null; selectedLanguage: string }) => {
+  const today = useToday();
+  const [digest, setDigest] = useState<DailyDigest | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    getOrGenerateDailyDigest(onboardingData?.board, onboardingData?.class, selectedLanguage)
+      .then((d) => {
+        if (active) setDigest(d);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [onboardingData?.board, onboardingData?.class, selectedLanguage, today]);
+
+  const tips = useMemo(() => {
+    if (digest && digest.tips.length >= 2) {
+      const icons = [Brain, BookMarked, TrendingDown];
+      const colors = ['#8b5cf6', '#f97316', '#0891b2'];
+      return digest.tips.map((t, i) => ({ icon: icons[i % 3], color: colors[i % 3], title: t.title, tip: t.tip }));
+    }
+    return getDailyTips();
+  }, [digest, today]);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(20)).current;
 
@@ -1682,9 +1789,9 @@ export default function StudentDashboard() {
           </View>
         </View>
 
-        <DailyUpdatesSection isDark={isDark} />
+        <DailyUpdatesSection isDark={isDark} onboardingData={onboardingData} selectedLanguage={selectedLanguage} />
 
-        <DailyTipsSection isDark={isDark} />
+        <DailyTipsSection isDark={isDark} onboardingData={onboardingData} selectedLanguage={selectedLanguage} />
 
         {userProgress.teacherUploads.length > 0 && (
           <View style={styles.uploadsSection}>

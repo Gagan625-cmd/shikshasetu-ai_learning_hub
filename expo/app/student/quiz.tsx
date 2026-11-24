@@ -11,6 +11,7 @@ import { z } from 'zod';
 import { NCERT_SUBJECTS } from '@/constants/ncert-data';
 import { ICSE_SUBJECTS } from '@/constants/icse-data';
 import { useStudyTimeTracker } from '@/hooks/useStudyTimeTracker';
+import { buildSyllabusScope } from '@/lib/prompts';
 
 const QuizSchema = z.object({
   questions: z.array(
@@ -97,8 +98,19 @@ Make questions:
 
 Provide detailed explanations showing the reasoning process.`;
 
+      // Anchor the quiz to the official board syllabus scope so questions stay in-curriculum.
+      const syllabusScope = buildSyllabusScope(
+        selectedBoard === 'ICSE' ? 'ICSE' : 'CBSE',
+        selectedGrade,
+        subjectName || undefined
+      );
+      const chapterScope = selectedChapterData
+        ? `\nSELECTED CHAPTER (all questions must stay strictly inside this chapter's scope):\nChapter ${selectedChapterData.number}: ${selectedChapterData.title} — ${selectedChapterData.description}\n`
+        : '';
+      const groundedPrompt = `${prompt}\n\nSYLLABUS SCOPE — every question must be answerable from this official scope:\n${syllabusScope}${chapterScope}`;
+
       const result = await robustGenerateObject({
-        messages: [{ role: 'user', content: prompt }],
+        messages: [{ role: 'user', content: groundedPrompt }],
         schema: QuizSchema,
       });
       return result;
